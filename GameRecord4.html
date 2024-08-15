@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>显示围棋棋谱4</title>
+    <style>
+      /* Keep the existing styles  */
+    </style>
+    <link rel="stylesheet" href="css/GoBoard2.css" />
+    <link rel="stylesheet" href="css/Styles4C.css" />
+  </head>
+  <body>
+    <!--
+    <div class="container">
+      <header>
+        <a href="BlackRiceGoMain.html">
+          <img src="images/BlackRiceLogo25.webp" alt="黑米围棋 Logo" />
+        </a>
+        <nav>
+          <a href="WeiqiPlay9.html">
+            <img src="images/Play.png" class="icon" alt="对弈" /> 对弈
+          </a>
+          <a href="GameRecord4.html">
+            <img src="images/GameRecords.png" class="icon" alt="棋谱" /> 棋谱
+          </a>
+          <a href="Tournament1B.html">
+            <img src="images/Match.png" class="icon" alt="比赛" /> 比赛
+          </a>
+          <a href="News.html">
+            <img src="images/News.png" class="icon" alt="新闻" /> 新闻
+          </a>
+          <a href="Forum5.html">
+            <img src="images/Forum.png" class="icon" alt="论坛" /> 论坛
+          </a>
+          <a href="Register.html">
+            <img src="images/Register.png" class="icon" alt="注册" /> 注册
+          </a>
+        </nav>
+      </header>
+    </div>  -->
+
+    <div id="navbar-placeholder"></div>
+
+    <div id="board"></div>
+    <input type="file" id="sgfInput" accept=".sgf" />
+    <button type="submit">上传棋谱</button>
+    <div id="controls">
+      <button id="startBtn">开始</button>
+      <button id="fastBackwardBtn">快速后退</button>
+      <button id="backwardBtn">后退</button>
+      <button id="forwardBtn">前进</button>
+      <button id="fastForwardBtn">快速前进</button>
+      <button id="endBtn">结束</button>
+      <button id="studyButton">研究</button>
+      <button id="publishVariationBtn" style="display: none">发布变化图</button>
+      <button id="showMovesBtn">显示步数</button>
+      <button id="saveQipuBtn">保存棋谱</button>
+    </div>
+    <div id="moveInfo">当前步数：0 / 0</div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/navbar.js"></script>
+
+    <script src="js/GoBoard6.js"></script>
+
+    <script>
+      loadNavbar();
+      let currentGame = null;
+      createBoard();
+      let currentMoves = [];
+      let currentMoveIndex = -1;
+      let showingRecentMoves = false;
+      let displayMode = 0; //
+
+      //const boardState = Array(19)
+      //  .fill()
+      //  .map(() => Array(19).fill(null));
+
+      document
+        .getElementById("sgfInput")
+        .addEventListener("change", handleFileSelect);
+
+      function handleFileSelect(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function (event) {
+          const sgfContent = event.target.result;
+          const moves = parseSGF(sgfContent);
+          if (moves.length > 0) {
+            console.log("Parsed moves:", moves);
+            renderMoves(moves);
+          } else {
+            alert("无法解析SGF文件或文件中没有移动");
+          }
+        };
+        reader.readAsText(file);
+      }
+
+      function parseSGF(sgf) {
+        const moves = [];
+        // 匹配所有的移动，包括空移动（pass）
+        const regex = /;([BW])(\[\]|\[([a-s]{2})\])/g;
+        let match;
+
+        while ((match = regex.exec(sgf)) !== null) {
+          const color = match[1] === "B" ? "black" : "white";
+          if (match[2] === "[]") {
+            // 这是一个空移动（pass）
+            moves.push({ pass: true, color });
+          } else {
+            const col = match[3].charCodeAt(0) - 97;
+            const row = match[3].charCodeAt(1) - 97;
+            moves.push({ row, col, color });
+          }
+        }
+
+        return moves;
+      }
+
+      document
+        .getElementById("forwardBtn")
+        .addEventListener("click", moveForward);
+      document
+        .getElementById("backwardBtn")
+        .addEventListener("click", moveBackward);
+      document
+        .getElementById("fastForwardBtn")
+        .addEventListener("click", fastForward);
+      document
+        .getElementById("fastBackwardBtn")
+        .addEventListener("click", fastBackward);
+      document
+        .getElementById("startBtn")
+        .addEventListener("click", moveToStart);
+      document.getElementById("endBtn").addEventListener("click", moveToEnd);
+      document
+        .getElementById("showMovesBtn")
+        .addEventListener("click", toggleMoveDisplay);
+      document
+        .getElementById("saveQipuBtn")
+        .addEventListener("click", saveQipu);
+    </script>
+  </body>
+</html>

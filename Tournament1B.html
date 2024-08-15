@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>创建比赛</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        background-color: #f8f9fa;
+        padding-top: 50px;
+      }
+      .container {
+        max-width: 600px;
+        background-color: #fff;
+        padding: 30px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        border-radius: 10px;
+      }
+      h2 {
+        text-align: center;
+        margin-bottom: 30px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2>创建比赛</h2>
+      <form id="tournamentForm">
+        <div class="mb-3">
+          <label for="name" class="form-label">比赛名称</label>
+          <input
+            type="text"
+            class="form-control"
+            id="name"
+            name="name"
+            required
+          />
+        </div>
+        <div class="mb-3">
+          <label for="date" class="form-label">比赛日期</label>
+          <input
+            type="date"
+            class="form-control"
+            id="date"
+            name="date"
+            required
+          />
+        </div>
+        <div class="mb-3">
+          <label for="location" class="form-label">比赛地点</label>
+          <input
+            type="text"
+            class="form-control"
+            id="location"
+            name="location"
+            required
+          />
+        </div>
+        <div class="mb-3">
+          <label for="entry_conditions" class="form-label">参加条件</label>
+          <textarea
+            class="form-control"
+            id="entry_conditions"
+            name="entry_conditions"
+            rows="3"
+            required
+          ></textarea>
+        </div>
+        <div class="mb-3">
+          <label for="format" class="form-label">比赛形式</label>
+          <select class="form-select" id="format" name="format" required>
+            <option value="Single Round Robin">单循环</option>
+            <option value="Double Round Robin">积分循环</option>
+            <option value="Knockout">淘汰赛</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary w-100">创建比赛</button>
+      </form>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      document
+        .getElementById("tournamentForm")
+        .addEventListener("submit", function (event) {
+          event.preventDefault();
+
+          const formData = new FormData(this);
+          const data = Object.fromEntries(formData.entries());
+
+          console.log("Sending data:", data);
+
+          fetch("/create_tournament", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(data),
+          })
+            .then((response) => response.json())
+            .then((result) => {
+              if (result.success) {
+                const format = data.format;
+                let redirectUrl = "";
+                switch (format) {
+                  case "Single Round Robin":
+                    redirectUrl = "/RoundRobin1.html";
+                    break;
+                  // 其他比赛形式的处理...
+                  default:
+                    redirectUrl = "/";
+                    break;
+                }
+                window.location.href = redirectUrl;
+              } else {
+                alert(result.message);
+              }
+            })
+            .catch((error) => {
+              console.error("Error:", error);
+              alert("An error occurred while creating the tournament");
+            });
+        });
+    </script>
+  </body>
+</html>
