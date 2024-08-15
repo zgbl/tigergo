@@ -1,0 +1,177 @@
+:root {
+    --board-size: 19;
+    --board-color: #deb887;
+    --line-color: #000;
+    --stone-size: 28px;
+    --font-size: 12px;
+    --small-stone-size: 15px;
+    --small-font-size: 8px;
+  }
+  
+  /* 主棋盘样式 */
+  #board {
+    display: grid;
+    grid-template-columns: repeat(var(--board-size), 1fr);
+    grid-template-rows: repeat(var(--board-size), 1fr);
+    gap: 0;
+    width: calc(var(--board-size) * var(--stone-size));
+    height: calc(var(--board-size) * var(--stone-size));
+    background-color: var(--board-color);
+    border: 2px solid var(--line-color);
+    position: relative;
+  }
+  
+  .intersection {
+    position: relative;
+    width: 100%;
+    height: 100%;
+  }
+  
+  .line {
+    position: absolute;
+    background-color: var(--line-color);
+  }
+  
+  .vertical {
+    width: 1px;
+    height: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+  
+  .horizontal {
+    width: 100%;
+    height: 1px;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+  
+  .stone {
+    width: var(--stone-size);
+    height: var(--stone-size);
+    border-radius: 50%;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1;
+  }
+  
+  .stone.black {
+    background-color: black;
+  }
+  
+  .stone.white {
+    background-color: white;
+    border: 1px solid black;
+  }
+  
+  .star-point {
+    width: calc(var(--stone-size) * 0.2);
+    height: calc(var(--stone-size) * 0.2);
+    background-color: var(--line-color);
+    border-radius: 50%;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1;
+  }
+  
+  .move-number {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: calc(var(--stone-size) * 1px);
+    height: calc(var(--stone-size) * 1px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: var(--font-size);
+    font-weight: bold;
+    z-index: 2;
+    color: white;
+  }
+  
+  .stone.white .move-number {
+    color: black;
+  }
+  
+  /* 小棋盘样式 */
+  .small-board-container {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+  
+  .small-board {
+    display: grid;
+    grid-template-columns: repeat(var(--board-size), 1fr);
+    grid-template-rows: repeat(var(--board-size), 1fr);
+    gap: 0;
+    width: calc(var(--board-size) * var(--small-stone-size));
+    height: calc(var(--board-size) * var(--small-stone-size));
+    background-color: var(--board-color);
+    border: 1px solid var(--line-color);
+    position: relative;
+  }
+  
+  .small-board .intersection {
+    position: relative;
+    width: var(--small-stone-size);
+    height: var(--small-stone-size);
+    /*transform: translate(-50%, -50%); */
+  }
+  
+  .small-board .line {
+    position: absolute;
+    background-color: var(--line-color);
+  }
+  
+  .small-board .vertical {
+    width: 1px;
+    height: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+  
+  .small-board .horizontal {
+    width: 100%;
+    height: 1px;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+  
+  .small-board .stone {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: var(--small-stone-size);
+    height: var(--small-stone-size);
+  }
+  
+  .small-board .move-number {  /* 开始没起作用.被.js里面1370行覆盖了。*/
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: calc(var(--small-stone-size) * 1px);
+    height: calc(var(--small-stone-size) * 1px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    /*font-size: var(--small-font-size); */
+    /*font-size: calc(var(--small-stone-size) * 1px); */
+    font-size: 80px;
+    z-index: 2;
+  }
+  
+  .small-board-controls {
+    margin-top: 10px;
+    text-align: center;
+  }
+  
+  .small-board-controls button {
+    margin: 0 5px;
+  }

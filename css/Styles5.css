@@ -1,0 +1,499 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f4f4f4;
+  }
+  
+  .container {
+    max-width: 1000px;
+    margin: 20px 0;
+    padding: 10px 20px;
+    background-color: hsl(0, 0%, 99%);
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    display: flex;
+    margin-left: 3%;
+    flex-direction: column;
+    /*align-items: stretch; */
+  }
+  
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: left;
+    padding: 5px 0;
+  }
+  
+  header img, .mainLogo {
+    height: 50px;
+    width: auto;
+    max-width: 100%;
+  }
+  .register-container {
+    max-width: 400px;
+    margin: 50px auto;
+    padding: 20px;
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  }
+  .logo {
+    text-align: center;
+    margin-bottom: 0px;
+  }
+  .logo img {
+    width: 100px;
+    height: auto;
+    border-radius: 10px;
+  }
+  
+  /* 响应式导航 */
+  nav {
+    /* display: flex;  */
+      display:contents;
+      width: 60%;
+      gap: 20px;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      align-items: center;
+      padding: 10px 0;
+      background-color: #f0f0f0;
+  }
+
+  nav a {
+      text-decoration: none;
+      color: #333;
+      font-size: 20px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+  }
+
+  .icon {
+      width: 24px;
+      height: 24px;
+  }
+
+  /* 响应式标题 */
+  h1 {
+      font-size: 1.8em;
+  }
+  
+  .forum-container {
+    display: flex;
+    justify-content: start;
+    width: 100%;
+    max-width: 1000px;
+    margin: 10px;
+    margin-left: 3%;
+    /*padding: 20px; */
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  }
+  
+  .post-list-header, .form-post {
+    display: grid;
+    grid-template-columns: 6fr 1fr 1fr 1fr;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid #eee;
+    align-items: center;
+  }
+  
+  .post-list-header {
+    font-weight: bold;
+    background-color: #f5f5f5;
+  }
+
+  .post-title, .post-author, .post-reply-view, .post-last-reply {
+    padding: 0 10px;
+  }
+  
+  .post-title {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .post-author, .post-reply-view, .post-last-reply {
+    text-align: center;
+  }
+  
+  /*.post-info-header {
+    display: flex;
+    justify-content: flex-end;
+  }
+  
+  .post-info span {
+    margin-left: 20px;
+    text-align: center;
+  }
+
+  .post-info .author,
+  .post-info .reply-count,
+  .post-info .last-post-time {
+    margin-left: 20px;
+    text-align: center;
+  } */
+
+  /* 为了保持一致性，可以给每个帖子的内容也添加相同的类名 */
+  .form-post .post-content {
+    grid-column: 1;
+  }
+  
+  .form-post .post-author {
+    grid-column: 2;
+  }
+  
+  .form-post .post-reply-view {
+    grid-column: 3;
+  }
+  
+  .form-post .post-last-reply {
+    grid-column: 4;
+  }
+  
+
+
+  /* 响应式帖子样式 */
+  .post {
+      flex-direction: column;
+      align-items: flex-start;
+  }
+
+  .post-content, .post-title, .post-body {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  /*.form-post {
+    display:flex;
+    flex-direction: row;
+    border: 1px solid lightgrey;
+  }  */
+  .post-title {
+    font-size: 1em;
+    font-weight: bold;
+    color: #444;
+    margin-top: 5px;
+    margin-bottom: 5px;
+    margin-left: 10px;
+  }
+  
+  .post-body {
+    color: #666;
+    font-size: 0.9em;
+    line-height: 1.6;
+    margin-left: 10px;
+  }
+
+  .post-author {
+    font-size: 0.9em;
+    color: #888;
+    margin-left: 10px;
+  }  /* .post-title, .post-body, .post-auther 可能都没有使用，用的是span的   */
+  
+  .post-link {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    text-decoration: none;
+    color: inherit;
+  }
+  
+  .post-link:hover {
+    background-color: #f0f0f0;
+  }
+  
+  .attachment-icon {
+    color: #007bff;
+    margin-left: 10px;
+    /* 确保图标可见 */
+    display: inline-block;
+    font-size: 16px; /* 调整大小 */
+  }
+  
+  .new-post-section {
+    background-color: #f0f0f0;
+    padding: 20px;
+    border-radius: 5px;
+    margin-top: 20px;
+  }
+  
+  .new-post-section h2 {
+    color: #333;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 10px;
+    margin-bottom: 15px;
+  }
+
+  .login-container {
+    display: flex;
+    flex-direction: column;
+  
+    background-color: white;
+    padding: 20px;
+    border-radius: 5px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  }
+
+  /*.login-container {
+    display: flex;
+    position: fixed;
+    top: 20%;
+    left: 70%;
+    transform: translate(-50%, -50%);
+    background-color: white;
+    padding: 20px;
+    border-radius: 5px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  } */
+  .login-container.show {
+      display: block;
+  }
+  /*.overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.5);
+  }
+  .overlay.show {
+      display: block;
+  } */
+  
+
+  /*.post-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 10px;
+    font-size: 0.9em;
+    color: #666;
+  } */
+  
+  /*.post-info span {
+    margin-right: 15px;
+  } */
+  
+  /*.post-info span:last-child {
+    margin-right: 0;
+  } */
+  
+  /* 如果需要在每个 span 之间添加一些视觉分隔 */
+  /*.post-info span:not(:last-child)::after {
+    content: '|';
+    margin-left: 15px;
+    color: #ccc;
+  } */
+  /*
+  #new-post-form {
+    display: flex;
+    flex-direction: column;
+  }
+
+  input[type="text"],
+  textarea,
+  input[type="file"]{
+      width: 100%;
+      box-sizing: border-box;
+  }
+
+  textarea {
+    height: 100px;
+  }
+  
+  input[type="submit"],
+
+  #new-post-form button,
+  #load-more {
+    width: auto;
+    padding: 10px 20px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    cursor: pointer;
+    border-radius: 4px;
+  }
+  
+  input[type="submit"]:hover,
+  #new-post-form button:hover,
+  #load-more:hover {
+    background-color: #0056b3;
+  }  */
+  
+
+  .new-post-section form {
+    display: flex;
+    flex-direction: column;
+  }
+
+  input[type="text"],
+  textarea,
+  input[type="file"]{
+    width: calc(var(--cell-size)*20);
+    max-width:   calc(var(--cell-size) * 25); 
+    margin: 0; /* 移除可能的默认外边距 */
+    padding: 12px; /* 添加内边距以提高可读性，可以根据需要调整 */
+    border: 2px solid #ccc; /* 添加边框以提高可见性 */
+    border-radius: 8px; /* 可选：添加圆角 */
+    font-size: 14px;  /* 增大按钮尺寸  */
+
+  }
+
+  textarea {
+    height: 100px;
+    /*width: calc(var(--stone-size) * 50 * 1px);  */
+    resize: vertical; /* 允许垂直调整大小 */
+  }
+  
+    /* 确保所有表单元素之间有一致的间距 */
+  .new-post-section form > * {
+    margin-bottom: 10px; /* 可以根据需要调整 */
+  }
+
+    /* 移除最后一个元素的底部边距 */
+  .new-post-section form > *:last-child {
+    margin-bottom: 0;
+  }
+  
+  .form-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 10px; /* 根据需要调整 */
+  }
+  
+  .file-input-wrapper {
+    flex-grow: 1;
+    margin-right: 10px; /* 在文件输入和按钮之间添加一些间距 */
+  }
+  
+  input[type="file"] {
+    width: 100%;
+    box-sizing: border-box;
+  }
+  
+  input[type="submit"] {
+    width: auto;
+    padding: 10px 20px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    cursor: pointer;
+    border-radius: 4px;
+  }
+  
+  #load-more {
+    display: block;
+    margin: 20px auto;
+  }
+
+  #controls {
+    margin-left: 50px;
+    margin-bottom: 10px;
+    font-size: 30px;
+  }
+
+  #comment-form {
+    margin-left: 10px;
+  }
+
+  #post-content {
+    margin-left: 50px;
+    border-style: solid;
+    width: calc(var(--cell-size)*20);
+    border-color: lightgrey;
+  }
+
+  #moveInfo {
+    margin-left: 50px;
+  }
+
+  #comments-section {
+    margin-left: 50px;
+  }
+
+  #user-info {
+    display: flex;
+    max-width: 1000px;
+    justify-content: left;
+    margin-left: 3%;
+  } 
+
+  #game-container {
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-start; /* 确保内容从左侧开始 */
+    width: 100%;
+    max-width: 100%; /* 防止容器超出视口 */
+    overflow-x: auto; /* 如果内容过宽，允许水平滚动 */
+  }
+
+  #game-info{
+    flex: 0 0 250px;
+    margin-left: 20px;
+
+  }
+
+
+  .header-container {
+    display: contents;
+    align-items: center;
+    justify-content: flex-start;
+    margin-bottom: 20px; /* 根据需要调整 */
+  }
+
+  .status-indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: rgb(117, 44, 44);
+    display: none;
+  }
+  .status-indicator.active {
+    display: inline-block;
+    background-color: rgb(104, 202, 74);
+  }
+
+  .inBodyButton {
+    font-size: 20px;
+    background-color: #a7c2e7;
+    border-radius: 5px;
+    border: black;
+    border-width: thin;
+
+  }
+
+  /* 悬浮提示按钮功能 */
+  .tooltip {
+    position: absolute;
+    background-color: black;
+    color: white;
+    padding: 5px;
+    border-radius: 3px;
+    font-size: 12px;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+  }
+
+  #main-entry {
+    left: 5%;
+  }
+
+
+
+  /* 用户ID样式 
+  #user-info .user-id {
+    font-size: 0.8em;
+    color: #666;
+  } */
+
+
+ 

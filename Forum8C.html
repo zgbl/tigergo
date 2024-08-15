@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="zh">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>forum8.html /opt/homebrew/var/www</title>
+    <link rel="stylesheet" href="css/Styles5.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"
+    />
+    <style></style>
+  </head>
+  <body>
+    <div id="root">
+        <!-- forum7.html 开始使用页面响应式设计 -->
+      <div id="navbar-placeholder"></div>
+
+      <div class="container forum-container">
+        <div class="header-container">
+          <h2>围棋论坛-8C</h2>
+          <div id="user-info">
+            <!-- 用户信息将在这里显示 -->
+          </div>
+        </div>
+
+        <div id="post-list-header" class="post-list-header">
+            <div class="post-title">标题</div>
+            <div class="author-header">作者</div>
+            <div class="reply-count-header">回复/查看</div>
+            <div class="last-post-time-header">最后发表</div>
+            <!--<div class="post-info-header">
+            <div class="post-title-header">标题</div>
+                <div class="post-info-header">
+                <div class="author-header">作者</div>
+                <div class="reply-count-header">回复/查看</div>
+                <div class="last-post-time-header">最后发表</div>
+              <span class="author-header">作者</span>
+              <span class="reply-count-header">回复/查看</span>
+              <span class="last-post-time-header">最后发表</span>
+            </div> -->
+        </div>
+
+        <div id="post-list" class="post-list">
+          <!-- 帖子将通过JavaScript动态加载 -->
+        </div>
+
+        <button id="load-more">加载更多</button>
+
+    <div class="new-post-section">
+        <h3>发布新帖子</h3>
+        <form id="new-post-form"enctype="multipart/form-data">
+        <!-- <input type="text" id="post-title" placeholder="标题" required /> -->
+        <input type="text" name="title" placeholder="输入帖子标题" required />
+        <!--<textarea id="post-content" placeholder="内容"></textarea>  -->
+        <textarea name="content" placeholder="在此输入帖子内容" required></textarea> 
+        
+        <div class="form-footer">
+            <div class="file-input-wrapper">
+            <!-- <input type="file" id="post-attachment" /> -->
+                <input type="file" name="file" accept=".sgf" />
+            </div>
+            <input type="submit" value="发布帖子" />
+            </div>
+        </form>
+        </div>
+
+    </div>
+    
+
+    <script src="js/navbar.js"></script>
+    <!--<script src="js/Page.js"></script> -->
+    <script type="module">
+      import { initUserInfo } from './js/Page3.js';
+      initUserInfo("user-info"); // 或其他 ID
+    </script>
+    <script>
+      // 加载导航栏
+      loadNavbar();
+      //console.log("line 65, userID is:", initUserInfo("user-info"));
+      // 页面加载时刷新帖子列表
+      //document.addEventListener("DOMContentLoaded", refreshPostList);
+      let currentPage = 1;
+
+      document
+        .getElementById("new-post-form")
+        .addEventListener("submit", function (e) {
+          e.preventDefault();
+          var formData = new FormData(this);
+          //var userID = localStorage.getItem('userID'); // 假设用户ID存储在localStorage中
+        // 获取用户ID
+          const user = JSON.parse(localStorage.getItem("user"));
+          const userID = user ? user.id : null;
+          const userName = user.username;
+        // 添加 userID 到 FormData
+          console.log("line 81, userID is:", userID);  //will get userID like'66aaf2d65d3edb4db7917f78'
+          console.log("line 82, userID is:", user.username);  //will get username like'pig'
+          if (userID) {
+            formData.append('userID', userID);
+            formData.append('auther', userName);
+            console.log("Line 86 User ID:", userID, "userName", userName);
+          } else {
+            console.error('User ID not found. User might not be logged in.');
+            return; // 如果没有用户ID，不提交表单
+          }
+
+          // 打印所有表单数据（包括新添加的userID）
+          for (var pair of formData.entries()) {
+            if (pair[1] instanceof File) {
+              console.log(
+                pair[0] +
+                  ": File name = " +
+                  pair[1].name +
+                  ", size = " +
+                  pair[1].size +
+                  " bytes"
+              );
+            } else {
+              console.log(pair[0] + ": " + pair[1]);
+            }
+          }
+
+          fetch("/forum/post", {
+            method: "POST",
+            body: formData,
+          })
+            .then((response) => {
+              if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+              }
+              return response.json();
+            })
+            .then((data) => {
+              console.log("Server response:", data);
+              if (data.success) {
+                console.log("Post published successfully:", data.post);
+                this.reset();
+                currentPage = 1; // 重置页码
+                refreshPostList(currentPage, false); // 刷新整个列表
+              } else {
+                //console.error("Failed to publish post:", data.error);
+                console.error(
+                  "Failed to publish post:",
+                  data.error || "No error message provided"
+                );
+                alert("发布失败: " + (data.error || "未知错误"));
+              }
+            })
+            .catch((error) => {
+              console.error("Error:", error);
+              alert("发布时发生错误: " + error.message);
+            });
+        });
+
+      // 在发帖成功后刷新帖子列表
+      function refreshPostList(page = 1, append = false) {
+        const postListElement = document.getElementById('post-list');
+        
+        if (!postListElement) {
+          console.error('Post list element not found');
+          return;
+        }
+        fetch(`/forum/posts?page=${page}`)
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+          })
+          .then((data) => {
+            const postList = document.getElementById("post-list");
+            if (!append) {
+              postList.innerHTML = "";
+            }
+
+            /*data.posts.forEach((post) => {
+              const postElement = document.createElement("div");
+              postElement.className = "form-post";
+              console.log("post is:", post);
+              console.log("Line165, auther is:", post.author);
+              console.log("post.title is:", post.title);
+              postElement.innerHTML = `
+                <a href="Post9.html?id=${encodeURIComponent(
+                  post._id
+                )}" class="post-link">
+                  <div class="post-content">
+                    <div class="post-title">${post.title || "Untitled"}</div>
+                    <div class="post-body">${post.content || "No content"}</div>
+                    <div class="post-author>${post.author || "Unknow author"}</div> 
+                  </div>
+                  ${
+                    post.filePath
+                      ? '<i class="fas fa-paperclip attachment-icon" title="附件"></i>'
+                      : ""
+                  }
+                </a>
+              `;
+              postList.appendChild(postElement);
+            }); */
+
+
+            data.posts.forEach((post) => {
+              
+              const postElement = document.createElement("div");
+              postElement.className = "form-post";
+              postElement.innerHTML = `
+                <a href="Post10.html?id=${encodeURIComponent(post._id)}" class="post-link">
+                  <div class="post-content">
+                    <div class="post-title">${post.title || "Untitled"}</div>
+                    <div class="post-body">${post.content || "No content"}</div>
+                  </div>
+                  ${
+                    post.filePath
+                      ? '<i class="fas fa-paperclip attachment-icon" title="附件"></i>'
+                      : ""
+                  }
+                </a>
+               
+                <div class="post-auther">${post.author || "Unknown"}</div>
+                <div class="post-reply-count">${post.replyCount || 0}</div>
+                <div class="post-last-post-time">${post.lastPostTime || "N/A"}</div>
+           
+              `;
+              postListElement.appendChild(postElement);
+              
+            });
+
+            /*<div id="postinfo" class="post-info">
+                  <span class="post-auther">${post.author || "Unknown"}</span>
+                  <span class="post-reply-count">${post.replyCount || 0}</span>
+                  <span class="post-last-post-time">${post.lastPostTime || "N/A"}</span>
+                </div> */
+
+            const loadMoreButton = document.getElementById("load-more");
+            loadMoreButton.style.display = data.hasNextPage ? "block" : "none";  //为什么要在这里处理style? 应该放到CSS.  8/6
+          })
+          .catch((error) => {
+            console.error("Error fetching posts:", error);
+            alert("获取帖子列表时发生错误: " + error.message);
+          });
+      }
+
+
+
+      document.getElementById("load-more").addEventListener("click", () => {
+        currentPage++;
+        refreshPostList(currentPage, true);
+      });
+
+      // 页面加载时刷新帖子列表
+      document.addEventListener("DOMContentLoaded", () =>
+        refreshPostList(currentPage, false)
+      );
+
+      function loadPosts(page = 1) {
+        fetch(`/forum/posts?page=${page}`)
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+          })
+          .then((data) => {
+            console.log("Received data:", data); // 添加这行来查看接收到的完整数据
+            if (data.posts && Array.isArray(data.posts)) {
+              console.log("data.posts is:", data.posts);
+              displayPosts(data.posts);
+              if (data.hasNextPage) {
+                document.getElementById("load-more").style.display = "block";
+              } else {
+                document.getElementById("load-more").style.display = "none";
+              }
+            } else {
+              console.error("Received data is not in expected format:", data);
+            }
+          })
+          .catch((error) => {
+            console.error("Error loading posts:", error);
+            // 在页面上显示错误信息
+            document.getElementById(
+              "post-list"
+            ).innerHTML = `<p>Error loading posts: ${error.message}</p>`;
+          });
+      }
+
+      // JavaScript代码保持不变，但需要修改displayPosts函数中的HTML结构
+      function displayPosts(posts) {
+        console.log("displayPost被调用了", posts);
+        const postList = document.getElementById("post-list");
+        postList.innerHTML = "";
+
+        posts.forEach((post) => {
+          console.log("Display post", post);
+          const postElement = document.createElement("div");
+          postElement.className = "post";
+          console.log("post ID is:", post._id);
+          // 安全地获取标题和内容
+          const title = post.title || "无标题";
+          const content = post.content || "无内容";
+          // 限制内容长度，但要先确保内容不是 null
+          const shortContent =
+            content.length > 100 ? content.substring(0, 100) + "..." : content;
+
+          postElement.innerHTML = `
+            <a href="Post10.html?id=${encodeURIComponent(
+              post._id
+            )}" class="post-link">
+              <div class="post-content">
+                <div class="post-title">${title}</div>
+                <div class="post-body">${shortContent}</div>
+              </div>
+            </a>
+          `;
+          postList.appendChild(postElement);
+        });
+      }
+
+      // 添加"加载更多"按钮的事件监听器
+      document
+        .getElementById("load-more")
+        .addEventListener("click", function () {
+          const currentPage = parseInt(this.dataset.page) || 1;
+          loadPosts(currentPage + 1);
+          this.dataset.page = currentPage + 1;
+        });
+
+    </script>
+  </body>
+</html>
