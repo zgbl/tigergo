@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>黑米围棋</title>
+    <link rel="stylesheet" href="css/Styles5.css" />
+    <style>
+      #main-entry {
+        align-items: center;
+      }
+
+      #bodyRoot {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <img src="images/BlackRiceLogo25.webp" alt="黑米围棋 Logo" />
+        <nav>
+          <a href="WeiqiPlay10.html">
+            <img src="images/Play.png" class="icon" alt="对弈" /> 对弈
+          </a>
+          <a href="GameRecord4.html">
+            <img src="images/GameRecords.png" class="icon" alt="棋谱" /> 棋谱
+          </a>
+          <a href="Tournament1B.html">
+            <img src="images/Match.png" class="icon" alt="比赛" /> 比赛
+          </a>
+          <a href="News.html">
+            <img src="images/News.png" class="icon" alt="新闻" /> 新闻
+          </a>
+          <a href="Forum8C.html">
+            <img src="images/Forum.png" class="icon" alt="论坛" /> 论坛
+          </a>
+          <a href="Register1.html">
+            <img src="images/Register.png" class="icon" alt="注册" /> 注册
+          </a>
+        </nav>
+      </header>
+    </div>
+
+    <div id="bodyRoot">
+      <div id="loginContainer" class="login-container">
+        <form id="loginForm">
+          <input
+            type="text"
+            id="username"
+            name="username"
+            placeholder="用户名"
+            required
+          />
+          <input
+            type="password"
+            id="password"
+            name="password"
+            placeholder="密码"
+            required
+          />
+          <button type="submit">登录</button>
+        </form>
+      </div>
+      <p></p>
+
+      <div id="main-entry">
+        <a href="Forum8C.html">
+          <img src="images/WeiqiForum2.jpg" alt="黑米围棋论坛 Logo" />
+        </a>
+        <a href="Forum8C.html" style="font-size: 22px; align-content: center">
+          <p style="text-align: center; font-size: 22px">进入黑米围棋论坛</p>
+        </a>
+      </div>
+
+      <!-- <p>
+        <div id="loginMessage"> Show Login Message here</div>
+      </p>  -->
+    </div>
+
+    <!-- <div class="overlay" id="overlay"></div> 
+    <div class="login-container" id="loginContainer">
+      <h2>登录</h2>
+      <form id="loginForm">
+        <div>
+          <label for="username">用户名:</label>
+          <input type="text" id="username" name="username" required />
+        </div>
+        <div>
+          <label for="password">密码:</label>
+          <input type="password" id="password" name="password" required />
+        </div>
+        <button type="submit">登录</button>
+      </form>
+      <button id="closeLogin">关闭</button>
+    </div> -->
+
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        const loginForm = document.getElementById("loginForm");
+        loginForm.addEventListener("submit", handleLogin);
+      });
+
+      function handleLogin(event) {
+        event.preventDefault();
+        const username = document.getElementById("username").value;
+        const password = document.getElementById("password").value;
+        const loginMessage = document.getElementById("loginMessage");
+
+        fetch("/auth/login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ username, password }),
+          credentials: "include",
+        })
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+          })
+          .then((data) => {
+            if (data.message === "Login successful") {
+              console.log("登录成功，重定向到:", data.redirectTo);
+              localStorage.setItem("user", JSON.stringify(data.user));
+              //window.location.href = data.redirectTo;
+              window.location.href = "forum8C.html";
+            } else {
+              loginMessage.textContent = "登录失败: " + data.message;
+            }
+          })
+          .catch((error) => {
+            console.error("登录错误:", error);
+            loginMessage.textContent = "登录出错，请稍后重试";
+          });
+      }
+    </script>
+  </body>
+</html>
