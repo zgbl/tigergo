@@ -123,6 +123,7 @@
 
           fetch(`${CONFIG.API_BASE_URL}/forum/post`, {
             method: "POST",
+            //mode: "no-cors",
             body: formData,
           })
             .then((response) => {

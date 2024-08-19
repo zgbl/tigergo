@@ -119,7 +119,7 @@
         fetch(`${CONFIG.API_BASE_URL}/auth/login`, {
           method: "POST",
           credentials: "include", // 确保cookie被发送
-          mode: "no-cors", //关闭CORS
+          //mode: "no-cors", //关闭CORS
           headers: {
             "Content-Type": "application/json",
           },
