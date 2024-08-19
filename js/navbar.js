@@ -2,7 +2,7 @@ function loadNavbar() {
     const navbar = `
     <div class="container">
       <header>
-        <a href="BlackRiceGoMain.html" class="logo">
+        <a href="index.html" class="logo">
             <img src="images/BlackRiceLogo25.webp" alt="黑米围棋 Logo" />
         <nav>
           <a href="WeiqiPlay10.html">
