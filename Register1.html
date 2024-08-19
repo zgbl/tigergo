@@ -78,6 +78,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="config.js"></script>
     <script src="js/navbar.js"></script>
     <script>
       loadNavbar();
@@ -99,13 +100,16 @@
 
           try {
             //const response = await fetch("/api/auth/register", {
-            const response = await fetch("/auth/register", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({ username, email, password }),
-            });
+            const response = await fetch(
+              "${CONFIG.API_BASE_URL}/auth/register",
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ username, email, password }),
+              }
+            );
 
             const data = await response.json();
 

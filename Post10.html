@@ -171,6 +171,7 @@
       </div>
     </div>
 
+    <script src="config.js"></script>
     <script src="js/navbar.js"></script>
     <script>
       const maxWinSize = 3000;
@@ -379,7 +380,7 @@
       function fetchComments(postId) {
         //fetch(`/api/comments/${postId}`)
         console.log("fetchComments called with postId:", postId);
-        fetch(`/comments/${postId}`)
+        fetch(`${CONFIG.API_BASE_URL}/comments/${postId}`)
           .then((response) => response.json())
           .then((comments) => {
             const commentsList = document.getElementById("comments-list");
@@ -403,7 +404,7 @@
 
       function loadPost(postId) {
         //console.log("loadPost, 现在load:", postId);
-        fetch(`/forum/post/${postId}`)
+        fetch(`${CONFIG.API_BASE_URL}/forum/post/${postId}`)
           .then((response) => {
             if (!response.ok) {
               throw new Error("HTTP error! status: ${response.status}");
@@ -465,7 +466,7 @@
       }
 
       function loadPost2(postId) {
-        fetch(`/forum/post/${postId}`)
+        fetch(`${CONFIG.API_BASE_URL}/forum/post/${postId}`)
           .then(response => response.json())
           .then(post => {
             // Existing code to populate post content
@@ -505,7 +506,7 @@
         if (globalPostId) {
           console.log("postId is not globalPostId:", globalPostId);
           //fetch(`/api/post/${postId}`)
-          fetch(`/forum/post/${globalPostId}`)
+          fetch(`${CONFIG.API_BASE_URL}/forum/post/${globalPostId}`)
             .then((response) => {
               if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
@@ -575,7 +576,7 @@
         try {
           //console.log(`Fetching comments for post: ${postId}`);
           //const response = await fetch(`/forum/comments/${postId}`);
-          const response = await fetch(`/comments/${globalPostId}`);
+          const response = await fetch(`${CONFIG.API_BASE_URL}/comments/${globalPostId}`);
           if (!response.ok) {
             console.error(`Error: ${response.status} - ${response.statusText}`);
             const text = await response.text();
@@ -717,7 +718,7 @@
         };
 
         // 发送评论数据到后端
-        fetch(`/comments/${postId}`, {
+        fetch(`${CONFIG.API_BASE_URL}/comments/${postId}`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

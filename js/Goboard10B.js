@@ -456,7 +456,7 @@ function saveQipu() {
         isStudyVariation: isStudyMode
     };
 
-    fetch('/save-qipu', {
+    fetch('${CONFIG.API_BASE_URL}/save-qipu', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -1305,7 +1305,7 @@ function submitCommentAndVariation(e) {
         variation: variationData
     };
 
-    fetch(`/comments/${postId}`, {
+    fetch(`${CONFIG.API_BASE_URL}/comments/${postId}`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
@@ -1418,7 +1418,7 @@ async function saveCommentToDB(commentData) {
             }))
         };
 
-        const response = await fetch(`/comments/${commentData.postId}`, {
+        const response = await fetch(`${CONFIG.API_BASE_URL}/comments/${commentData.postId}`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
