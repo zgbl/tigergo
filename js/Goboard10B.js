@@ -456,7 +456,7 @@ function saveQipu() {
         isStudyVariation: isStudyMode
     };
 
-    fetch('${CONFIG.API_BASE_URL}/save-qipu', {
+    fetch(`${CONFIG.API_BASE_URL}/save-qipu`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
