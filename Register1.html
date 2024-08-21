@@ -101,6 +101,10 @@
           console.log("Username:", username);
           console.log("Email:", email);
           console.log("Password length:", password.length);
+          console.log(
+            "Will Post body:",
+            JSON.stringify({ username, email, password })
+          );
 
           try {
             //const response = await fetch("/api/auth/register", {
