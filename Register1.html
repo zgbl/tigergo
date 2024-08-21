@@ -127,6 +127,9 @@
 
             console.log("Response data:", data);
 
+            const responseText = await response.text(); //处理server返回的text debug 用
+            console.log("Response text:", responseText);
+
             if (response.ok) {
               alert("Registration successful!");
               //window.location.href = "/login";
