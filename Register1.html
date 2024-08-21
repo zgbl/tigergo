@@ -98,6 +98,10 @@
             return;
           }
 
+          console.log("Username:", username);
+          console.log("Email:", email);
+          console.log("Password length:", password.length);
+
           try {
             //const response = await fetch("/api/auth/register", {
             const response = await fetch(
