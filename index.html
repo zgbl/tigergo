@@ -77,27 +77,10 @@
         </a>
       </div>
 
-      <!-- <p>
+      <p>
         <div id="loginMessage"> Show Login Message here</div>
-      </p>  -->
+      </p>  
     </div>
-
-    <!-- <div class="overlay" id="overlay"></div> 
-    <div class="login-container" id="loginContainer">
-      <h2>登录</h2>
-      <form id="loginForm">
-        <div>
-          <label for="username">用户名:</label>
-          <input type="text" id="username" name="username" required />
-        </div>
-        <div>
-          <label for="password">密码:</label>
-          <input type="password" id="password" name="password" required />
-        </div>
-        <button type="submit">登录</button>
-      </form>
-      <button id="closeLogin">关闭</button>
-    </div> -->
 
     <script>
       document.addEventListener("DOMContentLoaded", function () {
@@ -113,11 +96,12 @@
 
         console.log(
           "trying to fetch vercel backend:",
-          `${CONFIG.API_BASE_URL}/auth/login`
+          `${API_VERCEL_NEXTJS_BASE_URL}/api/login`
         );
 
         //fetch("/auth/login", {
-        fetch(`${CONFIG.API_BASE_URL}/auth/login`, {
+        //fetch(`${CONFIG.API_BASE_URL}/auth/login`, {
+        fetch(`${API_VERCEL_NEXTJS_BASE_URL}/api/login`, {
           method: "POST",
           credentials: "include", // 确保cookie被发送
           //mode: "no-cors", //关闭CORS
