@@ -128,8 +128,8 @@
 
             console.log("Response data:", data);
 
-            const responseText = await response.text(); //处理server返回的text debug 用
-            console.log("Response text:", responseText);
+            //const responseText = await response.text(); //处理server返回的text debug 用
+            //console.log("Response text:", responseText);  //response.text() 和response.json() 只能有一个
 
             if (response.ok) {
               alert("Registration successful!");
