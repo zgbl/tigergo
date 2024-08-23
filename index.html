@@ -125,7 +125,7 @@
               localStorage.setItem("user", JSON.stringify(data.user));
               //window.location.href = data.redirectTo;
               //window.location.href = "forum8C.html";
-              window.location.href = `${CONFIG.API_VERCEL_NEXTJS_FORUM_URL}`;
+              window.location.href = `${CONFIG.GITHUB_PAGE_FORUM_URL}`;
             } else {
               loginMessage.textContent = "登录失败: " + data.message;
             }
