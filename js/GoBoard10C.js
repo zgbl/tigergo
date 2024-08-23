@@ -1179,7 +1179,7 @@ class SmallBoard {
         //let currentColor = 'black';
         this.originalMoves.forEach((move, index) => {
             if (!move.pass) {
-                //console.log("this 原始 move is:", move);
+                console.log("this 原始 move is:", move);
                 //const [row, col] = move.split(',').map(Number);
                 //this.placeStone(row, col, currentColor);
                 //this.placeStone2(move.row, move.col, move.color, smStoneSize);  //8/13

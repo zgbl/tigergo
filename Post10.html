@@ -576,9 +576,9 @@
       });  //这个是发布变化图submit 的函数，没有正确工作。如果把整个函数全comment掉，则刚打开post的时候棋盘显示不出来。？8/12/2024
 
       async function loadComments(globalPostId) {
-        //console.log("调用loadComments函数，postId:", postId);
+        console.log("调用loadComments函数，postId:", postId);
         try {
-          //console.log(`Fetching comments for post: ${postId}`);
+          console.log(`Fetching comments for post: ${postId}`);
           //const response = await fetch(`/forum/comments/${postId}`);
           const response = await fetch(`${CONFIG.API_BASE_URL}/comments/${globalPostId}`);
           if (!response.ok) {
@@ -595,7 +595,7 @@
 
           if (Array.isArray(comments) && comments.length > 0) {
             comments.forEach((comment) => {
-              //console.log("Processing comment:", comment);
+              console.log("Processing comment:", comment);
               //console.log("comment.originalMoves is:", comment.originalMoves);
               //console.log("comment.variationMoves is:", comment.variationMoves);
               displayVariationComment(
