@@ -125,6 +125,7 @@
               localStorage.setItem("user", JSON.stringify(data.user));
               //window.location.href = data.redirectTo;
               //window.location.href = "forum8C.html";
+              console.log("登录成功，重定向到:", `${CONFIG.GITHUB_PAGE_FORUM_URL}`);
               window.location.href = `${CONFIG.GITHUB_PAGE_FORUM_URL}`;
             } else {
               loginMessage.textContent = "登录失败: " + data.message;
