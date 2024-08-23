@@ -94,8 +94,9 @@
           const userID = user ? user.id : null;
           const userName = user.username;
         // 添加 userID 到 FormData
+          console.log("line 81, user.ID is:", user.ID); //New Log
           console.log("line 81, userID is:", userID);  //will get userID like'66aaf2d65d3edb4db7917f78'
-          console.log("line 82, userID is:", user.username);  //will get username like'pig'
+          console.log("line 82, user.Name is:", user.username);  //will get username like'pig'
           if (userID) {
             formData.append('userID', userID);
             formData.append('auther', userName);
