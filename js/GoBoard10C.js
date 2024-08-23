@@ -1183,6 +1183,7 @@ class SmallBoard {
                 //const [row, col] = move.split(',').map(Number);
                 //this.placeStone(row, col, currentColor);
                 //this.placeStone2(move.row, move.col, move.color, smStoneSize);  //8/13
+                console.log("Current context 'this' 是:", this);
                 this.placeStone3(move.row, move.col, move.color, smStoneSize);
                 //console.log("原始步数：", move.row, move.col, move.color);
                 //console.log("0777 原始步数：", row, col);
