@@ -1185,7 +1185,7 @@ class SmallBoard {
                 //this.placeStone2(move.row, move.col, move.color, smStoneSize);  //8/13
                 console.log("Current context 'this' 是:", this);
                 //this.placeStone3(move.row, move.col, move.color, smStoneSize);
-                placeStone3(move.row, move.col, move.color, smStoneSize);  //try call placeStone3 directly
+                this.placeStone2(move.row, move.col, move.color, smStoneSize);  //try call placeStone3 directly
                 //console.log("原始步数：", move.row, move.col, move.color);
                 //console.log("0777 原始步数：", row, col);
                 //currentColor = (currentColor === 'black') ? 'white' : 'black';
@@ -1200,7 +1200,8 @@ class SmallBoard {
 
             if ((this.originalMoves.length - 1 + index) < this.currentIndex && !move.pass) {
                 //this.placeStone2(move.row, move.col, move.color, smStoneSize, index + 1); //8/13
-                this.placeStone3(move.row, move.col, move.color, smStoneSize, index + 1);
+                this.placeStone2(move.row, move.col, move.color, smStoneSize, index + 1); 
+                //看看能不能用同一个函数也画变化图棋子
             }    
             
         });
@@ -1241,7 +1242,7 @@ class SmallBoard {
         }
     }
 
-    placeStone2(row, col, color, smStoneSize, number = null) {   // 8/13 测试是不是可以删
+    placeStone2(row, col, color, smStoneSize, number = null) {  
         //这个函数用于画已有变化图的棋子
         if (!this.boardElement) {
             console.error('No board element to place stone on');
