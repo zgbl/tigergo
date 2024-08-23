@@ -1184,7 +1184,8 @@ class SmallBoard {
                 //this.placeStone(row, col, currentColor);
                 //this.placeStone2(move.row, move.col, move.color, smStoneSize);  //8/13
                 console.log("Current context 'this' 是:", this);
-                this.placeStone3(move.row, move.col, move.color, smStoneSize);
+                //this.placeStone3(move.row, move.col, move.color, smStoneSize);
+                placeStone3(move.row, move.col, move.color, smStoneSize);  //try call placeStone3 directly
                 //console.log("原始步数：", move.row, move.col, move.color);
                 //console.log("0777 原始步数：", row, col);
                 //currentColor = (currentColor === 'black') ? 'white' : 'black';
