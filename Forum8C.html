@@ -97,13 +97,16 @@
             return;
           }
 
-          fetch(`${CONFIG.API_BASE_URL}/forum/posts`, {
+          console.log("正在发送请求到:", `${CONFIG.API_BASE_URL}/forum/post`);
+
+          fetch(`${CONFIG.API_BASE_URL}/forum/post`, {
             method: "POST",
             body: formData,
           })
             .then((response) => {
+              console.log("响应状态:", response.status);
               if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                throw new Error(`HTTP 错误! 状态: ${response.status}`);
               }
               return response.json();
             })
@@ -133,7 +136,7 @@
           console.error('Post list element not found');
           return;
         }
-        fetch(`${CONFIG.API_BASE_URL}/forum/posts?page=${page}`)
+        fetch(`${CONFIG.API_BASE_URL}/forum/post?page=${page}`)
           .then((response) => {
             if (!response.ok) {
               throw new Error(`HTTP error! status: ${response.status}`);
@@ -226,7 +229,7 @@
       );
 
       function loadPosts(page = 1) {
-        fetch(`${CONFIG.API_BASE_URL}/forum/posts?page=${page}`)
+        fetch(`${CONFIG.API_BASE_URL}/forum/post?page=${page}`)
           .then((response) => {
             if (!response.ok) {
               throw new Error(`HTTP error! status: ${response.status}`);
