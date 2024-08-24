@@ -98,6 +98,7 @@
           }
 
           console.log("正在发送请求到:", `${CONFIG.API_BASE_URL}/forum/post`);
+          console.log("formData is:", formData);
 
           fetch(`${CONFIG.API_BASE_URL}/forum/post`, {
             method: "POST",
