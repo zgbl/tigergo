@@ -99,6 +99,12 @@
 
           console.log("正在发送请求到:", `${CONFIG.API_BASE_URL}/forum/post`);
           console.log("formData is:", formData);
+          console.log("formData.get('title') is:", formData.get('title'));
+          console.log("formData.get('content') is:", formData.get('content'));
+          console.log("formData.get('sgfFile') is:", formData.get('sgfFile'));
+          console.log("formData.get('userID') is:", formData.get('userID'));
+          console.log("formData.get('author') is:", formData.get('author'));
+      
 
           fetch(`${CONFIG.API_BASE_URL}/forum/post`, {
             method: "POST",
