@@ -136,14 +136,17 @@
           console.error('Post list element not found');
           return;
         }
-        fetch(`${CONFIG.API_BASE_URL}/forum/post?page=${page}`)
+        console.log("正在获取帖子列表:", `${CONFIG.API_BASE_URL}/forum/posts?page=${page}`);
+        fetch(`${CONFIG.API_BASE_URL}/forum/posts?page=${page}`)
           .then((response) => {
+            console.log("获取帖子列表响应状态:", response.status);
             if (!response.ok) {
               throw new Error(`HTTP error! status: ${response.status}`);
             }
             return response.json();
           })
           .then((data) => {
+            console.log("获取到的帖子数据:", data);
             const postList = document.getElementById("post-list");
             if (!append) {
               postList.innerHTML = "";
