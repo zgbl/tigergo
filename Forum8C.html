@@ -97,35 +97,37 @@
             return;
           }
 
-          console.log("正在发送请求到:", `${CONFIG.API_BASE_URL}/forum/post`);
+          console.log("正在发送请求到:", `${CONFIG.API_BASE_URL}/forum/posts`);
 
-          fetch(`${CONFIG.API_BASE_URL}/forum/post`, {
+          fetch(`${CONFIG.API_BASE_URL}/forum/posts`, {
             method: "POST",
             body: formData,
           })
-            .then((response) => {
-              console.log("响应状态:", response.status);
-              if (!response.ok) {
-                throw new Error(`HTTP 错误! 状态: ${response.status}`);
-              }
-              return response.json();
-            })
-            .then((data) => {
-              console.log("服务器响应:", data);
-              if (data.success) {
-                console.log("帖子发布成功:", data.post);
-                this.reset();
-                currentPage = 1;
-                refreshPostList(currentPage, false);
-              } else {
-                console.error("发布帖子失败:", data.error || "未提供错误信息");
-                alert("发布失败: " + (data.error || "未知错误"));
-              }
-            })
-            .catch((error) => {
-              console.error("错误:", error);
-              alert("发布时发生错误: " + error.message);
-            });
+          .then((response) => {
+            console.log("响应状态:", response.status);
+            if (!response.ok) {
+              return response.text().then(text => {
+                throw new Error(`HTTP 错误! 状态: ${response.status}, 详情: ${text}`);
+              });
+            }
+            return response.json();
+          })
+          .then((data) => {
+            console.log("服务器响应:", data);
+            if (data.success) {
+              console.log("帖子发布成功:", data.post);
+              this.reset();
+              currentPage = 1;
+              refreshPostList(currentPage, false);
+            } else {
+              console.error("发布帖子失败:", data.error || "未提供错误信息");
+              alert("发布失败: " + (data.error || "未知错误"));
+            }
+          })
+          .catch((error) => {
+            console.error("错误:", error);
+            alert("发布时发生错误: " + error.message);
+          });
         });
 
       // 在发帖成功后刷新帖子列表
@@ -152,34 +154,7 @@
               postList.innerHTML = "";
             }
 
-            /*data.posts.forEach((post) => {
-              const postElement = document.createElement("div");
-              postElement.className = "form-post";
-              console.log("post is:", post);
-              console.log("Line165, auther is:", post.author);
-              console.log("post.title is:", post.title);
-              postElement.innerHTML = `
-                <a href="Post9.html?id=${encodeURIComponent(
-                  post._id
-                )}" class="post-link">
-                  <div class="post-content">
-                    <div class="post-title">${post.title || "Untitled"}</div>
-                    <div class="post-body">${post.content || "No content"}</div>
-                    <div class="post-author>${post.author || "Unknow author"}</div> 
-                  </div>
-                  ${
-                    post.filePath
-                      ? '<i class="fas fa-paperclip attachment-icon" title="附件"></i>'
-                      : ""
-                  }
-                </a>
-              `;
-              postList.appendChild(postElement);
-            }); */
-
-
             data.posts.forEach((post) => {
-              
               const postElement = document.createElement("div");
               postElement.className = "form-post";
               postElement.innerHTML = `
@@ -204,14 +179,8 @@
               
             });
 
-            /*<div id="postinfo" class="post-info">
-                  <span class="post-auther">${post.author || "Unknown"}</span>
-                  <span class="post-reply-count">${post.replyCount || 0}</span>
-                  <span class="post-last-post-time">${post.lastPostTime || "N/A"}</span>
-                </div> */
-
             const loadMoreButton = document.getElementById("load-more");
-            loadMoreButton.style.display = data.hasNextPage ? "block" : "none";  //为什么要在这里处理style? 应该放到CSS.  8/6
+            loadMoreButton.style.display = data.hasNextPage ? "block" : "none";
           })
           .catch((error) => {
             console.error("Error fetching posts:", error);
@@ -232,7 +201,7 @@
       );
 
       function loadPosts(page = 1) {
-        fetch(`${CONFIG.API_BASE_URL}/forum/post?page=${page}`)
+        fetch(`${CONFIG.API_BASE_URL}/forum/posts?page=${page}`)
           .then((response) => {
             if (!response.ok) {
               throw new Error(`HTTP error! status: ${response.status}`);
