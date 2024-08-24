@@ -50,19 +50,13 @@
 
     <div class="new-post-section">
         <h3>发布新帖子</h3>
-        <form id="new-post-form"enctype="multipart/form-data">
-        <!-- <input type="text" id="post-title" placeholder="标题" required /> -->
+        <form id="new-post-form">
         <input type="text" name="title" placeholder="输入帖子标题" required />
-        <!--<textarea id="post-content" placeholder="内容"></textarea>  -->
         <textarea name="content" placeholder="在此输入帖子内容" required></textarea> 
         
         <div class="form-footer">
-            <div class="file-input-wrapper">
-            <!-- <input type="file" id="post-attachment" /> -->
-                <input type="file" name="file" accept=".sgf" />
-            </div>
             <input type="submit" value="发布帖子" />
-            </div>
+        </div>
         </form>
         </div>
 
@@ -88,47 +82,32 @@
         .addEventListener("submit", function (e) {
           e.preventDefault();
           var formData = new FormData(this);
-          //var userID = localStorage.getItem('userID'); // 假设用户ID存储在localStorage中
-        // 获取用户ID
           const user = JSON.parse(localStorage.getItem("user"));
-          console.log("line 94, user is:", user);
           const userID = user ? user._id : null;
-          const userName = user.username;
+          const userName = user ? user.username : null;
 
-        // 添加 userID 到 FormData
-          console.log("line 99, user.ID is:", user.ID); //New Log
-          console.log("line 100, Should got userID is:", userID);  //will get userID like'66aaf2d65d3edb4db7917f78'
-          console.log("line 101, user.Name is:", user.username);  //will get username like'pig'
-        
-          if (userID) {
+          if (userID && userName) {
             formData.append('userID', userID);
-            formData.append('auther', userName);
-            console.log("Line 86 User ID:", userID, "userName", userName);
+            formData.append('author', userName);
+            console.log("User ID:", userID, "userName", userName);
           } else {
-            console.error('User ID not found. User might not be logged in.');
-            return; // 如果没有用户ID，不提交表单
+            console.error('User ID or username not found. User might not be logged in.');
+            alert('请先登录后再发布帖子。');
+            return;
           }
 
-          // 打印所有表单数据（包括新添加的userID）
-          for (var pair of formData.entries()) {
-            if (pair[1] instanceof File) {
-              console.log(
-                pair[0] +
-                  ": File name = " +
-                  pair[1].name +
-                  ", size = " +
-                  pair[1].size +
-                  " bytes"
-              );
-            } else {
-              console.log(pair[0] + ": " + pair[1]);
-            }
-          }
+          // 将 FormData 转换为普通对象
+          const postData = {};
+          formData.forEach((value, key) => {
+            postData[key] = value;
+          });
 
-          fetch(`${CONFIG.API_BASE_URL}/forum/post`, {
+          fetch(`${CONFIG.API_BASE_URL}/forum/posts`, {
             method: "POST",
-            //mode: "no-cors",
-            body: formData,
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(postData),
           })
             .then((response) => {
               if (!response.ok) {
@@ -141,14 +120,10 @@
               if (data.success) {
                 console.log("Post published successfully:", data.post);
                 this.reset();
-                currentPage = 1; // 重置页码
-                refreshPostList(currentPage, false); // 刷新整个列表
+                currentPage = 1;
+                refreshPostList(currentPage, false);
               } else {
-                //console.error("Failed to publish post:", data.error);
-                console.error(
-                  "Failed to publish post:",
-                  data.error || "No error message provided"
-                );
+                console.error("Failed to publish post:", data.error || "No error message provided");
                 alert("发布失败: " + (data.error || "未知错误"));
               }
             })
@@ -242,7 +217,7 @@
           })
           .catch((error) => {
             console.error("Error fetching posts:", error);
-            alert("获取帖子列表时发生错误: " + error.message);
+            alert("获取帖子���表时发生错误: " + error.message);
           });
       }
 
