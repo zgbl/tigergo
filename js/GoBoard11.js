@@ -801,7 +801,7 @@ function parseSGF(sgf) {
     return moves;
   }
 
-  function parseSGF2(sgfContent) {
+function parseSGF2(sgfContent) {
     const info = {};
     const moves = [];
     const infoRegex = /(\w+)\[(.*?)\]/g;
@@ -845,7 +845,8 @@ function parseSGF(sgf) {
         },
         moves: moves
     };
-  }
+}
+
 
 //恢复棋盘到研究开始时候的步数
 function renderMovesToIndex(targetIndex) {

@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GIB to SGF Converter</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        background-color: #f4f4f4;
+      }
+      .container {
+        display: flex;
+        justify-content: space-between;
+        padding: 20px;
+        height: 100vh;
+      }
+      #left,
+      #right {
+        width: 48%;
+        padding: 20px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        background-color: #fff;
+        border-radius: 8px;
+      }
+      #left {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      #gibFileInput {
+        margin-bottom: 20px;
+      }
+      button {
+        padding: 10px 20px;
+        background-color: #4caf50;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+      button:hover {
+        background-color: #45a049;
+      }
+      #right {
+        white-space: pre-wrap; /* Preserve whitespace and allow line breaks */
+        word-wrap: break-word; /* Break long words if necessary */
+        max-width: 100%; /* Ensure the content does not extend beyond the container */
+        overflow-y: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div id="left">
+        <input type="file" id="gibFileInput" />
+        <button onclick="handleFile()">Convert</button>
+      </div>
+      <div id="right">SGF content will appear here...</div>
+    </div>
+
+    <script>
+      function handleFile() {
+        const fileInput = document.getElementById("gibFileInput");
+        const file = fileInput.files[0];
+        if (!file) {
+          alert("Please select a GIB file to convert.");
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = async function () {
+          const fileContent = reader.result;
+          const sgfContent = await convertGIBtoSGF(fileContent);
+          const sgfContentDiv = document.getElementById("right");
+          sgfContentDiv.textContent = sgfContent;
+        };
+        reader.readAsText(file);
+      }
+
+      async function convertGIBtoSGF(fileContent) {
+        let lines = fileContent.split("\n");
+        let header = lines.shift();
+        if (!header.startsWith("\\HS")) {
+          throw new Error("Invalid GIB file format");
+        }
+
+        let blackPlayer = "",
+          whitePlayer = "",
+          blackRank = "",
+          whiteRank = "",
+          result = "",
+          date = "";
+        let handicap = 0;
+        let moves = "";
+
+        for (let line of lines) {
+          line = line.trim();
+          if (line.startsWith("GAMEBLACKNICK="))
+            blackPlayer = line.split("=")[1];
+          if (line.startsWith("GAMEWHITENICK="))
+            whitePlayer = line.split("=")[1];
+          if (line.startsWith("GAMEBLACKLEVEL="))
+            blackRank = line.split("=")[1];
+          if (line.startsWith("GAMEWHITELEVEL="))
+            whiteRank = line.split("=")[1];
+          if (line.startsWith("GAMERESULT=")) result = line.split("=")[1];
+          if (line.startsWith("GAMEDATE="))
+            date = line.split("=")[1].replace(/[^0-9]/g, "-");
+
+          if (line.startsWith("INI")) {
+            handicap = parseInt(line.split(" ")[3]);
+          }
+
+          if (line.startsWith("STO")) {
+            let parts = line.split(" ");
+            let color = parts[3] === "1" ? "B" : "W";
+            let x = String.fromCharCode(parseInt(parts[4]) + 97);
+            let y = String.fromCharCode(parseInt(parts[5]) + 97);
+            moves += `;${color}[${x}${y}]`;
+          }
+        }
+
+        let sgf = `(;GM[1]FF[4]CA[UTF-8]AP[GIBtoSGF]SZ[19]PB[${blackPlayer}]BR[${blackRank}]PW[${whitePlayer}]WR[${whiteRank}]RE[${result}]DT[${date}]`;
+        if (handicap > 0) {
+          sgf += `HA[${handicap}]`;
+        }
+        sgf += moves + ")";
+
+        return sgf;
+      }
+    </script>
+  </body>
+</html>
