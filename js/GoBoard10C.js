@@ -1130,8 +1130,8 @@ class SmallBoard {
         //console.log("检查一下现在who is 'this':", this);
         if (this.currentIndex > this.originalMoves.length - 1) {
             this.currentIndex--;
-            console.log("准备要后退renderBoard()");
-            console.log("再确认一下 this.boardElement存在:", this.boardElement);
+            //console.log("准备要后退renderBoard()");
+            //console.log("再确认一下 this.boardElement存在:", this.boardElement);
 
             if (this.boardElement) {
                 //this.renderBoard();  //这是AI给的写法，无参数 undefined , 不行

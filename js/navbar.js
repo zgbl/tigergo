@@ -17,7 +17,7 @@ function loadNavbar() {
           <a href="News.html">
             <img src="images/News.png" class="icon" alt="新闻" /> 新闻
           </a>
-          <a href="Forum8C.html">
+          <a href="Forum11.html">
             <img src="images/Forum.png" class="icon" alt="论坛" /> 论坛
           </a>
           <a href="Register1.html">

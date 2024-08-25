@@ -607,7 +607,7 @@ function showStudyMoves() {
 let smallBoards = []; // 存储所有小棋盘的数组
 
 //async function publishVariation() {
-async function publishVariation(event) {   //改用submit的时候，加上evemt
+async function publishVariation(event) {   //改用submit的时evemt
     event.preventDefault(); // Prevents the default form submission  改用submit的时候加上这行 8/6 
 
     console.log("publishVaration, from line 610");
@@ -641,7 +641,7 @@ async function publishVariation(event) {   //改用submit的时候，加上evemt
     commentContainer.className = 'comment-container';
 
     console.log("7. 准备创建评论元素");
-    // 创建评论元素
+    // ���评论元素
     const commentElement = document.createElement('p');
     commentElement.textContent = comment;
     commentElement.className = 'variation-comment';
@@ -1042,105 +1042,7 @@ function addStarPoints3(board, boardSize, cellSize) {
     });
 }
 
-// 在小棋盘上显示变化图 2027/7/19 //应该没有被用了，待删 8/13
-/*
-function displayVariationOnSmallBoard(boardElement, originalMoves, variationMoves) {
-    let currentIndex = originalMoves.length - 1;
-    const cellSize = 15; // 小棋盘的单元格大小
-
-    function renderMove() {
-
-        console.log("displayVariationOnSmallBoard, renderMove", currentIndex);
-        // 清除所有棋子
-        //boardElement.querySelectorAll('.small-stone').forEach(stone => stone.remove());
-        boardElement.querySelectorAll('.stone').forEach(stone => stone.remove());
-
-        // 重新渲染棋盘状态
-
-        // 渲染原始步骤
-        originalMoves.forEach((move, index) => {
-            if (!move.pass) {
-                const intersection = boardElement.querySelector(`[data-row="${move.row}"][data-col="${move.col}"]`);
-                if (intersection) {
-                    const stone = document.createElement('div');
-                    stone.className = `stone ${move.color}`;
-                    stone.style.width = `${cellSize - 2}px`;
-                    stone.style.height = `${cellSize - 2}px`;
-                    stone.style.fontSize = `${cellSize / 3}px`;
-                    intersection.appendChild(stone);
-                }
-            }
-        });
-
-        // 渲染变化图步骤
-        for (let i = 0; i <= currentIndex - originalMoves.length; i++) {
-            const move = variationMoves[i];
-            if (move && !move.pass) {  // 添加检查确保 move 存在
-                const intersection = boardElement.querySelector(`[data-row="${move.row}"][data-col="${move.col}"]`);
-                if (intersection) {
-                    const stone = document.createElement('div');
-                    stone.className = `stone ${move.color}`;
-                    stone.textContent = i + 1; // 显示变化图步数
-                    stone.style.width = `${cellSize - 2}px`;
-                    stone.style.height = `${cellSize - 2}px`;
-                    stone.style.fontSize = `${cellSize / 3}px`;
-                    stone.style.display = 'flex';
-                    stone.style.justifyContent = 'center';
-                    stone.style.alignItems = 'center';
-                    stone.style.color = move.color === 'black' ? 'white' : 'black';
-                    intersection.appendChild(stone);
-                }
-            }
-        }
-
-    } 
-
-    // 添加控制按钮事件监听器
-    const prevButton = boardElement.parentNode.querySelector('.small-board-prev');
-    const nextButton = boardElement.parentNode.querySelector('.small-board-next');
-    
-    prevButton.addEventListener('click', () => {
-        if (currentIndex > originalMoves.length - 1) {
-            currentIndex--;
-            renderMove();
-        }
-    });  
-
-    nextButton.addEventListener('click', () => {
-        if (currentIndex < originalMoves.length + variationMoves.length - 1) {
-            currentIndex++;
-            renderMove();
-        }
-    });
-
-    renderMove(); // 初始渲染
-} */
-
-//增加函数，只清除主棋盘变化图，不影响小棋盘。  //不用了，待删 8/13
-/*function updateMainBoardDisplay() {
-    // 清除所有棋子
-    document.querySelectorAll('.stone').forEach(stone => stone.remove());
-
-    // 重新渲染棋盘状态
-    for (let i = 0; i <= currentMoveIndex; i++) {
-        const move = currentMoves[i];
-        if (!move.pass) {
-            const intersection = document.querySelector(`[data-row="${move.row}"][data-col="${move.col}"]`);
-            if (intersection) {
-                const stone = document.createElement('div');
-                stone.className = `stone ${move.color}`;
-                // 如果是变化图的一部分，添加数字
-                if (i > studyStartMoveIndex) {
-                    stone.textContent = i - studyStartMoveIndex;
-                }
-                intersection.appendChild(stone);
-            }
-        }
-    }
-}  */
-
 //增加新类，独户存储小棋盘状态
-
 class SmallBoard {
     constructor(originalMoves, variationMoves) {
         this.originalMoves = originalMoves;
@@ -1183,7 +1085,9 @@ class SmallBoard {
                 //const [row, col] = move.split(',').map(Number);
                 //this.placeStone(row, col, currentColor);
                 //this.placeStone2(move.row, move.col, move.color, smStoneSize);  //8/13
-                this.placeStone3(move.row, move.col, move.color, smStoneSize);
+                //console.log("Current context 'this' 是:", this);
+                //this.placeStone3(move.row, move.col, move.color, smStoneSize);
+                this.placeStone2(move.row, move.col, move.color, smStoneSize);  //try call placeStone3 directly
                 //console.log("原始步数：", move.row, move.col, move.color);
                 //console.log("0777 原始步数：", row, col);
                 //currentColor = (currentColor === 'black') ? 'white' : 'black';
@@ -1198,7 +1102,8 @@ class SmallBoard {
 
             if ((this.originalMoves.length - 1 + index) < this.currentIndex && !move.pass) {
                 //this.placeStone2(move.row, move.col, move.color, smStoneSize, index + 1); //8/13
-                this.placeStone3(move.row, move.col, move.color, smStoneSize, index + 1);
+                this.placeStone2(move.row, move.col, move.color, smStoneSize, index + 1); 
+                //看看能不能用同一个函数也画变化图棋子
             }    
             
         });
@@ -1225,8 +1130,8 @@ class SmallBoard {
         //console.log("检查一下现在who is 'this':", this);
         if (this.currentIndex > this.originalMoves.length - 1) {
             this.currentIndex--;
-            console.log("准备要后退renderBoard()");
-            console.log("再确认一下 this.boardElement存在:", this.boardElement);
+            //console.log("准备要后退renderBoard()");
+            //console.log("再确认一下 this.boardElement存在:", this.boardElement);
 
             if (this.boardElement) {
                 //this.renderBoard();  //这是AI给的写法，无参数 undefined , 不行
@@ -1239,7 +1144,7 @@ class SmallBoard {
         }
     }
 
-    placeStone2(row, col, color, smStoneSize, number = null) {   // 8/13 测试是不是可以删
+    placeStone2(row, col, color, smStoneSize, number = null) {  
         //这个函数用于画已有变化图的棋子
         if (!this.boardElement) {
             console.error('No board element to place stone on');
@@ -1273,6 +1178,22 @@ class SmallBoard {
             checkCaptures(row, col, color, this.smallBoardState);
         } else {
             console.log(`未找到交叉点 (${row}, ${col})`);
+        }
+    }
+
+    placeStone3(row, col, color, stoneSize, moveNumber = null) {
+        const stone = document.createElement("div");
+        stone.className = `stone ${color}`;
+        stone.style.width = `${stoneSize}px`;
+        stone.style.height = `${stoneSize}px`;
+        if (moveNumber !== null) {
+            stone.textContent = moveNumber;
+        }
+        const intersection = this.boardElement.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+        if (intersection) {
+            intersection.appendChild(stone);
+        } else {
+            console.error(`No intersection found for row ${row}, col ${col}`);
         }
     }
 }
@@ -1351,6 +1272,7 @@ function displayVariationComment(comment, originalMoves, variationMoves) {
         smallBoardContainer.appendChild(smallBoardElement);
 
         const smallBoard = new SmallBoard(originalMoves, variationMoves);
+        smallBoard.boardElement = smallBoardElement;  // 设置 boardElement
         
         //2024/7/25 今天实际是这里在push 评论小棋盘
         smallBoards.push(smallBoard);
@@ -1382,7 +1304,7 @@ function displayVariationComment(comment, originalMoves, variationMoves) {
         });
         //console.log("Line 1344, 画了小棋盘，cellSize is:", cellSize, "smallBoardCellSize is:", smallBoardCellSize);
         //2024/7/25 今天是这句再render 小棋盘
-        smallBoard.renderBoard(smallBoardElement);
+        smallBoard.renderBoard();
 
         const prevButton = smallBoardContainer.querySelector('.small-board-prev');
         const nextButton = smallBoardContainer.querySelector('.small-board-next');
