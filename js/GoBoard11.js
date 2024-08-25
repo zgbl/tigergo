@@ -488,6 +488,7 @@ function handleFileSelect(event) {
         const reader = new FileReader();
         reader.onload = function(e) {
             const sgfContent = e.target.result;
+            console.log("function handleFileSelect() parseSGFing from GoBoard11.js line 491");
             const parsedMoves = parseSGF(sgfContent);  //应该没有被用到 8.13
             renderMoves(parsedMoves);
         };
