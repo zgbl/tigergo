@@ -3,7 +3,7 @@ const readline = require('readline');
 
 
 
-function parseGIB(gibContent) {
+/*function parseGIB(gibContent) {
     const info = {};
     const moves = [];
     const infoRegex = /(\w+)\[(.*?)\]/g;
@@ -27,9 +27,9 @@ function parseGIB(gibContent) {
         moves: moves
     };
 
-}
+}  */
 
-function parseSGF3(sgfContent) {
+/*function parseSGF3(sgfContent) {
     const info = {};
     const moves = [];
     const infoRegex = /(\w+)\[(.*?)\]/g;
@@ -73,7 +73,7 @@ function parseSGF3(sgfContent) {
         },
         moves: moves
     };
-}
+}  */
 
 async function convertGIBtoSGF(file) {
     if (!file.endsWith('.gib')) {
