@@ -6,59 +6,120 @@
     <title>GIB to SGF Converter</title>
     <style>
       body {
-        font-family: Arial, sans-serif;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
         margin: 0;
         padding: 0;
-        background-color: #f4f4f4;
+        background-color: #e9ecef;
       }
+
       .container {
         display: flex;
         justify-content: space-between;
         padding: 20px;
         height: 100vh;
+        box-sizing: border-box;
       }
+
+      .column {
+        width: 48%;
+        display: flex;
+        flex-direction: column;
+      }
+
+      h2 {
+        color: #343a40;
+        font-size: 1.5em;
+        margin-bottom: 10px;
+        border-bottom: 2px solid #adb5bd;
+        padding-bottom: 5px;
+      }
+
       #left,
       #right {
-        width: 48%;
+        flex: 1;
         padding: 20px;
-        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-        background-color: #fff;
+        box-shadow: 0 0 15px rgba(0, 0, 0, 0.15);
+        background-color: #ffffff;
         border-radius: 8px;
+        overflow-y: auto;
       }
+
       #left {
         display: flex;
         flex-direction: column;
         align-items: center;
+        justify-content: center;
+        gap: 15px;
       }
+
       #gibFileInput {
-        margin-bottom: 20px;
+        padding: 10px;
+        border-radius: 5px;
+        border: 1px solid #ced4da;
+        background-color: #f8f9fa;
+        cursor: pointer;
+        width: 100%;
+        max-width: 300px;
       }
+
       button {
         padding: 10px 20px;
-        background-color: #4caf50;
+        background-color: #007bff;
         color: white;
         border: none;
         border-radius: 5px;
         cursor: pointer;
+        font-size: 1em;
+        transition: background-color 0.3s ease;
       }
+
       button:hover {
-        background-color: #45a049;
+        background-color: #0056b3;
       }
+
       #right {
-        white-space: pre-wrap; /* Preserve whitespace and allow line breaks */
-        word-wrap: break-word; /* Break long words if necessary */
-        max-width: 100%; /* Ensure the content does not extend beyond the container */
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        max-width: 100%;
+        padding: 20px;
+        border-radius: 8px;
         overflow-y: auto;
+        background-color: #f8f9fa;
+      }
+
+      p {
+        margin: 0;
+        font-size: 1em;
+        color: #495057;
+        text-align: center;
+      }
+
+      @media (max-width: 768px) {
+        .container {
+          flex-direction: column;
+        }
+
+        .column {
+          width: 100%;
+          margin-bottom: 20px;
+        }
       }
     </style>
   </head>
   <body>
     <div class="container">
-      <div id="left">
-        <input type="file" id="gibFileInput" />
-        <button onclick="handleFile()">Convert</button>
+      <div class="column">
+        <h2>GIB on left</h2>
+        <div id="left">
+          <p>请输入GIB格式围棋棋谱文件，点Convert</p>
+          <input type="file" id="gibFileInput" />
+          <button onclick="handleFile()">Convert</button>
+        </div>
       </div>
-      <div id="right">SGF content will appear here...</div>
+      <div class="column">
+        <h2>SGF on right</h2>
+        <div id="right">SGF content will appear here...</div>
+      </div>
     </div>
 
     <script>
@@ -77,11 +138,19 @@
           const sgfContentDiv = document.getElementById("right");
           sgfContentDiv.textContent = sgfContent;
         };
-        reader.readAsText(file);
+        //reader.readAsText(file);
+        reader.readAsArrayBuffer(file);
       }
 
       async function convertGIBtoSGF(fileContent) {
-        let lines = fileContent.split("\n");
+        // 使用TextDecoder解码文件内容
+        //const decoder = new TextDecoder("euc-kr");
+        const decoder = new TextDecoder("gb18030");
+        const decodedContent = decoder.decode(fileContent);
+
+        //let lines = fileContent.split("\n");
+        let lines = decodedContent.split("\n");
+        console.log("lines:", lines);
         let header = lines.shift();
         if (!header.startsWith("\\HS")) {
           throw new Error("Invalid GIB file format");
@@ -97,24 +166,36 @@
         let moves = "";
 
         for (let line of lines) {
+          console.log("Before trim, line is:", line);
           line = line.trim();
-          if (line.startsWith("GAMEBLACKNICK="))
-            blackPlayer = line.split("=")[1];
-          if (line.startsWith("GAMEWHITENICK="))
-            whitePlayer = line.split("=")[1];
-          if (line.startsWith("GAMEBLACKLEVEL="))
-            blackRank = line.split("=")[1];
-          if (line.startsWith("GAMEWHITELEVEL="))
-            whiteRank = line.split("=")[1];
-          if (line.startsWith("GAMERESULT=")) result = line.split("=")[1];
-          if (line.startsWith("GAMEDATE="))
+          console.log("After trim, line is:", line);
+          if (line.includes("[GAMEBLACKNICK="))
+            //blackPlayer = line.split("=")[1].replace(/\]$/, "");
+            blackPlayer = extractInfo(line, /\[GAMEBLACKNICK=(.*?)\]/);
+          if (line.includes("[GAMEWHITENICK="))
+            //whitePlayer = line.split("=")[1].replace(/\]$/, "");
+            whitePlayer = extractInfo(line, /\[GAMEWHITENICK=(.*?)\]/);
+          if (line.includes("[GAMEBLACKLEVEL="))
+            //blackRank = line.split("=")[1].replace(/\]$/, "");
+            blackRank = convertRank(
+              extractInfo(line, /\[GAMEBLACKLEVEL=(.*?)\]/)
+            );
+          if (line.includes("GAMEWHITELEVEL="))
+            //whiteRank = line.split("=")[1].replace(/\]$/, "");
+            whiteRank = convertRank(
+              extractInfo(line, /\[GAMEWHITELEVEL=(.*?)\]/)
+            );
+          if (line.includes("[GAMERESULT="))
+            //result = extractInfo(line, /\[GAMERESULT=(.*?)\]/);
+            result = extractInfo(line, /\[GAMERESULT=(.*?)\]/);
+          if (line.includes("[GAMEDATE="))
             date = line.split("=")[1].replace(/[^0-9]/g, "-");
 
-          if (line.startsWith("INI")) {
+          if (line.includes("INI")) {
             handicap = parseInt(line.split(" ")[3]);
           }
 
-          if (line.startsWith("STO")) {
+          if (line.includes("STO")) {
             let parts = line.split(" ");
             let color = parts[3] === "1" ? "B" : "W";
             let x = String.fromCharCode(parseInt(parts[4]) + 97);
@@ -123,6 +204,16 @@
           }
         }
 
+        // Log variables before constructing SGF
+        console.log("blackPlayer:", blackPlayer);
+        console.log("whitePlayer:", whitePlayer);
+        console.log("blackRank:", blackRank);
+        console.log("whiteRank:", whiteRank);
+        console.log("result:", result);
+        console.log("date:", date);
+        console.log("handicap:", handicap);
+        console.log("moves:", moves);
+
         let sgf = `(;GM[1]FF[4]CA[UTF-8]AP[GIBtoSGF]SZ[19]PB[${blackPlayer}]BR[${blackRank}]PW[${whitePlayer}]WR[${whiteRank}]RE[${result}]DT[${date}]`;
         if (handicap > 0) {
           sgf += `HA[${handicap}]`;
@@ -130,6 +221,26 @@
         sgf += moves + ")";
 
         return sgf;
+      }
+
+      function extractInfo(line, pattern) {
+        const match = line.match(pattern);
+        if (match) {
+          return match[1].replace(/[\]\\\s]+$/, "").trim();
+        }
+        return "";
+      }
+
+      function convertRank(numericRank) {
+        const numRank = parseInt(numericRank);
+
+        if (numRank >= 18) {
+          // 18及以上为段位
+          return `${numRank - 17}D`;
+        } else {
+          // 17及以下为级别
+          return `${18 - numRank}K`;
+        }
       }
     </script>
   </body>

@@ -471,7 +471,7 @@
         loadComments(postId);
       }
 
-      function loadPost2(postId) {
+      /*function loadPost2(postId) {
         fetch(`${CONFIG.API_BASE_URL}/forum/post/${postId}`)
           .then(response => response.json())
           .then(post => {
@@ -491,7 +491,7 @@
               initializeBoard(parsedSGF.moves);
             }
           });
-      }
+      }  */
 
       document.addEventListener("DOMContentLoaded", function () {
         console.log("DOMContentLoaded event fired");
@@ -530,9 +530,9 @@
               //console.log("post.sgfContent is:", post.sgfContent);
 
               if (post.sgfContent) {
-                console.log("调用parseSGF2在 line 523");
+                //console.log("调用parseSGF在 line 523");
                 //const parsedMoves = parseSGF2(post.sgfContent);
-                globalParsedMoves= parseSGF2(post.sgfContent);
+                globalParsedMoves= parseSGF(post.sgfContent);
                 //createBoard();
                 //下面这个createBoard3重复了，但保留这个;
                 createBoard3({

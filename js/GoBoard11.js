@@ -763,44 +763,55 @@ function initializeSmallBoard(boardElement, moves) {
 }
 
 //把parseSGF函数放在这里
-function parseSGF(sgf) {
+function parseSGF(sgfContent) {
+    const info = {};
     const moves = [];
-    // 匹配所有的移动，包括空移动（pass）
-    const regex = /;([BW])(\[\]|\[([a-s]{2})\])/g;
-    const blackPlayerRegex = /PB\[([^\]]+)\]/;
-    const whitePlayerRegex = /PW\[([^\]]+)\]/;
-    //const dateRegex = /DT\[([^\]]+)\]/;
+    const infoRegex = /(\w+)\[(.*?)\]/g;
+    const moveRegex = /;([BW])\[(.*?)\]/g;
     let match;
-    const matchB = sgf.match(blackPlayerRegex);
-    const matchW = sgf.match(blackPlayerRegex);
 
-    if (matchB) {
-        const blackPlayerName = matchB[1];
-        console.log("Black player's name:", blackPlayerName,);
-    } else {
-        console.log("Black player's name not found");
-    }
-    if (matchW) {
-        const whitePlayerName = matchW[1];
-        console.log("White player's name:", whitePlayerName);
-    } else {
-        console.log("Black player's name not found");
+    // Extract game information
+    while ((match = infoRegex.exec(sgfContent)) !== null) {
+        const [, key, value] = match;
+        if (key !== 'B' && key !== 'W') {
+            info[key] = value;
+        }
     }
 
-    while ((match = regex.exec(sgf)) !== null) {
-      const color = match[1] === "B" ? "black" : "white";
-      if (match[2] === "[]") {
-        // 这是一个空移动（pass）
-        moves.push({ pass: true, color });
-      } else {
-        const col = match[3].charCodeAt(0) - 97;
-        const row = match[3].charCodeAt(1) - 97;
-        moves.push({ row, col, color });
-      }
+    // Extract moves
+    while ((match = moveRegex.exec(sgfContent)) !== null) {
+        const color = match[1] === "B" ? "black" : "white";
+        const position = match[2];
+
+        if (position === "") {
+            // This is a pass move
+            moves.push({ pass: true, color });
+        } else {
+            const col = position.charCodeAt(0) - 97;
+            const row = position.charCodeAt(1) - 97;
+            moves.push({ row, col, color });
+        }
     }
 
-    return moves;
-  }
+    console.log("刚刚parse出来的 moves:", moves);
+
+    return {
+        gameInfo: {
+            blackPlayer: info.PB || '',
+            whitePlayer: info.PW || '',
+            blackRank: info.BR || '',
+            whiteRank: info.WR || '',
+            date: info.DT || '',
+            result: info.RE || '',
+            komi: info.KM || '',
+            boardSize: info.SZ || '',
+            timeControl: `${info.TM || ''}${info.OT ? ' ' + info.OT : ''}`,
+            rules: info.RU || ''
+        },
+        moves: moves
+    };
+}
+
 
 function parseSGF2(sgfContent) {
     const info = {};
