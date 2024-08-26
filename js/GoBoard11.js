@@ -812,6 +812,7 @@ function parseSGF(sgfContent) {
 
     console.log("Extracted moves:", moves.length > 0 ? moves.slice(0, 5) : "No moves found"); // 打印前5个移动或无移动信息
     console.log("blackRank is:", info.BR);
+    console.log("暂时用时只显示TM:",info.TM);    
     return {
         gameInfo: {
             blackPlayer: info.PB,
