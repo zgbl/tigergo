@@ -473,28 +473,6 @@
         loadComments(postId);
       }
 
-      /*function loadPost2(postId) {
-        fetch(`${CONFIG.API_BASE_URL}/forum/post/${postId}`)
-          .then(response => response.json())
-          .then(post => {
-            // Existing code to populate post content
-            const postContentElement = document.getElementById("post-content");
-
-            if (post.sgfContent) {
-              postContentElement.innerHTML = "";
-              console.log("调用parseSGF2在 line 471");
-              const parsedSGF = parseSGF2(post.sgfContent);
-              
-              // Populate game info
-              document.getElementById('black-player').textContent = parsedSGF.gameInfo.blackPlayer;
-              // ... populate other game info fields
-
-              // Use parsedSGF.moves for your game board logic
-              initializeBoard(parsedSGF.moves);
-            }
-          });
-      }  */
-
       document.addEventListener("DOMContentLoaded", function () {
         console.log("DOMContentLoaded event fired");
         console.log("Full URL:", window.location.href);

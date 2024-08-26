@@ -482,7 +482,7 @@ function saveQipu() {
     });
 }
 
-function handleFileSelect(event) {
+/*function handleFileSelect(event) {
     const file = event.target.files[0];
     if (file) {
         const reader = new FileReader();
@@ -494,7 +494,7 @@ function handleFileSelect(event) {
         };
         reader.readAsText(file);
     }
-}
+}  */
 
 //Add by TXY 7/11/2024, 增加研究功能
 let isStudyMode = false;
@@ -764,6 +764,8 @@ function initializeSmallBoard(boardElement, moves) {
 
 //把parseSGF函数放在这里
 function parseSGF(sgfContent) {
+    console.log("Raw SGF content:", sgfContent.substring(0, 200)); // 打印前200个字符以检查内容
+
     const info = {};
     const moves = [];
     const moveRegex = /;([BW])(\[\]|\[([a-s]{2})\])/g;
@@ -773,6 +775,11 @@ function parseSGF(sgfContent) {
     const extractInfo = (tag) => {
         const regex = new RegExp(tag + "\\[([^\\]]+)\\]");
         const match = sgfContent.match(regex);
+        if (match) {
+            console.log(`Extracted ${tag}:`, match[1]); // 打印提取的信息
+        } else {
+            console.log(`Failed to extract ${tag}`); // 打印失败信息
+        }
         return match ? match[1] : '';
     };
 
@@ -788,6 +795,8 @@ function parseSGF(sgfContent) {
     info.OT = extractInfo('OT');
     info.RU = extractInfo('RU');
 
+    console.log("Extracted info:", info); // 打印提取的所有信息
+
     // 提取移动
     while ((match = moveRegex.exec(sgfContent)) !== null) {
         const color = match[1] === "B" ? "black" : "white";
@@ -800,8 +809,8 @@ function parseSGF(sgfContent) {
         }
     }
 
-    console.log("刚刚parse出来的 moves:", moves);
-
+    console.log("Extracted moves:", moves.length > 0 ? moves.slice(0, 5) : "No moves found"); // 打印前5个移动或无移动信息
+    console.log("blackRank is:", info.BR);
     return {
         gameInfo: {
             blackPlayer: info.PB,
@@ -817,6 +826,7 @@ function parseSGF(sgfContent) {
         },
         moves: moves
     };
+    
 }
 
 
