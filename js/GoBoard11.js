@@ -786,6 +786,7 @@ function parseSGF(sgfContent) {
     info.PB = extractInfo('PB');
     info.PW = extractInfo('PW');
     info.BR = extractInfo('BR');
+    console.log("info.BR when extractInfo is:", info.BR);
     info.WR = extractInfo('WR');
     info.DT = extractInfo('DT');
     info.RE = extractInfo('RE');
