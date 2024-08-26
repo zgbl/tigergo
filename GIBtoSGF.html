@@ -145,7 +145,7 @@
       async function convertGIBtoSGF(fileContent) {
         // 使用TextDecoder解码文件内容
         //const decoder = new TextDecoder("euc-kr");
-        const decoder = new TextDecoder("gb18030");
+        const decoder = new TextDecoder("utf-8");
         const decodedContent = decoder.decode(fileContent);
 
         //let lines = fileContent.split("\n");
@@ -162,6 +162,7 @@
           whiteRank = "",
           result = "",
           date = "";
+        gametime = "";
         let handicap = 0;
         let moves = "";
 
@@ -190,6 +191,8 @@
             result = extractInfo(line, /\[GAMERESULT=(.*?)\]/);
           if (line.includes("[GAMEDATE="))
             date = line.split("=")[1].replace(/[^0-9]/g, "-");
+          if (line.includes("[GAMETIME="))
+            gametime = line.split("=")[1].replace(/[^0-9]/g, "-");
 
           if (line.includes("INI")) {
             handicap = parseInt(line.split(" ")[3]);
@@ -211,10 +214,11 @@
         console.log("whiteRank:", whiteRank);
         console.log("result:", result);
         console.log("date:", date);
+        console.log("gametime:", gametime);
         console.log("handicap:", handicap);
         console.log("moves:", moves);
 
-        let sgf = `(;GM[1]FF[4]CA[UTF-8]AP[GIBtoSGF]SZ[19]PB[${blackPlayer}]BR[${blackRank}]PW[${whitePlayer}]WR[${whiteRank}]RE[${result}]DT[${date}]`;
+        let sgf = `(;GM[1]FF[4]CA[UTF-8]AP[GIBtoSGF]SZ[19]PB[${blackPlayer}]BR[${blackRank}]PW[${whitePlayer}]WR[${whiteRank}]TM[${gametime}]DT[${date}]`;
         if (handicap > 0) {
           sgf += `HA[${handicap}]`;
         }

@@ -11,7 +11,7 @@ function loadNavbar() {
           <a href="GameRecord4.html">
             <img src="images/GameRecords.png" class="icon" alt="棋谱" /> 棋谱
           </a>
-          <a href="Tournament1B.html">
+          <a href="Tournament2.html">
             <img src="images/Match.png" class="icon" alt="比赛" /> 比赛
           </a>
           <a href="News.html">
