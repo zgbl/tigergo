@@ -766,29 +766,36 @@ function initializeSmallBoard(boardElement, moves) {
 function parseSGF(sgfContent) {
     const info = {};
     const moves = [];
-    const infoRegex = /(\w+)\[(.*?)\]/g;
-    const moveRegex = /;([BW])\[(.*?)\]/g;
+    const moveRegex = /;([BW])(\[\]|\[([a-s]{2})\])/g;
     let match;
 
-    // Extract game information
-    while ((match = infoRegex.exec(sgfContent)) !== null) {
-        const [, key, value] = match;
-        if (key !== 'B' && key !== 'W') {
-            info[key] = value;
-        }
-    }
+    // 提取游戏信息
+    const extractInfo = (tag) => {
+        const regex = new RegExp(tag + "\\[([^\\]]+)\\]");
+        const match = sgfContent.match(regex);
+        return match ? match[1] : '';
+    };
 
-    // Extract moves
+    info.PB = extractInfo('PB');
+    info.PW = extractInfo('PW');
+    info.BR = extractInfo('BR');
+    info.WR = extractInfo('WR');
+    info.DT = extractInfo('DT');
+    info.RE = extractInfo('RE');
+    info.KM = extractInfo('KM');
+    info.SZ = extractInfo('SZ');
+    info.TM = extractInfo('TM');
+    info.OT = extractInfo('OT');
+    info.RU = extractInfo('RU');
+
+    // 提取移动
     while ((match = moveRegex.exec(sgfContent)) !== null) {
         const color = match[1] === "B" ? "black" : "white";
-        const position = match[2];
-
-        if (position === "") {
-            // This is a pass move
+        if (match[2] === "[]") {
             moves.push({ pass: true, color });
         } else {
-            const col = position.charCodeAt(0) - 97;
-            const row = position.charCodeAt(1) - 97;
+            const col = match[3].charCodeAt(0) - 97;
+            const row = match[3].charCodeAt(1) - 97;
             moves.push({ row, col, color });
         }
     }
@@ -797,16 +804,16 @@ function parseSGF(sgfContent) {
 
     return {
         gameInfo: {
-            blackPlayer: info.PB || '',
-            whitePlayer: info.PW || '',
-            blackRank: info.BR || '',
-            whiteRank: info.WR || '',
-            date: info.DT || '',
-            result: info.RE || '',
-            komi: info.KM || '',
-            boardSize: info.SZ || '',
+            blackPlayer: info.PB,
+            whitePlayer: info.PW,
+            blackRank: info.BR,
+            whiteRank: info.WR,
+            date: info.DT,
+            result: info.RE,
+            komi: info.KM,
+            boardSize: info.SZ,
             timeControl: `${info.TM || ''}${info.OT ? ' ' + info.OT : ''}`,
-            rules: info.RU || ''
+            rules: info.RU
         },
         moves: moves
     };
