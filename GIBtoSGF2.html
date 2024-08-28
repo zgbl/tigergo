@@ -143,7 +143,7 @@
 
       async function convertGIBtoSGF(fileContent) {
         // 使用TextDecoder解码文件内容
-        const decoder = new TextDecoder("gb18030"); // 修改为 gb18030
+        const decoder = new TextDecoder("euc-kr"); // 修改为 euc-kr
         const decodedContent = decoder.decode(fileContent);
 
         let lines = decodedContent.split("\n");
@@ -159,19 +159,14 @@
           whiteRank = "",
           result = "",
           date = "",
-          gametime = "",
-          komi = "",
-          basetime = "",
-          overtime = "";
+          gametime = "";
         let handicap = 0;
         let moves = "";
-        let mainTime = "";
-        let byoyomi = "";
 
         for (let line of lines) {
-          //console.log("Before trim, line is:", line);
+          console.log("Before trim, line is:", line);
           line = line.trim();
-          //console.log("After trim, line is:", line);
+          console.log("After trim, line is:", line);
           if (line.includes("[GAMEBLACKNICK="))
             blackPlayer = extractInfo(line, /\[GAMEBLACKNICK=(.*?)\]/);
           if (line.includes("[GAMEWHITENICK="))
@@ -186,47 +181,11 @@
             );
           if (line.includes("[GAMERESULT="))
             result = extractInfo(line, /\[GAMERESULT=(.*?)\]/);
-          console.log("result is:", result);
-          if (line.includes("[GAMECONDITION="))
-            komi = extractInfo(line, /\[GAMECONDITION=(.*?)\]/);
-          if (line.includes("[GAMEDATE=")) {
-            console.log("GAMEDATE 存在");
+          if (line.includes("[GAMEDATE="))
             date = line.split("=")[1].replace(/[^0-9]/g, "-");
-          }
-          //if (line.includes("[GAMETIME=")) {
-          //  gametime = line.match(/\[GAMETIME=(.*?)\]/);
-          //  console.log("GAMETIME:", gametime); // 打印GAMETIME内容
-          //}
-          if (line.includes("GAMETIME")) {
-            //mainTime = extractInfo(line, /\[GAMETIME=(.*?)\]/);
-            //mainTime = line.split("=")[1].replace(/[^0-9]/g, "-");
+          if (line.includes("[GAMETIME="))
+            gametime = line.split("=")[1].replace(/[^0-9]/g, "-");
 
-            let match = line.match(/限制时间\s(\d+分)/);
-            if (match && match[1]) {
-              mainTime = match[1];
-              console.log("Extracted time:", mainTime); // Output: 10分
-            } else {
-              console.log("Time not found");
-            }
-            console.log("Main time:", mainTime);
-          }
-          if (line.includes("秒")) {
-            let match = line.match(/(.*?)(?=\\])/);
-            if (match && match[1]) {
-              byoyomi = match[1];
-              console.log("byoyomi is:", byoyomi); // Output: 30秒 读秒 3番
-            } else {
-              console.log("Byoyomi:", byoyomi);
-            }
-          }
-          if (line.includes("BASETIME")) {
-            basetime = extractInfo(line, /\[BASETIME=(.*?)\]/);
-            console.log("Basetime 是：", basetime);
-          }
-          if (line.includes("OVERTIME")) {
-            overtime = extractInfo(line, /\[OVERTIME=(.*?)\]/);
-            console.log("Overtime 是：", overtime);
-          }
           if (line.includes("INI")) {
             handicap = parseInt(line.split(" ")[3]);
           }
@@ -246,17 +205,12 @@
         console.log("blackRank:", blackRank);
         console.log("whiteRank:", whiteRank);
         console.log("result:", result);
-        console.log("komi is:", komi);
         console.log("date:", date);
         console.log("gametime:", gametime);
         console.log("handicap:", handicap);
         console.log("moves:", moves);
-        console.log("Basetime 是：", basetime);
-        //console.log("fullRegex is:", fullRegex);
-        console.log("Main time:", mainTime);
-        console.log("Byoyomi:", byoyomi);
 
-        let sgf = `(;GM[1]FF[4]CA[UTF-8]AP[GIBtoSGF]SZ[19]KM[${komi}]PB[${blackPlayer}]BR[${blackRank}]PW[${whitePlayer}]WR[${whiteRank}]TM[${mainTime}]OT[${byoyomi}]DT[${date}]`;
+        let sgf = `(;GM[1]FF[4]CA[UTF-8]AP[GIBtoSGF]SZ[19]PB[${blackPlayer}]BR[${blackRank}]PW[${whitePlayer}]WR[${whiteRank}]TM[${gametime}]DT[${date}]`;
         if (handicap > 0) {
           sgf += `HA[${handicap}]`;
         }
