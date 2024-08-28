@@ -824,7 +824,8 @@ function parseSGF(sgfContent) {
             komi: info.KM,
             boardSize: info.SZ,
             //timeControl: `${info.TM || ''}${info.OT ? ' ' + info.OT : ''}`,
-            timeControl: info.TM,
+            //timeControl: info.TM,
+            timeControl: (info.TM || '') + (info.OT ? ' ' + info.OT : ''),
             rules: info.RU
         },
         moves: moves
