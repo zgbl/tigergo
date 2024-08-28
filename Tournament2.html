@@ -81,7 +81,7 @@
 
           console.log("Sending data:", data);
 
-          fetch(`${CONFIG.API_BASE_URL}/create_tournament`, {
+          fetch(`${API_VERCEL_NEXTJS_BASE_UR}/api/tournament`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",

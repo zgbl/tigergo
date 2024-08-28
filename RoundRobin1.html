@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="zh">
+  <head>
+    <!-- ... 保持原有的 head 内容不变 ... -->
+    <style>
+      /* ... 保持原有的样式不变 ... */
+      #registeredPlayers {
+        margin-top: 20px;
+        margin-bottom: 20px;
+      }
+      #registeredPlayers table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      #registeredPlayers th,
+      #registeredPlayers td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: left;
+      }
+      #registeredPlayers th {
+        background-color: #f2f2f2;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>单循环比赛对阵表生成器</h1>
+
+    <h2>已报名棋手</h2>
+    <div id="registeredPlayers">
+      <!-- 这里将显示已报名棋手的表格 -->
+    </div>
+
+    <h2>添加新棋手</h2>
+    <div id="playerInputs">
+      <!-- 这里将会动态加载棋手信息 -->
+    </div>
+    <button onclick="addPlayer()">添加选手</button>
+    <button onclick="generateSchedule()">生成对阵表</button>
+    <div id="schedule"></div>
+
+    <script>
+      async function fetchPlayers() {
+        try {
+          const response = await fetch("/get_players?tournament_id=1"); // 假设tournament_id为1，请根据实际情况修改
+          const players = await response.json();
+
+          // 显示已报名棋手表格
+          const registeredPlayersDiv =
+            document.getElementById("registeredPlayers");
+          let tableHTML = `
+                    <table>
+                        <tr>
+                            <th>姓名</th>
+                            <th>等级分</th>
+                        </tr>
+                `;
+          players.forEach((player) => {
+            tableHTML += `
+                        <tr>
+                            <td>${player.name}</td>
+                            <td>${player.rank}</td>
+                        </tr>
+                    `;
+          });
+          tableHTML += "</table>";
+          registeredPlayersDiv.innerHTML = tableHTML;
+
+          // 填充棋手输入框（保持原有功能）
+          const inputs = document.getElementById("playerInputs");
+          players.forEach((player) => {
+            const inputDiv = document.createElement("div");
+            inputDiv.innerHTML = `
+                        <input type="text" value="${player.name} (${player.rank})" readonly />
+                    `;
+            inputs.appendChild(inputDiv);
+          });
+        } catch (error) {
+          console.error("Error fetching players:", error);
+        }
+      }
+
+      // ... 保持其他函数（addPlayer, generateSchedule, displaySchedule）不变 ...
+
+      fetchPlayers();
+    </script>
+  </body>
+</html>
