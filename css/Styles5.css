@@ -449,6 +449,11 @@ body {
     margin-bottom: 10px; /* 根据需要调整 */
   }
 
+  .header-container h2 {
+    margin: 0;
+    flex: 2; /* 让 h2 占据剩余空间的 2/3 */
+  }
+
   .logout-button {
     padding: 8px 15px;
     background-color: #617dda;
@@ -460,13 +465,21 @@ body {
     transition: background-color 0.3s;
   }
 
+  #UserHandle {
+    flex: 1;
+    align-items: center;
+    justify-content: space-between;
+    
+
+  }
+
 
   .logout-button:hover {
-    background-color: #d32f2f;
+    background-color: #50696a;
   }
 
   #user-info {
-    margin-bottom: 20px;
+    margin-right: 10px;
   }
 
   .status-indicator {
