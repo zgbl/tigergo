@@ -466,13 +466,13 @@ body {
   }
 
   #UserHandle {
+    display: flex;
+    flex-direction: row;
     flex: 1;
     align-items: center;
     justify-content: space-between;
     
-
   }
-
 
   .logout-button:hover {
     background-color: #50696a;
