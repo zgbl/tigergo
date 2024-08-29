@@ -443,10 +443,30 @@ body {
 
 
   .header-container {
-    display: contents;
+    display: flex;
     align-items: center;
-    justify-content: flex-start;
-    margin-bottom: 20px; /* 根据需要调整 */
+    justify-content: space-between;
+    margin-bottom: 10px; /* 根据需要调整 */
+  }
+
+  .logout-button {
+    padding: 8px 15px;
+    background-color: #f44336;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s;
+  }
+
+
+  .logout-button:hover {
+    background-color: #d32f2f;
+  }
+
+  #user-info {
+    margin-bottom: 20px;
   }
 
   .status-indicator {
