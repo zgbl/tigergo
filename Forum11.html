@@ -20,6 +20,7 @@
       <div class="container forum-container">
         <div class="header-container">
           <h2>围棋论坛-11</h2>
+          <button id="logoutButton" class="logout-button">Logout</button>
           <div id="user-info">
             <!-- 用户信息将在这里显示 -->
           </div>
@@ -279,6 +280,25 @@
           loadPosts(currentPage + 1);
           this.dataset.page = currentPage + 1;
         });
+
+      document.getElementById('logoutButton').addEventListener('click', async () => {
+        try {
+            const response = await fetch(`${CONFIG.API_VERCEL_NEXTJS_BASE_URL}/api/logout`, {
+                method: 'GET',
+                credentials: 'include'
+            });
+            const data = await response.json();
+            if (response.ok) {
+                alert(data.message);
+                window.location.href = '/login'; // Redirect to login page after logout
+            } else {
+                throw new Error(data.message);
+            }
+        } catch (error) {
+            console.error('Logout failed:', error);
+            alert('登出失败，请稍后重试');
+        }
+      });
 
     </script>
   </body>
