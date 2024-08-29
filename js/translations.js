@@ -18,8 +18,8 @@ const formatTranslations = {
     return Object.keys(formatTranslations).find(key => formatTranslations[key] === chineseFormat) || chineseFormat;
   }
   
-  // 如果你使用 ES6 模块
-  export { formatTranslations, getChineseFormat, getEnglishFormat };
+  // 如果你使用 ES6 模块  ， 传统方法不需要export
+  //export { formatTranslations, getChineseFormat, getEnglishFormat };
   
   // 如果你使用 CommonJS
   // module.exports = { formatTranslations, getChineseFormat, getEnglishFormat };
