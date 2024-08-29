@@ -118,6 +118,9 @@
 
             if (response.ok) {
               alert("Registration successful!");
+
+              // Store JWT in localStorage
+              localStorage.setItem("authToken", data.token);
               //window.location.href = "/login";
               //window.location.href = "/api/login";
               //window.location.href = `${CONFIG.API_VERCEL_NEXTJS_BASE_URL}/api/login`;
