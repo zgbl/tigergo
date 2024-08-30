@@ -89,6 +89,11 @@
             tournamentList.innerHTML = ''; // 清空列表
             data.tournaments.forEach(tournament => {
               const li = document.createElement('li');
+              const tournamentName = tournament.name || tournament.TournamentName || '未命名比赛';
+              const tournamentDate = tournament.TournamentStartDate ? new Date(tournament.TournamentStartDate).toLocaleDateString() : '未知日期';
+              const tournamentLocation = tournament.location || '未知地点';
+              
+              console.log(`${tournamentName} - ${tournamentDate} - ${tournamentLocation}`);
               li.className = 'list-group-item';
               li.innerHTML = `
                 <strong>${tournament.name}</strong> - ${tournament.date} - ${tournament.location}
