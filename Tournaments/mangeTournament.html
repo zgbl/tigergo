@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>管理比赛</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../css/Styles5.css" />
+  </head>
+  <body>
+    <div id="navbar-placeholder"></div>
+    <div class="container">
+      <h2 id="tournamentName">比赛名称</h2>
+
+      <!-- 比赛设置修改 -->
+      <h3>比赛设置</h3>
+      <form id="tournamentSettingsForm">
+        <div class="mb-3">
+          <label for="TournamentStartDate" class="form-label">比赛日期</label>
+          <input
+            type="date"
+            class="form-control"
+            id="date"
+            name="TournamentStartDate"
+            required
+          />
+        </div>
+        <div class="mb-3">
+          <label for="format" class="form-label">比赛形式</label>
+          <select class="form-select" id="format" name="format" required>
+            <option value="Single Round Robin">单循环</option>
+            <option value="Double Round Robin">积分循环</option>
+            <option value="Knockout">淘汰赛</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary">保存设置</button>
+      </form>
+
+      <!-- 添加选手 -->
+      <h3 class="mt-5">添加选手</h3>
+      <form id="playerForm">
+        <div class="mb-3">
+          <label for="playerName" class="form-label">选手姓名</label>
+          <input
+            type="text"
+            class="form-control"
+            id="playerName"
+            name="playerName"
+            required
+          />
+        </div>
+        <button type="submit" class="btn btn-success">添加选手</button>
+      </form>
+
+      <!-- 已报名选手列表 -->
+      <h3 class="mt-5">已报名选手</h3>
+      <ul id="playerList" class="list-group">
+        <!-- 选手列表将在这里动态生成 -->
+      </ul>
+
+      <!-- 比赛编排按钮 -->
+      <button id="scheduleButton" class="btn btn-warning mt-5">比赛编排</button>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../js/navbar.js"></script>
+    <script src="../js/config.js"></script>
+    <script>
+      loadNavbar();
+
+      // 获取URL中的比赛ID
+      const urlParams = new URLSearchParams(window.location.search);
+      const tournamentId = urlParams.get("id");
+
+      // 加载比赛信息
+      function loadTournament() {
+        fetch(
+          `${CONFIG.API_VERCEL_NEXTJS_BASE_URL}/api/tournament/${tournamentId}`
+        )
+          .then((response) => response.json())
+          .then((data) => {
+            document.getElementById("tournamentName").innerText = data.name;
+            document.getElementById("date").value = data.date.split("T")[0];
+            document.getElementById("format").value = data.format;
+            loadPlayers(); // 加载选手列表
+          })
+          .catch((error) => {
+            console.error("Error loading tournament:", error);
+          });
+      }
+
+      // 保存比赛设置
+      document
+        .getElementById("tournamentSettingsForm")
+        .addEventListener("submit", function (event) {
+          event.preventDefault();
+          const formData = new FormData(this);
+          const data = Object.fromEntries(formData.entries());
+
+          fetch(
+            `${CONFIG.API_VERCEL_NEXTJS_BASE_URL}/api/tournament/${tournamentId}/update`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify(data),
+            }
+          )
+            .then((response) => response.json())
+            .then((result) => {
+              if (result.success) {
+                alert("比赛设置已保存");
+              } else {
+                alert(result.message);
+              }
+            })
+            .catch((error) => {
+              console.error("Error:", error);
+              alert("保存设置时发生错误");
+            });
+        });
+
+      // 添加选手
+      document
+        .getElementById("playerForm")
+        .addEventListener("submit", function (event) {
+          event.preventDefault();
+          const playerName = document.getElementById("playerName").value;
+
+          fetch(
+            `${CONFIG.API_VERCEL_NEXTJS_BASE_URL}/api/tournament/${tournamentId}/addPlayer`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ name: playerName }),
+            }
+          )
+            .then((response) => response.json())
+            .then((result) => {
+              if (result.success) {
+                document.getElementById("playerName").value = "";
+                loadPlayers(); // 重新加载选手列表
+              } else {
+                alert(result.message);
+              }
+            })
+            .catch((error) => {
+              console.error("Error:", error);
+              alert("添加选手时发生错误");
+            });
+        });
+
+      // 加载选手列表
+      function loadPlayers() {
+        fetch(
+          `${CONFIG.API_VERCEL_NEXTJS_BASE_URL}/api/tournament/${tournamentId}/players`
+        )
+          .then((response) => response.json())
+          .then((data) => {
+            const playerList = document.getElementById("playerList");
+            playerList.innerHTML = ""; // 清空列表
+            data.players.forEach((player) => {
+              const li = document.createElement("li");
+              li.className = "list-group-item";
+              li.innerText = player.name;
+              playerList.appendChild(li);
+            });
+          })
+          .catch((error) => {
+            console.error("Error loading players:", error);
+          });
+      }
+
+      // 比赛编排
+      document
+        .getElementById("scheduleButton")
+        .addEventListener("click", function () {
+          fetch(
+            `${CONFIG.API_VERCEL_NEXTJS_BASE_URL}/api/tournament/${tournamentId}/schedule`,
+            {
+              method: "POST",
+            }
+          )
+            .then((response) => response.json())
+            .then((result) => {
+              if (result.success) {
+                alert("比赛编排已完成");
+              } else {
+                alert(result.message);
+              }
+            })
+            .catch((error) => {
+              console.error("Error scheduling tournament:", error);
+              alert("比赛编排时发生错误");
+            });
+        });
+
+      // 页面加载时加载比赛信息
+      window.onload = loadTournament;
+    </script>
+  </body>
+</html>

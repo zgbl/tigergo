@@ -81,7 +81,7 @@
       loadNavbar();
 
       // 加载已有的比赛
-      function loadTournaments() {
+      /*function loadTournaments() {
         fetch(`${CONFIG.API_VERCEL_NEXTJS_BASE_URL}/api/tournament/list`)
           .then(response => response.json())
           .then(data => {
@@ -105,7 +105,31 @@
           .catch(error => {
             console.error('Error loading tournaments:', error);
           });
-      }
+      } */
+
+      // 加载已有的比赛
+    function loadTournaments() {
+      fetch(`${CONFIG.API_VERCEL_NEXTJS_BASE_URL}/api/tournament/list`)
+        .then(response => response.json())
+        .then(data => {
+          const tournamentList = document.getElementById('tournamentList');
+          tournamentList.innerHTML = ''; // 清空列表
+          data.tournaments.forEach(tournament => {
+            const li = document.createElement('li');
+            const tournamentName = tournament.name || tournament.TournamentName || '未命名比赛';
+            
+            li.className = 'list-group-item';
+            li.innerHTML = `
+              <a href="Tournaments/manageTournament.html?id=${tournament.id}">${tournamentName}</a>
+            `;
+            tournamentList.appendChild(li);
+          });
+        })
+        .catch(error => {
+          console.error('Error loading tournaments:', error);
+        });
+    }
+
 
       // 管理比赛页面跳转
       function manageTournament(id) {
