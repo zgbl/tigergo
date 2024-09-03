@@ -3,7 +3,7 @@ function loadNavbar() {
     <div class="container">
       <header>
         <a href="index.html" class="logo">
-            <img src="images/BlackRiceLogo25.webp" alt="黑米围棋 Logo" />
+            <img src="../images/BlackRiceLogo25.webp" alt="黑米围棋 Logo" />
         <nav>
           <a href="WeiqiPlay10.html">
             <img src="../images/Play.png" class="icon" alt="对弈" /> 对弈
