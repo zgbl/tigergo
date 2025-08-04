@@ -29,9 +29,21 @@ export function initUserInfo(elementId) {
     }
 }
 
+// 修复字段不一致问题：使用 _id 而不是 id
 export function getUserId() {
     const user = JSON.parse(localStorage.getItem("user"));
-    return user ? user.id : null;
+    return user ? user._id : null; // 改为 _id
+}
+
+// 新增获取用户名的函数
+export function getUsername() {
+    const user = JSON.parse(localStorage.getItem("user"));
+    return user ? user.username : null;
+}
+
+// 新增获取完整用户信息的函数
+export function getUser() {
+    return JSON.parse(localStorage.getItem("user"));
 }
 
 console.log('Page3.js is loaded');

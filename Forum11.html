@@ -33,16 +33,6 @@
             <div class="author-header">作者</div>
             <div class="reply-count-header">回复/查看</div>
             <div class="last-post-time-header">最后发表</div>
-            <!--<div class="post-info-header">
-            <div class="post-title-header">标题</div>
-                <div class="post-info-header">
-                <div class="author-header">作者</div>
-                <div class="reply-count-header">回复/查看</div>
-                <div class="last-post-time-header">最后发表</div>
-              <span class="author-header">作者</span>
-              <span class="reply-count-header">回复/查看</span>
-              <span class="last-post-time-header">最后发表</span>
-            </div> -->
         </div>
 
         <div id="post-list" class="post-list">
@@ -77,69 +67,102 @@
     <script>
       // 加载导航栏
       loadNavbar();
-      //console.log("line 65, userID is:", initUserInfo("user-info"));
-      // 页面加载时刷新帖子列表
-      //document.addEventListener("DOMContentLoaded", refreshPostList);
       let currentPage = 1;
 
-      document
-        .getElementById("new-post-form")
-        .addEventListener("submit", function (e) {
-          e.preventDefault();
-          var formData = new FormData(this);
-          const user = JSON.parse(localStorage.getItem("user"));
-          const userID = user ? user._id : null;
-          const userName = user ? user.username : null;
-
-          if (userID && userName) {
-            formData.append('userID', userID);
-            formData.append('author', userName);
-            console.log("User ID:", userID, "userName", userName);
-          } else {
-            console.error('用户ID或用户名未找到。用户可能未登录。');
-            alert('请先登录后再发布帖子。');
-            return;
+      // 修复后的表单提交处理 - 手动控制每个字段
+      document.getElementById("new-post-form").addEventListener("submit", function (e) {
+        e.preventDefault();
+        
+        // 直接获取表单值，不使用 FormData(this)
+        const titleInput = document.querySelector('input[name="title"]');
+        const contentInput = document.querySelector('textarea[name="content"]');
+        const fileInput = document.querySelector('input[name="sgfFile"]');
+        
+        console.log("=== 表单元素检查 ===");
+        console.log("title input:", titleInput);
+        console.log("content input:", contentInput);
+        console.log("file input:", fileInput);
+        
+        if (!titleInput || !contentInput) {
+          alert("表单元素未找到！请检查HTML结构");
+          return;
+        }
+        
+        const title = titleInput.value.trim();
+        const content = contentInput.value.trim();
+        const file = fileInput ? fileInput.files[0] : null;
+        
+        console.log("=== 表单值检查 ===");
+        console.log("title:", `"${title}"`);
+        console.log("content:", `"${content}"`);
+        console.log("file:", file);
+        
+        if (!title || !content) {
+          alert("请填写标题和内容！");
+          return;
+        }
+        
+        // 获取用户信息
+        const user = JSON.parse(localStorage.getItem("user"));
+        console.log("=== 用户信息检查 ===");
+        console.log("user:", user);
+        
+        if (!user || !user._id || !user.username) {
+          alert("请先登录！");
+          return;
+        }
+        
+        // 手动创建 FormData
+        const formData = new FormData();
+        formData.append('title', title);
+        formData.append('content', content);
+        formData.append('author', user.username);
+        formData.append('userId', user._id);
+        
+        if (file) {
+          formData.append('sgfFile', file);
+        }
+        
+        // 验证 FormData
+        console.log("=== 最终 FormData 内容 ===");
+        for (let [key, value] of formData.entries()) {
+          console.log(`${key}: ${value}`);
+        }
+        
+        const requestUrl = `${CONFIG.API_BASE_URL}/forum/Posts`;  // 改回 Posts
+        console.log("=== 发送请求 ===");
+        console.log("请求URL:", requestUrl);
+        
+        // 发送请求
+        fetch(requestUrl, {
+          method: "POST",
+          body: formData,
+        })
+        .then((response) => {
+          console.log("响应状态:", response.status);
+          if (!response.ok) {
+            return response.text().then(text => {
+              throw new Error(`HTTP 错误! 状态: ${response.status}, 详情: ${text}`);
+            });
           }
-
-          console.log("正在发送请求到:", `${CONFIG.API_BASE_URL}/forum/post`);
-          console.log("formData is:", formData);
-          console.log("formData.get('title') is:", formData.get('title'));
-          console.log("formData.get('content') is:", formData.get('content'));
-          console.log("formData.get('sgfFile') is:", formData.get('sgfFile'));
-          console.log("formData.get('userID') is:", formData.get('userID'));
-          console.log("formData.get('author') is:", formData.get('author'));
-      
-
-          fetch(`${CONFIG.API_BASE_URL}/forum/post`, {
-            method: "POST",
-            body: formData,
-          })
-          .then((response) => {
-            console.log("响应状态:", response.status);
-            if (!response.ok) {
-              return response.text().then(text => {
-                throw new Error(`HTTP 错误! 状态: ${response.status}, 详情: ${text}`);
-              });
-            }
-            return response.json();
-          })
-          .then((data) => {
-            console.log("服务器响应:", data);
-            if (data.success) {
-              console.log("帖子发布成功:", data.post);
-              this.reset();
-              currentPage = 1;
-              refreshPostList(currentPage, false);
-            } else {
-              console.error("发布帖子失败:", data.error || "未提供错误信息");
-              alert("发布失败: " + (data.error || "未知错误"));
-            }
-          })
-          .catch((error) => {
-            console.error("错误:", error);
-            alert("发布时发生错误: " + error.message);
-          });
+          return response.json();
+        })
+        .then((data) => {
+          console.log("服务器响应:", data);
+          if (data.success) {
+            alert("帖子发布成功！");
+            this.reset();
+            currentPage = 1;
+            refreshPostList(currentPage, false);
+          } else {
+            alert("发布失败: " + (data.message || "未知错误"));
+          }
+        })
+        .catch((error) => {
+          console.error("错误:", error);
+          alert("发布时发生错误: " + error.message);
         });
+      });
 
       // 在发帖成功后刷新帖子列表
       function refreshPostList(page = 1, append = false) {
@@ -149,8 +172,11 @@
           console.error('Post list element not found');
           return;
         }
-        console.log("正在获取帖子列表:", `${CONFIG.API_BASE_URL}/forum/posts?page=${page}`);
-        fetch(`${CONFIG.API_BASE_URL}/forum/posts?page=${page}`)
+        
+        const requestUrl = `${CONFIG.API_BASE_URL}/forum/Posts?page=${page}`;  // 改回 Posts
+        console.log("正在获取帖子列表:", requestUrl);
+        
+        fetch(requestUrl)
           .then((response) => {
             console.log("获取帖子列表响应状态:", response.status);
             if (!response.ok) {
@@ -159,13 +185,25 @@
             return response.json();
           })
           .then((data) => {
-            console.log("获取到的帖子数据:", data);
+            //console.log("获取到的帖子数据:", data);
+            const postinfo = data.posts || data.data || [];  //临时调试用
+            
             const postList = document.getElementById("post-list");
             if (!append) {
               postList.innerHTML = "";
             }
+              // 只打印第一个帖子的结构
+            
+              if (postinfo.length > 0) {
+              console.log('=== 第一个帖子的数据结构 ===');
+              console.log(JSON.stringify(postinfo[0], null, 2));  //临时调试用
+              console.log('可用字段:', Object.keys(postinfo[0]));  //临时调试用
+            } 
 
-            data.posts.forEach((post) => {
+            // 处理不同的数据结构
+            const posts = data.posts || data.data || [];
+            
+            posts.forEach((post) => {
               const postElement = document.createElement("div");
               postElement.className = "form-post";
               postElement.innerHTML = `
@@ -183,11 +221,10 @@
                
                 <div class="post-auther">${post.author || "Unknown"}</div>
                 <div class="post-reply-count">${post.replyCount || 0}</div>
-                <div class="post-last-post-time">${post.lastPostTime || "N/A"}</div>
+                <div class="post-last-post-time">${post.updatedAt || "N/A"}</div>
            
               `;
               postListElement.appendChild(postElement);
-              
             });
 
             const loadMoreButton = document.getElementById("load-more");
@@ -199,8 +236,6 @@
           });
       }
 
-
-
       document.getElementById("load-more").addEventListener("click", () => {
         currentPage++;
         refreshPostList(currentPage, true);
@@ -210,78 +245,6 @@
       document.addEventListener("DOMContentLoaded", () =>
         refreshPostList(currentPage, false)
       );
-
-      function loadPosts(page = 1) {
-        fetch(`${CONFIG.API_BASE_URL}/forum/posts?page=${page}`)
-          .then((response) => {
-            if (!response.ok) {
-              throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return response.json();
-          })
-          .then((data) => {
-            console.log("Received data:", data); // 添加这行来查看接收到的完整数据
-            if (data.posts && Array.isArray(data.posts)) {
-              console.log("data.posts is:", data.posts);
-              displayPosts(data.posts);
-              if (data.hasNextPage) {
-                document.getElementById("load-more").style.display = "block";
-              } else {
-                document.getElementById("load-more").style.display = "none";
-              }
-            } else {
-              console.error("Received data is not in expected format:", data);
-            }
-          })
-          .catch((error) => {
-            console.error("Error loading posts:", error);
-            // 在页面上显示错误信息
-            document.getElementById(
-              "post-list"
-            ).innerHTML = `<p>Error loading posts: ${error.message}</p>`;
-          });
-      }
-
-      // JavaScript代码保持不变，但需要修改displayPosts函数中的HTML结构
-      function displayPosts(posts) {
-        console.log("displayPost被调用了", posts);
-        const postList = document.getElementById("post-list");
-        postList.innerHTML = "";
-
-        posts.forEach((post) => {
-          console.log("Display post", post);
-          const postElement = document.createElement("div");
-          postElement.className = "post";
-          console.log("post ID is:", post._id);
-          // 安全地获取标题和内容
-          const title = post.title || "无标题";
-          const content = post.content || "无内容";
-          // 限制内容长度，但要先确保内容不是 null
-          const shortContent =
-            content.length > 100 ? content.substring(0, 100) + "..." : content;
-
-          postElement.innerHTML = `
-            <a href="Post11.html?id=${encodeURIComponent(
-              post._id
-            )}" class="post-link">
-              <div class="post-content">
-                <div class="post-title">${title}</div>
-                <div class="post-body">${shortContent}</div>
-              </div>
-            </a>
-          `;
-          postList.appendChild(postElement);
-        });
-      }
-
-      // 添加"加载更多"按钮的事件监听器
-      document
-        .getElementById("load-more")
-        .addEventListener("click", function () {
-          const currentPage = parseInt(this.dataset.page) || 1;
-          loadPosts(currentPage + 1);
-          this.dataset.page = currentPage + 1;
-        });
 
       document.getElementById('logoutButton').addEventListener('click', async () => {
         try {

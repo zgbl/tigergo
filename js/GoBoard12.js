@@ -380,6 +380,7 @@ function hideRecentMoves() {
 
 function toggleMoveDisplay() {
     displayMode = (displayMode + 1) % 4; // 循环切换状态
+    console.log("GoBoard12.js liine 383, 准备显示数字")
     updateMoveDisplay();
     updateButtonText();
 }
@@ -482,18 +483,19 @@ function saveQipu() {
     });
 }
 
-function handleFileSelect(event) {
+/*function handleFileSelect(event) {
     const file = event.target.files[0];
     if (file) {
         const reader = new FileReader();
         reader.onload = function(e) {
             const sgfContent = e.target.result;
+            console.log("function handleFileSelect() parseSGFing from GoBoard11.js line 491");
             const parsedMoves = parseSGF(sgfContent);  //应该没有被用到 8.13
             renderMoves(parsedMoves);
         };
         reader.readAsText(file);
     }
-}
+}  */
 
 //Add by TXY 7/11/2024, 增加研究功能
 let isStudyMode = false;
@@ -501,6 +503,7 @@ let originalMoves = [];
 let studyStartMoveIndex = -1;
 
 function toggleStudyMode() {
+    console.log("正在调用toggleStudyMode()");
     isStudyMode = !isStudyMode;
     const studyButton = document.getElementById('studyButton');
     const publishBtn = document.getElementById('publishVariationBtn');
@@ -534,7 +537,10 @@ function toggleStudyMode() {
 }
 
 let indctID = '';
-function toggleStudyMode2(indctID) {
+
+
+function toggleStudyMode2(indctID) {  
+    console.log("正在调用toggleStudyMode2(), indctID:", indctID);
     isStudyMode = !isStudyMode;
     const studyButton = document.getElementById('studyButton');
     const publishBtn = document.getElementById('publishVariationBtn');
@@ -567,10 +573,12 @@ function toggleStudyMode2(indctID) {
     //console.log("toggleStudyMode.updateMoveInto.")
     toggleIndicator(indctID);  //此行只对于有指示灯的情况，
     publishBtn.style.display = isStudyMode ? 'inline-block' : 'none';
-}
+} 
 
 
 function handleStudyClick(row, col) {
+
+    console.log("handleStudyClick called, isStudyMode:", isStudyMode);  //2025.8.3 study mode 这里没有被调用
     if (!isStudyMode) return;
 
     //const color = currentMoveIndex % 2 === 0 ? 'black' : 'white';
@@ -647,9 +655,22 @@ async function publishVariation(event) {   //改用submit的时evemt
     commentElement.className = 'variation-comment';
     commentContainer.appendChild(commentElement);
     console.log("8. 评论元素已创建，内容为:", commentElement.textContent); 
+
+        // 🔥 修复 postId 获取问题
+    const currentPostId = window.globalPostId || window.postId;
+    
+    if (!currentPostId) {
+        console.error("无法获取 postId");
+        alert('无法获取帖子ID，请刷新页面重试');
+        return;
+    }
+    
+    console.log("当前 postId:", currentPostId);
+
 // 重写结构，保留object形式，保留颜色信息 2024/7/25
     const commentData = {
-        postId: postId,
+        //postId: postId,
+        postId: currentPostId,
         content: comment,
         originalMoves: originalMoves.map(move => ({
             row: move.row,
@@ -762,46 +783,78 @@ function initializeSmallBoard(boardElement, moves) {
 }
 
 //把parseSGF函数放在这里
-function parseSGF(sgf) {
+function parseSGF(sgfContent) {
+    console.log("Raw SGF content:", sgfContent.substring(0, 200)); // 打印前200个字符以检查内容
+
+    const info = {};
     const moves = [];
-    // 匹配所有的移动，包括空移动（pass）
-    const regex = /;([BW])(\[\]|\[([a-s]{2})\])/g;
-    const blackPlayerRegex = /PB\[([^\]]+)\]/;
-    const whitePlayerRegex = /PW\[([^\]]+)\]/;
-    //const dateRegex = /DT\[([^\]]+)\]/;
+    const moveRegex = /;([BW])(\[\]|\[([a-s]{2})\])/g;
     let match;
-    const matchB = sgf.match(blackPlayerRegex);
-    const matchW = sgf.match(blackPlayerRegex);
 
-    if (matchB) {
-        const blackPlayerName = matchB[1];
-        console.log("Black player's name:", blackPlayerName,);
-    } else {
-        console.log("Black player's name not found");
+    // 提取游戏信息
+    const extractInfo = (tag) => {
+        const regex = new RegExp(tag + "\\[([^\\]]+)\\]");
+        const match = sgfContent.match(regex);
+        if (match) {
+            console.log(`Extracted ${tag}:`, match[1]); // 打印提取的信息
+        } else {
+            console.log(`Failed to extract ${tag}`); // 打印失败信息
+        }
+        return match ? match[1] : '';
+    };
+
+    info.PB = extractInfo('PB');
+    info.PW = extractInfo('PW');
+    info.BR = extractInfo('BR');
+    //console.log("info.BR when extractInfo is:", info.BR);
+    info.WR = extractInfo('WR');
+    info.DT = extractInfo('DT');
+    info.RE = extractInfo('RE');
+    info.KM = extractInfo('KM');
+    info.SZ = extractInfo('SZ');
+    info.TM = extractInfo('TM');
+    info.OT = extractInfo('OT');
+    info.RU = extractInfo('RU');
+
+    console.log("Extracted info:", info); // 打印提取的所有信息
+
+    // 提取移动
+    while ((match = moveRegex.exec(sgfContent)) !== null) {
+        const color = match[1] === "B" ? "black" : "white";
+        if (match[2] === "[]") {
+            moves.push({ pass: true, color });
+        } else {
+            const col = match[3].charCodeAt(0) - 97;
+            const row = match[3].charCodeAt(1) - 97;
+            moves.push({ row, col, color });
+        }
     }
-    if (matchW) {
-        const whitePlayerName = matchW[1];
-        console.log("White player's name:", whitePlayerName);
-    } else {
-        console.log("Black player's name not found");
-    }
 
-    while ((match = regex.exec(sgf)) !== null) {
-      const color = match[1] === "B" ? "black" : "white";
-      if (match[2] === "[]") {
-        // 这是一个空移动（pass）
-        moves.push({ pass: true, color });
-      } else {
-        const col = match[3].charCodeAt(0) - 97;
-        const row = match[3].charCodeAt(1) - 97;
-        moves.push({ row, col, color });
-      }
-    }
+    console.log("Extracted moves:", moves.length > 0 ? moves.slice(0, 5) : "No moves found"); // 打印前5个移动或无移动信息
+    console.log("blackRank is:", info.BR);
+    console.log("暂时用时只显示TM:",info.TM);    
+    return {
+        gameInfo: {
+            blackPlayer: info.PB,
+            whitePlayer: info.PW,
+            blackRank: info.BR,
+            whiteRank: info.WR,
+            date: info.DT,
+            result: info.RE,
+            komi: info.KM,
+            boardSize: info.SZ,
+            //timeControl: `${info.TM || ''}${info.OT ? ' ' + info.OT : ''}`,
+            //timeControl: info.TM,
+            timeControl: (info.TM || '') + (info.OT ? ' ' + info.OT : ''),
+            rules: info.RU
+        },
+        moves: moves
+    };
+    
+}
 
-    return moves;
-  }
 
-  function parseSGF2(sgfContent) {
+function parseSGF2(sgfContent) {
     const info = {};
     const moves = [];
     const infoRegex = /(\w+)\[(.*?)\]/g;
@@ -845,7 +898,8 @@ function parseSGF(sgf) {
         },
         moves: moves
     };
-  }
+}
+
 
 //恢复棋盘到研究开始时候的步数
 function renderMovesToIndex(targetIndex) {
@@ -1201,12 +1255,19 @@ class SmallBoard {
 // 新函数合并变化图发布和评论文本发布，（以后要删掉submitComment() 和 publishVariation()）2024/7/20
 // 这个函数是不是被弃用了？2024/7/25
 function submitCommentAndVariation(e) {
-    //console.log("starting提交评论和变化图");
     e.preventDefault();
     const commentContent = document.getElementById("comment-content").value.trim();
     
     if (commentContent === '') {
         alert('请输入评论');
+        return;
+    }
+
+    // 获取 postId
+    const currentPostId = window.globalPostId || window.postId;
+    if (!currentPostId) {
+        console.error('submitCommentAndVariation: postId 未找到');
+        alert('无法获取帖子ID，请刷新页面重试');
         return;
     }
 
@@ -1222,6 +1283,7 @@ function submitCommentAndVariation(e) {
     }
 
     const commentData = {
+        postId: currentPostId,  // 添加 postId
         content: commentContent,
         variation: variationData
     };
@@ -1231,7 +1293,8 @@ function submitCommentAndVariation(e) {
         headers: {
             "Content-Type": "application/json",
         },
-        body: JSON.stringify(commentData),
+        body: JSON.stringify(commentData),   //2025.8.3
+        //body: JSON.stringify(formattedCommentData),
     })
     .then((response) => response.json())
     .then((result) => {
@@ -1325,6 +1388,8 @@ function displayVariationComment(comment, originalMoves, variationMoves) {
 
 async function saveCommentToDB(commentData) {
     try {
+        console.log("saveCommentToDB 接收到的 commentData:", commentData);
+        
         // 确保 originalMoves 和 variationMoves 是正确的格式
         const formattedCommentData = {
             ...commentData,
@@ -1340,12 +1405,15 @@ async function saveCommentToDB(commentData) {
             }))
         };
 
+        console.log("saveCommentToDB 格式化后的 formattedCommentData:", formattedCommentData);
+        console.log("formattedCommentData 中的 postId:", formattedCommentData.postId);
+
         const response = await fetch(`${CONFIG.API_BASE_URL}/comments`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify(commentData),
+        body: JSON.stringify(formattedCommentData),
         });
     
         console.log("saveCommentToDB(), response is:", response);

@@ -1260,7 +1260,7 @@ function submitCommentAndVariation(e) {
         variation: variationData
     };
 
-    fetch(`${CONFIG.API_BASE_URL}/comments/${postId}`, {
+    fetch(`${CONFIG.API_BASE_URL}/comments`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
@@ -1374,7 +1374,7 @@ async function saveCommentToDB(commentData) {
             }))
         };
 
-        const response = await fetch(`${CONFIG.API_BASE_URL}/comments/${commentData.postId}`, {
+        const response = await fetch(`${CONFIG.API_BASE_URL}/comments`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',

@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Post10.html</title>
+    <title>Post11.html</title>
     <link rel="stylesheet" href="css/GoBoard4C.css" />
     <link rel="stylesheet" href="css/Styles5.css" />
     <!--<link rel="stylesheet" href="css/all.min.css" /> Copy 过来不work-->
@@ -178,7 +178,7 @@
 
     <script src="js/config.js"></script>
     <script src="js/navbar.js"></script>
-    <script src="js/GoBoard11.js"></script>
+    <script src="js/GoBoard12.js"></script>
     <script>
       const maxWinSize = 3000;
       const minWinSize = 300;
@@ -243,52 +243,40 @@
       }
 
       function updateStoneSizeCSS() {
-        //const { stoneSize } = calculateBoardSize();
-        //let { CSSstoneSize } = calculateBoardSize();
-        let CSSstoneSize = cellSize * 0.8;
-        // const stoneSizeWithUnit = `${stoneSize}px`;
-        //const ttt = stoneDimension / 2;
-        //console.log("updateStoneSizeCSS/stoneSize is:", stoneSizeWithUnit);
-        //console.log("计算好的 fontSize 是：", `${stoneSize}px`);
-        document.documentElement.style.setProperty(
-          "--stone-size",
-          `${CSSstoneSize / 3}px`
-        );
-        document.documentElement.style.setProperty(
-          "--cell-size",
-          `${cellSize}px`
-        );
-        //console.log("--stone-size应该是：", CSSstoneSize / 3);
-        //console.log("Textarea width应该是：", cellSize * 20);
+        function updateStoneSizeCSS() {
+          document.documentElement.style.setProperty(
+            "--stone-size",
+            `${cellSize}px`  // 直接使用cellSize
+          );
+          document.documentElement.style.setProperty(
+            "--cell-size",
+            `${cellSize}px`
+          );
 
-        document.documentElement.style.setProperty(
-          "--font-size",
-          `${CSSstoneSize / 2.4}px`
-        );
-        //console.log("--font-size 应该是", CSSstoneSize / 2);
+          document.documentElement.style.setProperty(
+            "--font-size",
+            `${cellSize * 0.4}px`  // 调整字体大小比例
+          );
+        }
 
-        //console.log("stoneCSS is updated.");
-      }
+        function updateSmbdStoneSizeCSS() {  // 修正函数名
+          let smallCellSize = cellSize / 1.5;  // 小棋盘的cellSize
+          document.documentElement.style.setProperty(
+            "--small-stone-size",
+            `${smallCellSize}px`  // 直接使用小棋盘的cellSize
+          );
 
-      function udpateSmbdStoneSizeCSS() {
-        let CSSSmbdStoneSize = cellSize / 1.7;
-        document.documentElement.style.setProperty(
-          "--small-stone-size",
-          `${CSSSmbdStoneSize / 3}px`
-        );
-        //console.log("--small-stone-size", CSSSmbdStoneSize / 3);
-
-        document.documentElement.style.setProperty(
-          "--small-font-size",
-          `${CSSSmbdStoneSize / 4}px`
-        );
-        //console.log("--small-font-size 应该是：", CSSSmbdStoneSize / 4);
+          document.documentElement.style.setProperty(
+            "--small-font-size",
+            `${smallCellSize * 0.3}px`  // 调整小棋盘字体大小
+          );
+        }
       }
 
       // window.globalBoardSize = calculateBoardSize(); //好像是没用了，注释掉2024/7/27
       let { cellSize, stoneSize } = calculateBoardSize();
       updateStoneSizeCSS();
-      udpateSmbdStoneSizeCSS();
+      //updateSmbdStoneSizeCSS();  // 修正函数名调用  2025.8.2 造成error, 暂时不用
       //console.log("stoneCSS should be updated.");
     </script>
     
@@ -386,7 +374,7 @@
       function fetchComments(postId) {
         //fetch(`/api/comments/${postId}`)
         console.log("fetchComments called with postId:", postId);
-        fetch(`${CONFIG.API_BASE_URL}/comments/${postId}`)
+        fetch(`${CONFIG.API_BASE_URL}/comments?postId=${postId}`)
           .then((response) => response.json())
           .then((comments) => {
             const commentsList = document.getElementById("comments-list");
@@ -409,17 +397,43 @@
       }
 
       function loadPost(postId) {
-        //console.log("loadPost, 现在load:", postId);
-        fetch(`${CONFIG.API_BASE_URL}/forum/post/${postId}`)
+        console.log("loadPost 开始，postId:", postId);
+        console.log("请求 URL:", `${CONFIG.API_BASE_URL}/forum/Posts/${postId}`);
+        
+        fetch(`${CONFIG.API_BASE_URL}/forum/Posts/${postId}`)  // 改回 Posts
           .then((response) => {
+            console.log("Response status:", response.status);
             if (!response.ok) {
-              throw new Error("HTTP error! status: ${response.status}");
+              throw new Error(`HTTP error! status: ${response.status}`);
             }
             return response.json();
           })
-          .then((post) => {
-            //console.log("Received post data:", post);
-            // ... 其余代码保持不变
+          .then((data) => {
+            console.log("=== 完整的返回数据 ===");
+            console.log(JSON.stringify(data, null, 2));
+            
+            // 正确解析嵌套的数据结构
+            let post;
+            if (data.success && data.data && data.data.post) {
+              post = data.data.post;
+              console.log("从 data.data.post 获取帖子数据");
+            } else if (data.data) {
+              post = data.data;
+              console.log("从 data 获取帖子数据");
+            } else {
+              post = data;
+              console.log("直接使用返回数据作为帖子数据");
+            }
+            
+            console.log("=== 最终使用的 post 对象 ===");
+            console.log(JSON.stringify(post, null, 2));
+            console.log("post 对象的所有键:", Object.keys(post));
+            
+            console.log("=== sgfContent 详细信息 ===");
+            console.log("post.sgfContent:", post.sgfContent);
+            console.log("sgfContent 类型:", typeof post.sgfContent);
+            console.log("sgfContent 长度:", post.sgfContent ? post.sgfContent.length : 'undefined');
+            
             const postContentElement = document.getElementById("post-content");
 
             if (postContentElement) {
@@ -437,134 +451,134 @@
               contentParagraph.textContent = post.content;
               postContentElement.appendChild(contentParagraph);
 
-              //console.log("Post title and content set successfully");
+              console.log("Post title and content set successfully");
             } else {
               console.error("Element with id 'post-content' not found");
             }
 
-            //if (post.sgfContent) {
-            if (globalParsedMoves) {
-              //console.log("调用parseSGF2在 line 426 被停掉了。");
-              //const parsedMoves = parseSGF2(post.sgfContent);
-              //globalParsedMoves = parseSGF2(post.sgfContent);
-              // Populate game info  //但是下面这句里的 parseSGF 加不上去
-              //console.log("黑棋选手应该是：", globalParsedMoves.gameInfo.blackPlayer);
-              document.getElementById('black-player').textContent = globalParsedMoves.gameInfo.blackPlayer; 
-              document.getElementById('white-player').textContent = globalParsedMoves.gameInfo.whitePlayer; 
-              document.getElementById('black-rank').textContent = globalParsedMoves.gameInfo.blackRank; 
-              console.log("界面应该得到黑棋段位：", globalParsedMoves.gameInfo.blackRank);
-              document.getElementById('white-rank').textContent = globalParsedMoves.gameInfo.whiteRank; 
-              document.getElementById('game-date').textContent = globalParsedMoves.gameInfo.date; 
-              document.getElementById('game-komi').textContent = globalParsedMoves.gameInfo.komi; 
-              document.getElementById('time-control').textContent = globalParsedMoves.gameInfo.timeControl; 
-              document.getElementById('game-rules').textContent = globalParsedMoves.gameInfo.rules; 
-              document.getElementById('game-result').textContent = globalParsedMoves.gameInfo.result; 
-              document.getElementById('board-size').textContent = globalParsedMoves.gameInfo.boardSize; 
+            // 无论是否有 SGF 内容，都先创建棋盘
+            console.log("创建棋盘，cellSize:", cellSize);
+            createBoard3({
+              domElement: mainBoard,
+              boardSize: 19,
+              cellSize: cellSize,
+            });
+            console.log("棋盘创建完成");
 
-              //JustMoves = parsedMoves.moves;
-              JustMoves = globalParsedMoves.moves;
-              //console.log("JustMoves:", JustMoves);
-              renderMoves(JustMoves);
+            // SGF 内容检查和处理
+            console.log("=== SGF 内容检查开始 ===");
+            if (post.sgfContent && post.sgfContent.trim() !== '') {
+              console.log("找到 SGF 内容，开始解析");
+              console.log("SGF 内容前100个字符:", post.sgfContent.substring(0, 100));
+              
+              try {
+                globalParsedMoves = parseSGF(post.sgfContent);
+                console.log("解析后的 globalParsedMoves:", globalParsedMoves);
+                
+                // 更新棋局信息显示
+                if (globalParsedMoves && globalParsedMoves.gameInfo) {
+                  updateGameInfoDisplay(globalParsedMoves.gameInfo);
+                }
+                
+                // 渲染棋谱
+                if (globalParsedMoves && globalParsedMoves.moves && globalParsedMoves.moves.length > 0) {
+                  console.log("开始渲染棋谱，步数:", globalParsedMoves.moves.length);
+                  renderMoves(globalParsedMoves.moves);
+                  console.log("棋谱渲染完成");
+                } else {
+                  console.warn("没有有效的棋谱步数");
+                  console.log("globalParsedMoves 详情:", globalParsedMoves);
+                }
+              } catch (error) {
+                console.error("解析 SGF 时出错:", error);
+              }
+            } else {
+              console.warn("没有 SGF 内容或 SGF 内容为空");
+              console.log("post.sgfContent 值:", post.sgfContent);
             }
+            console.log("=== SGF 内容检查结束 ===");
+
+      // 添加更新棋局信息显示的函数
+      function updateGameInfoDisplay(gameInfo) {
+        console.log("更新棋局信息显示:", gameInfo);
+        
+        // 更新各个信息字段
+        const blackPlayerElement = document.getElementById("black-player");
+        const blackRankElement = document.getElementById("black-rank");
+        const whitePlayerElement = document.getElementById("white-player");
+        const whiteRankElement = document.getElementById("white-rank");
+        const gameDateElement = document.getElementById("game-date");
+        const gameResultElement = document.getElementById("game-result");
+        const gameKomiElement = document.getElementById("game-komi");
+        const boardSizeElement = document.getElementById("board-size");
+        const timeControlElement = document.getElementById("time-control");
+        const gameRulesElement = document.getElementById("game-rules");
+
+        if (blackPlayerElement) blackPlayerElement.textContent = gameInfo.blackPlayer || "未知";
+        if (blackRankElement) blackRankElement.textContent = gameInfo.blackRank || "未知";
+        if (whitePlayerElement) whitePlayerElement.textContent = gameInfo.whitePlayer || "未知";
+        if (whiteRankElement) whiteRankElement.textContent = gameInfo.whiteRank || "未知";
+        if (gameDateElement) gameDateElement.textContent = gameInfo.date || "未知";
+        if (gameResultElement) gameResultElement.textContent = gameInfo.result || "未知";
+        if (gameKomiElement) gameKomiElement.textContent = gameInfo.komi || "未知";
+        if (boardSizeElement) boardSizeElement.textContent = gameInfo.boardSize || "19";
+        if (timeControlElement) timeControlElement.textContent = gameInfo.timeControl || "未知";
+        if (gameRulesElement) gameRulesElement.textContent = gameInfo.rules || "未知";
+
+        console.log("棋局信息显示更新完成");
+      }
           })
           .catch((error) => {
             console.error("Error fetching post:", error);
+            console.error("Error details:", error.message);
           });
-        //cellSize = cellSize;
+        
         loadComments(postId);
       }
 
+      // 在 Post11.html 的 script 标签中，需要将 postId 设置为全局变量
       document.addEventListener("DOMContentLoaded", function () {
-        console.log("DOMContentLoaded event fired");
-        console.log("Full URL:", window.location.href);
-        console.log("Search part of URL:", window.location.search);
-        
-        const urlParams = new URLSearchParams(window.location.search);
-
-        console.log("URL search params:", urlParams.toString());
-        //let queryString = window.location.search;
-        //console.log("queryString:", queryString);
-        postId = urlParams.get("id");
-        globalPostId = postId;
-        console.log("urlParams:", urlParams);
-        //console.log("Post ID from URL:", postId);
-        //publishVariation();
-
-        if (globalPostId) {
-          console.log("postId is not globalPostId:", globalPostId);
-          //fetch(`/api/post/${postId}`)
-          fetch(`${CONFIG.API_BASE_URL}/forum/post/${globalPostId}`)
-            .then((response) => {
-              if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-              }
-              return response.json();
-            })
-            .then((post) => {
-              console.log("right before loadPost, globalPostId is:", globalPostId);
-              loadPost(globalPostId);
-              //下面几行load了post内容。改用lostPost函数 2024/7/25
-              //document.getElementById("post-title").textContent = post.title;
-              //document.getElementById(
-              //  "post-content"
-              //).innerHTML += `<p>${post.content}</p>`;
-              //console.log("post.sgfContent is:", post.sgfContent);
-
-              if (post.sgfContent) {
-                //console.log("调用parseSGF在 line 523");
-                //const parsedMoves = parseSGF2(post.sgfContent);
-                globalParsedMoves= parseSGF(post.sgfContent);
-                console.log("globalParsedMoves is:", globalParsedMoves);
-                //createBoard();
-                //下面这个createBoard3重复了，但保留这个;
-                createBoard3({
-                  domElement: mainBoard,
-                  boardSize: 19,
-                  cellSize: cellSize,
-                });
-                console.log("创建了Post里的棋盘，cellSize is:", cellSize);
-                renderMoves(globalParsedMoves);
-
-                // 添加控制按钮的功能
-                document
-                  .getElementById("startBtn")
-                  .addEventListener("click", moveToStart);
-                document
-                  .getElementById("endBtn")
-                  .addEventListener("click", moveToEnd);
-                document
-                  .getElementById("backwardBtn")
-                  .addEventListener("click", moveBackward);
-                document
-                  .getElementById("forwardBtn")
-                  .addEventListener("click", moveForward);
-                document
-                  .getElementById("fastBackwardBtn")
-                  .addEventListener("click", fastBackward);
-                document
-                  .getElementById("fastForwardBtn")
-                  .addEventListener("click", fastForward);
-                //好像这个listener还不能这么早加载，因为no postId provided..
-                //     document
-                //     .getElementById("publishVariationBtn")
-                //     .addEventListener("click", publishVariation);
-              }
-            })
-            .catch((error) => {
-              console.error("Error fetching post:", error);
-            });
-        } else {
-          console.error("No post ID provided in the UR, 不一定是这个原因，就是有error");
-        }
-        //setTimeout(logMoveNumberFontSize, 100);
-      });  //这个是发布变化图submit 的函数，没有正确工作。如果把整个函数全comment掉，则刚打开post的时候棋盘显示不出来。？8/12/2024
+          console.log("DOMContentLoaded event fired");
+          console.log("Full URL:", window.location.href);
+          console.log("Search part of URL:", window.location.search);
+          
+          const urlParams = new URLSearchParams(window.location.search);
+      
+          console.log("URL search params:", urlParams.toString());
+          postId = urlParams.get("id");
+          globalPostId = postId;
+          
+          // 🔥 将 postId 设置为全局变量，让 GoBoard12.js 可以访问
+          window.globalPostId = globalPostId;
+          window.postId = postId;
+          
+          console.log("urlParams:", urlParams);
+          console.log("Post ID from URL:", globalPostId);
+      
+          if (globalPostId) {
+            console.log("开始加载帖子，globalPostId:", globalPostId);
+            // 直接调用 loadPost 函数，不要重复 fetch
+            loadPost(globalPostId);
+            console.log("现在调用了555行的，loadpost(globalPostId)函数")
+            
+            // 添加控制按钮的功能
+            document.getElementById("startBtn").addEventListener("click", moveToStart);
+            document.getElementById("endBtn").addEventListener("click", moveToEnd);
+            document.getElementById("backwardBtn").addEventListener("click", moveBackward);
+            document.getElementById("forwardBtn").addEventListener("click", moveForward);
+            document.getElementById("fastBackwardBtn").addEventListener("click", fastBackward);
+            document.getElementById("fastForwardBtn").addEventListener("click", fastForward);
+          } else {
+            console.error("No post ID provided in the URL");
+          }
+      });
 
       async function loadComments(globalPostId) {
         console.log("调用loadComments函数，postId:", postId);
         try {
           console.log(`Fetching comments for post: ${postId}`);
           //const response = await fetch(`/forum/comments/${postId}`);
-          const response = await fetch(`${CONFIG.API_BASE_URL}/comments/${globalPostId}`);
+          const response = await fetch(`${CONFIG.API_BASE_URL}/comments?postId=${globalPostId}`);
           if (!response.ok) {
             console.error(`Error: ${response.status} - ${response.statusText}`);
             const text = await response.text();
@@ -614,6 +628,8 @@
       if (logostudyBtn) {
         logostudyBtn.addEventListener("click", function () {
           toggleStudyMode2("studyIndicator");
+          //toggleStudyMode();
+          console.log("调用了toggleStudyMode2()")
         });
       }
 
@@ -699,14 +715,15 @@
 
         // 准备要发送到后端的数据
         const commentData = {
-          postId: currentPostId, // 确保你有当前帖子的ID
+          //postId: currentPostId, // 确保你有当前帖子的ID
+          postId: globalPostId,
           content: comment,
           originalMoves: originalMoves.map((move) => `${move.x},${move.y}`),
           variationMoves: variationMoves.map((move) => `${move.x},${move.y}`),
         };
 
         // 发送评论数据到后端
-        fetch(`${CONFIG.API_BASE_URL}/comments/${postId}`, {
+        fetch(`${CONFIG.API_BASE_URL}/comments`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -745,6 +762,121 @@
         );
         console.log("Current classes:", indicator.className);
       }
+
+      function createBoard3(options) {
+        let {
+            domElement,
+            boardSize = 19,
+            cellSize,
+            lineColor = '#000',
+            backgroundColor = '#DEB887'
+        } = options;
+
+        domElement.innerHTML = '';
+        console.log('Creating board on element', domElement);
+        domElement.style.width = `${boardSize * cellSize}px`;
+        domElement.style.height = `${boardSize * cellSize}px`;
+        domElement.style.position = 'relative';
+        domElement.style.backgroundColor = backgroundColor;
+
+        // 绘制棋盘线
+        for (let i = 0; i < boardSize; i++) {
+            // 垂直线
+            const vertical = document.createElement('div');
+            vertical.style.position = 'absolute';
+            vertical.style.left = `${cellSize/2 + i * cellSize}px`;
+            vertical.style.top = `${cellSize/2}px`;
+            vertical.style.width = '1px';
+            vertical.style.height = `${(boardSize - 1) * cellSize}px`;
+            vertical.style.backgroundColor = lineColor;
+            vertical.style.zIndex = '1';
+            domElement.appendChild(vertical);
+
+            // 水平线
+            const horizontal = document.createElement('div');
+            horizontal.style.position = 'absolute';
+            horizontal.style.left = `${cellSize/2}px`;
+            horizontal.style.top = `${cellSize/2 + i * cellSize}px`;
+            horizontal.style.width = `${(boardSize - 1) * cellSize}px`;
+            horizontal.style.height = '1px';
+            horizontal.style.backgroundColor = lineColor;
+            horizontal.style.zIndex = '1';
+            domElement.appendChild(horizontal);
+        }
+
+        // 创建交叉点
+        for (let i = 0; i < boardSize; i++) {
+            for (let j = 0; j < boardSize; j++) {
+                const intersection = document.createElement('div');
+                intersection.className = 'intersection';
+                intersection.dataset.row = i;
+                intersection.dataset.col = j;
+                intersection.style.position = 'absolute';
+                intersection.style.left = `${j * cellSize}px`;
+                intersection.style.top = `${i * cellSize}px`;
+                intersection.style.width = `${cellSize}px`;
+                intersection.style.height = `${cellSize}px`;
+                intersection.style.zIndex = '2';
+                intersection.addEventListener('click', (e) => handleClick(e));
+
+                domElement.appendChild(intersection);
+            }
+        }
+
+        // 添加星位
+        const starPoints = [
+            [3, 3], [3, 9], [3, 15],
+            [9, 3], [9, 9], [9, 15],
+            [15, 3], [15, 9], [15, 15]
+        ];
+
+        starPoints.forEach(([row, col]) => {
+            const intersection = domElement.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+            if (intersection) {
+                const starPoint = document.createElement('div');
+                starPoint.style.position = 'absolute';
+                starPoint.style.top = '50%';
+                starPoint.style.left = '50%';
+                starPoint.style.transform = 'translate(-50%, -50%)';
+                starPoint.style.width = `${cellSize * 0.2}px`;
+                starPoint.style.height = `${cellSize * 0.2}px`;
+                starPoint.style.backgroundColor = lineColor;
+                starPoint.style.borderRadius = '50%';
+                starPoint.style.zIndex = '3';
+                intersection.appendChild(starPoint);
+            }
+        });
+
+        console.log('Board creation completed');
+      }
+
+function handleClick(event) {
+  try {
+    const row = parseInt(event.target.dataset.row, 10);
+    const col = parseInt(event.target.dataset.col, 10);
+
+    // 检查是否点击了有效的交叉点
+    if (isNaN(row) || isNaN(col)) {
+      console.log("Invalid intersection clicked");
+      return;
+    }
+
+    console.log("handleClick called, isStudyMode:", isStudyMode); 
+    console.log(`Clicked on intersection: (${row}, ${col})`);
+    
+    // 🔥 添加研究模式处理
+    if (isStudyMode) {
+      handleStudyClick(row, col);
+      return;
+    }
+    
+    // 非研究模式下不响应点击（如你所说，查看模式不需要下棋功能）
+    
+  } catch (error) {
+    console.error("Error in handleClick:", error.message);
+  }
+}
+
     </script>
 
     <!--  增加落子音效 -->
