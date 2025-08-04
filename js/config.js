@@ -33,24 +33,30 @@ function getConfig() {
     
     const configs = {
         local: {
-            API_BASE_URL: "http://localhost:3000/api", // 本地需要 /api
-            API_VERCEL_NEXTJS_BASE_URL: "http://localhost:3000", // 本地不需要重复 /api
+            API_BASE_URL: "http://localhost:3000/api",
+            API_VERCEL_NEXTJS_BASE_URL: "http://localhost:3000",
             GITHUB_PAGE_FORUM_URL: "http://localhost:8090/Forum11.html",
-            FORUM_POST_ENDPOINT: "/forum/Posts",  // 改回 Posts
+            FORUM_POST_ENDPOINT: "/forum/Posts",
+            KATAGO_BASE_URL: "http://192.168.0.249:8080",
+            KATAGO_BOT_NAME: "katago_gtp_bot",
             ENV: "local"
         },
         github: {
-            API_BASE_URL: "https://blackricegobackend2-nextjs.vercel.app/api", // 生产环境也需要 /api
+            API_BASE_URL: "https://blackricegobackend2-nextjs.vercel.app/api",
             API_VERCEL_NEXTJS_BASE_URL: "https://blackricegobackend2-nextjs.vercel.app",
             GITHUB_PAGE_FORUM_URL: "https://zgbl.github.io/tigergo/Forum11.html",
-            FORUM_POST_ENDPOINT: "/forum/Posts",  // 改回 Posts
+            FORUM_POST_ENDPOINT: "/forum/Posts",
+            KATAGO_BASE_URL: "http://192.168.0.249:8080",
+            KATAGO_BOT_NAME: "katago_gtp_bot",
             ENV: "github"
         },
         production: {
-            API_BASE_URL: "https://blackricegobackend2-nextjs.vercel.app/api", // 生产环境也需要 /api
+            API_BASE_URL: "https://blackricegobackend2-nextjs.vercel.app/api",
             API_VERCEL_NEXTJS_BASE_URL: "https://blackricegobackend2-nextjs.vercel.app",
             GITHUB_PAGE_FORUM_URL: "https://zgbl.github.io/tigergo/Forum11.html",
-            FORUM_POST_ENDPOINT: "/forum/Posts",  // 改回 Posts
+            FORUM_POST_ENDPOINT: "/forum/Posts",
+            KATAGO_BASE_URL: "http://192.168.0.249:8080",
+            KATAGO_BOT_NAME: "katago_gtp_bot",
             ENV: "production"
         }
     };
@@ -68,6 +74,7 @@ const CONFIG = getConfig();
 console.log(`🌍 最终配置:`);
 console.log(`  - 当前环境: ${CONFIG.ENV}`);
 console.log(`  - API地址: ${CONFIG.API_BASE_URL}`);
+console.log(`  - KataGo地址: ${CONFIG.KATAGO_BASE_URL}`);
 console.log(`  - 当前域名: ${window.location.hostname}:${window.location.port}`);
 
 // 验证配置

@@ -49,7 +49,7 @@ function loadNavbar() {
     const links = {
         home: `${baseUrl}/index.html`,
         play: `${baseUrl}/WeiqiPlay10.html`,
-        gameRecord: `${baseUrl}/GameRecord4.html`,
+        sgfAnalysis: `${baseUrl}/SGFAnalysis.html`,  // 更新为棋谱分析页面
         tournament: `${baseUrl}/Tournament2.html`,
         news: `${baseUrl}/News.html`,
         forum: `${baseUrl}/Forum11.html`,
@@ -68,8 +68,8 @@ function loadNavbar() {
           <a href="${links.play}">
             <img src="${baseUrl}/images/Play.png" class="icon" alt="对弈" /> 对弈
           </a>
-          <a href="${links.gameRecord}">
-            <img src="${baseUrl}/images/GameRecords.png" class="icon" alt="棋谱" /> 棋谱
+          <a href="${links.sgfAnalysis}">
+            <img src="${baseUrl}/images/GameRecords.png" class="icon" alt="棋谱分析" /> 棋谱分析
           </a>
           <a href="${links.tournament}">
             <img src="${baseUrl}/images/Match.png" class="icon" alt="比赛" /> 比赛
