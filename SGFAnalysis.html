@@ -1,185 +1,212 @@
 <!DOCTYPE html>
 <html lang="zh">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>棋谱分析 - 黑米围棋</title>
-    <link rel="stylesheet" href="css/GoBoard4C.css">
-    <link rel="stylesheet" href="css/Styles5.css">
-    <link rel="stylesheet" href="css/SGFAnalysis.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <link rel="icon" href="https://zgbl.github.io/tigergo/favicon.ico" type="image/x-icon">
-</head>
-<body>
+    <link rel="stylesheet" href="css/GoBoard4C.css" />
+    <link rel="stylesheet" href="css/Styles5.css" />
+    <link rel="stylesheet" href="css/SGFAnalysis.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+    />
+    <link
+      rel="icon"
+      href="https://zgbl.github.io/tigergo/favicon.ico"
+      type="image/x-icon"
+    />
+  </head>
+  <body>
     <div id="navbar-placeholder"></div>
 
     <div class="analysis-container">
-        <div class="main-content">
-            <div class="page-header">
-                <h1 class="page-title">
-                    <i class="fas fa-brain"></i>
-                    棋谱分析
-                </h1>
-                <p class="page-subtitle">使用 KataGo AI 引擎深度分析您的棋谱</p>
-            </div>
-
-            <div class="upload-section">
-                <h2 class="upload-title">
-                    <i class="fas fa-upload"></i>
-                    上传棋谱文件
-                </h2>
-                <div class="upload-area" id="uploadArea">
-                    <div class="upload-icon">
-                        <i class="fas fa-cloud-upload-alt"></i>
-                    </div>
-                    <div class="upload-text">拖拽 SGF 文件到此处</div>
-                    <div class="upload-hint">或点击选择文件</div>
-                </div>
-                <input type="file" id="fileInput" class="file-input" accept=".sgf" />
-                
-                <div class="upload-buttons">
-                    <button class="upload-btn" id="selectFileBtn">
-                        <i class="fas fa-folder-open"></i>
-                        选择文件
-                    </button>
-                    <button class="analyze-file-btn" id="analyzeFileBtn" disabled>
-                        <i class="fas fa-play-circle"></i>
-                        开始分析
-                    </button>
-                </div>
-                
-                <div class="file-info" id="fileInfo">
-                    <div class="file-name" id="fileName"></div>
-                    <div class="file-details" id="fileDetails"></div>
-                </div>
-            </div>
-
-            <div class="board-container">
-                <div class="board-placeholder" id="boardPlaceholder">
-                    <i class="fas fa-chess-board"></i>
-                    上传 SGF 文件后，棋盘将在此显示
-                </div>
-                <div class="analysis-controls">
-                    <button class="control-btn" id="startBtn" disabled>
-                        <i class="fas fa-fast-backward"></i>
-                        开始
-                    </button>
-                    <button class="control-btn" id="prevBtn" disabled>
-                        <i class="fas fa-step-backward"></i>
-                        上一步
-                    </button>
-                    <button class="control-btn" id="nextBtn" disabled>
-                        <i class="fas fa-step-forward"></i>
-                        下一步
-                    </button>
-                    <button class="control-btn" id="endBtn" disabled>
-                        <i class="fas fa-fast-forward"></i>
-                        结束
-                    </button>
-                    <button class="control-btn" id="autoPlayBtn" disabled>
-                        <i class="fas fa-play"></i>
-                        自动播放
-                    </button>
-                </div>
-            </div>
+      <div class="main-content">
+        <div class="page-header">
+          <h1 class="page-title">
+            <i class="fas fa-brain"></i>
+            棋谱分析
+          </h1>
+          <p class="page-subtitle">使用 KataGo AI 引擎深度分析您的棋谱</p>
         </div>
 
-        <div class="sidebar">
-            <div class="analysis-panel">
-                <h3 class="panel-title">
-                    <i class="fas fa-wifi"></i>
-                    连接状态
-                </h3>
-                <div id="connectionStatus" class="connection-status connecting">
-                    <i class="fas fa-spinner fa-spin"></i> 正在连接 KataGo 服务...
-                </div>
+        <div class="upload-section">
+          <h2 class="upload-title">
+            <i class="fas fa-upload"></i>
+            上传棋谱文件
+          </h2>
+          <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">
+              <i class="fas fa-cloud-upload-alt"></i>
             </div>
+            <div class="upload-text">拖拽 SGF 文件到此处</div>
+            <div class="upload-hint">或点击选择文件</div>
+          </div>
+          <input type="file" id="fileInput" class="file-input" accept=".sgf" />
 
-            <div class="analysis-panel">
-                <h3 class="panel-title">
-                    <i class="fas fa-cogs"></i>
-                    分析设置
-                </h3>
-                <div class="settings-panel">
-                    <div class="setting-group">
-                        <label class="setting-label">分析深度</label>
-                        <select class="setting-select" id="analysisDepth">
-                            <option value="fast">快速分析 (3秒/步)</option>
-                            <option value="normal" selected>标准分析 (5秒/步)</option>
-                            <option value="deep">深度分析 (8秒/步)</option>
-                            <option value="ultra">超深度分析 (12秒/步)</option>
-                        </select>
-                    </div>
-                    <div class="setting-group">
-                        <label class="setting-label">分析范围</label>
-                        <select class="setting-select" id="analysisRange">
-                            <option value="all" selected>全局分析</option>
-                            <option value="opening">开局分析 (前50步)</option>
-                            <option value="middle">中盘分析 (51-150步)</option>
-                            <option value="endgame">官子分析 (151步后)</option>
-                            <option value="custom">自定义范围</option>
-                        </select>
-                    </div>
-                    <div class="setting-group" id="customRangeGroup" style="display: none;">
-                        <label class="setting-label">起始步数</label>
-                        <input type="number" class="setting-input" id="startMove" min="1" value="1">
-                        <label class="setting-label" style="margin-top: 10px;">结束步数</label>
-                        <input type="number" class="setting-input" id="endMove" min="1" value="100">
-                    </div>
-                </div>
-            </div>
+          <div class="upload-buttons">
+            <button class="upload-btn" id="selectFileBtn">
+              <i class="fas fa-folder-open"></i>
+              选择文件
+            </button>
+            <button class="analyze-file-btn" id="analyzeFileBtn" disabled>
+              <i class="fas fa-play-circle"></i>
+              开始分析
+            </button>
+          </div>
 
-            <div class="analysis-panel">
-                <h3 class="panel-title">
-                    <i class="fas fa-chart-line"></i>
-                    分析状态
-                </h3>
-                <div class="analysis-status">
-                    <div class="status-item">
-                        <span class="status-label">当前状态</span>
-                        <span class="status-value" id="analysisStatus">等待上传</span>
-                    </div>
-                    <div class="status-item">
-                        <span class="status-label">分析进度</span>
-                        <span class="status-value" id="analysisProgress">0%</span>
-                    </div>
-                    <div class="status-item">
-                        <span class="status-label">当前步数</span>
-                        <span class="status-value" id="currentMove">0 / 0</span>
-                    </div>
-                    <div class="status-item">
-                        <span class="status-label">预计时间</span>
-                        <span class="status-value" id="estimatedTime">--</span>
-                    </div>
-                    <div class="progress-bar">
-                        <div class="progress-fill" id="progressFill"></div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="analysis-panel">
-                <h3 class="panel-title">
-                    <i class="fas fa-lightbulb"></i>
-                    分析结果
-                </h3>
-                <div class="analysis-results" id="analysisResults">
-                    <div style="text-align: center; color: #6c757d; padding: 20px;">
-                        <i class="fas fa-info-circle"></i>
-                        <p>开始分析后，结果将在此显示</p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="analysis-panel">
-                <h3 class="panel-title">
-                    <i class="fas fa-terminal"></i>
-                    分析日志
-                </h3>
-                <div class="analysis-log" id="analysisLog">
-                    <div class="log-entry info">等待开始分析...</div>
-                </div>
-            </div>
+          <div class="file-info" id="fileInfo">
+            <div class="file-name" id="fileName"></div>
+            <div class="file-details" id="fileDetails"></div>
+          </div>
         </div>
+
+        <div class="content-grid">
+          <div class="board-container">
+            <div class="board-placeholder" id="boardPlaceholder">
+              <i class="fas fa-chess-board"></i>
+              上传 SGF 文件后，棋盘将在此显示
+            </div>
+            <div class="analysis-controls">
+              <button class="control-btn" id="startBtn" disabled>
+                <i class="fas fa-fast-backward"></i>
+                开始
+              </button>
+              <button class="control-btn" id="prevBtn" disabled>
+                <i class="fas fa-step-backward"></i>
+                上一步
+              </button>
+              <button class="control-btn" id="nextBtn" disabled>
+                <i class="fas fa-step-forward"></i>
+                下一步
+              </button>
+              <button class="control-btn" id="endBtn" disabled>
+                <i class="fas fa-fast-forward"></i>
+                结束
+              </button>
+              <button class="control-btn" id="autoPlayBtn" disabled>
+                <i class="fas fa-play"></i>
+                自动播放
+              </button>
+            </div>
+          </div>
+
+          <div class="analysis-results-section">
+            <h3 class="section-title">
+              <i class="fas fa-lightbulb"></i>
+              分析结果
+            </h3>
+            <div class="analysis-results" id="analysisResults">
+              <div style="text-align: center; color: #6c757d; padding: 20px">
+                <i class="fas fa-info-circle"></i>
+                <p>开始分析后，结果将在此显示</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sidebar">
+        <div class="analysis-panel">
+          <h3 class="panel-title">
+            <i class="fas fa-wifi"></i>
+            连接状态
+          </h3>
+          <div id="connectionStatus" class="connection-status connecting">
+            <i class="fas fa-spinner fa-spin"></i> 正在连接 KataGo 服务...
+          </div>
+        </div>
+
+        <div class="analysis-panel">
+          <h3 class="panel-title">
+            <i class="fas fa-cogs"></i>
+            分析设置
+          </h3>
+          <div class="settings-panel">
+            <div class="setting-group">
+              <label class="setting-label">分析深度</label>
+              <select class="setting-select" id="analysisDepth">
+                <option value="fast">快速分析 (3秒/步)</option>
+                <option value="normal" selected>标准分析 (5秒/步)</option>
+                <option value="deep">深度分析 (8秒/步)</option>
+                <option value="ultra">超深度分析 (12秒/步)</option>
+              </select>
+            </div>
+            <div class="setting-group">
+              <label class="setting-label">分析范围</label>
+              <select class="setting-select" id="analysisRange">
+                <option value="all" selected>全局分析</option>
+                <option value="opening">开局分析 (前50步)</option>
+                <option value="middle">中盘分析 (51-150步)</option>
+                <option value="endgame">官子分析 (151步后)</option>
+                <option value="custom">自定义范围</option>
+              </select>
+            </div>
+            <div
+              class="setting-group"
+              id="customRangeGroup"
+              style="display: none"
+            >
+              <label class="setting-label">起始步数</label>
+              <input
+                type="number"
+                class="setting-input"
+                id="startMove"
+                min="1"
+                value="1"
+              />
+              <label class="setting-label" style="margin-top: 10px"
+                >结束步数</label
+              >
+              <input
+                type="number"
+                class="setting-input"
+                id="endMove"
+                min="1"
+                value="100"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div class="analysis-panel">
+          <h3 class="panel-title">
+            <i class="fas fa-chart-line"></i>
+            分析状态
+          </h3>
+          <div class="analysis-status">
+            <div class="status-item">
+              <span class="status-label">当前状态</span>
+              <span class="status-value" id="analysisStatus">等待上传</span>
+            </div>
+            <div class="status-item">
+              <span class="status-label">分析进度</span>
+              <span class="status-value" id="analysisProgress">0%</span>
+            </div>
+            <div class="status-item">
+              <span class="status-label">当前步数</span>
+              <span class="status-value" id="currentMove">0 / 0</span>
+            </div>
+            <div class="status-item">
+              <span class="status-label">预计时间</span>
+              <span class="status-value" id="estimatedTime">--</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" id="progressFill"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="analysis-panel">
+          <h3 class="panel-title">
+            <i class="fas fa-terminal"></i>
+            分析日志
+          </h3>
+          <div class="analysis-log" id="analysisLog">
+            <div class="log-entry info">等待开始分析...</div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <script src="js/config.js"></script>
@@ -187,5 +214,5 @@
     <script src="js/KataGoAPI.js"></script>
     <script src="js/navbar.js"></script>
     <script src="js/SGFAnalysis.js"></script>
-</body>
+  </body>
 </html>
