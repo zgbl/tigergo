@@ -16,11 +16,104 @@
       href="https://zgbl.github.io/tigergo/favicon.ico"
       type="image/x-icon"
     />
-  </head>
+    <style>
+      /* 🔥 新增：添加控制按钮样式（从Post11.html复制） */
+      /*
+      #controls2 {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin: 20px auto;
+        text-align: center;
+        flex-wrap: wrap;
+        gap: 5px;
+      }
+      
+      .control-btn {
+        background: linear-gradient(145deg, #f0f0f0, #d1d1d1);
+        border: 2px solid #bbb;
+        border-radius: 8px;
+        color: #333;
+        cursor: pointer;
+        font-size: 16px;
+        margin: 5px;
+        padding: 10px 15px;
+        transition: all 0.3s ease;
+        box-shadow: 3px 3px 8px rgba(0,0,0,0.2);
+      }
+
+      .control-btn:hover {
+        background: linear-gradient(145deg, #e0e0e0, #c1c1c1);
+        box-shadow: 2px 2px 6px rgba(0,0,0,0.3);
+        transform: translateY(-1px);
+      }
+
+      .control-btn:active {
+        background: linear-gradient(145deg, #d0d0d0, #b1b1b1);
+        box-shadow: 1px 1px 3px rgba(0,0,0,0.2);
+        transform: translateY(0px);
+      }
+
+      .control-btn:disabled {
+        background: #f5f5f5;
+        border-color: #ddd;
+        color: #aaa;
+        cursor: not-allowed;
+        box-shadow: none;
+        transform: none;
+      }  */
+
+      /* 移动信息显示样式 */
+      /*
+      #moveInfo {
+        text-align: center;
+        margin: 10px 0;
+        font-size: 16px;
+        font-weight: bold;
+        color: #333;
+        background: #f8f9fa;
+        padding: 8px 16px;
+        border-radius: 4px;
+        border: 1px solid #dee2e6;
+      }  */
+    </style>
   <body>
     <div id="navbar-placeholder"></div>
 
     <div class="analysis-container">
+      <!-- 左侧上传区域 -->
+      <div class="upload-section">
+        <h2 class="upload-title">
+          <i class="fas fa-upload"></i>
+          上传棋谱文件
+        </h2>
+        <div class="upload-area" id="uploadArea">
+          <div class="upload-icon">
+            <i class="fas fa-cloud-upload-alt"></i>
+          </div>
+          <div class="upload-text">拖拽 SGF 文件到此处</div>
+          <div class="upload-hint">或点击选择文件</div>
+        </div>
+        <input type="file" id="fileInput" class="file-input" accept=".sgf" />
+
+        <div class="upload-buttons">
+          <button class="upload-btn" id="selectFileBtn">
+            <i class="fas fa-folder-open"></i>
+            选择文件
+          </button>
+          <button class="analyze-file-btn" id="analyzeFileBtn" disabled>
+            <i class="fas fa-play-circle"></i>
+            开始分析
+          </button>
+        </div>
+
+        <div class="file-info" id="fileInfo">
+          <div class="file-name" id="fileName"></div>
+          <div class="file-details" id="fileDetails"></div>
+        </div>
+      </div>
+
+      <!-- 中间主内容区域 -->
       <div class="main-content">
         <div class="page-header">
           <h1 class="page-title">
@@ -30,82 +123,77 @@
           <p class="page-subtitle">使用 KataGo AI 引擎深度分析您的棋谱</p>
         </div>
 
-        <div class="upload-section">
-          <h2 class="upload-title">
-            <i class="fas fa-upload"></i>
-            上传棋谱文件
-          </h2>
-          <div class="upload-area" id="uploadArea">
-            <div class="upload-icon">
-              <i class="fas fa-cloud-upload-alt"></i>
-            </div>
-            <div class="upload-text">拖拽 SGF 文件到此处</div>
-            <div class="upload-hint">或点击选择文件</div>
+        <div class="board-container">
+          <div class="board-placeholder" id="boardPlaceholder">
+            <div id="board"></div>
           </div>
-          <input type="file" id="fileInput" class="file-input" accept=".sgf" />
-
-          <div class="upload-buttons">
-            <button class="upload-btn" id="selectFileBtn">
-              <i class="fas fa-folder-open"></i>
-              选择文件
+          <!-- 🔥 新增：添加移动信息显示 -->
+          <div id="moveInfo">当前步数：0 / 0</div>
+          
+          <!-- 🔥 修改：使用icon格式的控制按钮（参考Post11.html） -->
+          <div id="controls2">
+            <button id="logostartBtn" title="回到开始" class="control-btn">
+              <i class="fas fa-fast-backward"></i>
             </button>
-            <button class="analyze-file-btn" id="analyzeFileBtn" disabled>
-              <i class="fas fa-play-circle"></i>
-              开始分析
+            <button id="logofastBackwardBtn" title="快退" class="control-btn">
+              <i class="fas fa-step-backward"></i>
+            </button>
+            <button id="logobackwardBtn" title="后退" class="control-btn">
+              <i class="fa-solid fa-square-caret-left"></i>
+            </button>
+            <button id="logoforwardBtn" title='前进' class="control-btn">
+              <i class="fa-solid fa-square-caret-right"></i>
+            </button>
+            <button id="logofastForwardBtn" title="快进" class="control-btn">
+              <i class="fas fa-step-forward"></i>
+            </button>
+            <button id="logoendBtn" title="前进到底" class="control-btn">
+              <i class="fas fa-fast-forward"></i>
+            </button>
+            <button id="logoshowMovesBtn" title="显示步数" class="control-btn">
+              <i class="fas fa-list-ol"></i>
             </button>
           </div>
-
-          <div class="file-info" id="fileInfo">
-            <div class="file-name" id="fileName"></div>
-            <div class="file-details" id="fileDetails"></div>
+          
+          <div class="analysis-controls">
+            <button class="control-btn" id="startBtn" disabled>
+              <i class="fas fa-fast-backward"></i>
+              开始
+            </button>
+            <button class="control-btn" id="prevBtn" disabled>
+              <i class="fas fa-step-backward"></i>
+              上一步
+            </button>
+            <button class="control-btn" id="nextBtn" disabled>
+              <i class="fas fa-step-forward"></i>
+              下一步
+            </button>
+            <button class="control-btn" id="endBtn" disabled>
+              <i class="fas fa-fast-forward"></i>
+              结束
+            </button>
+            <button class="control-btn" id="autoPlayBtn" disabled>
+              <i class="fas fa-play"></i>
+              自动播放
+            </button>
           </div>
         </div>
 
-        <div class="content-grid">
-          <div class="board-container">
-            <div class="board-placeholder" id="boardPlaceholder">
-              <i class="fas fa-chess-board"></i>
-              上传 SGF 文件后，棋盘将在此显示
-            </div>
-            <div class="analysis-controls">
-              <button class="control-btn" id="startBtn" disabled>
-                <i class="fas fa-fast-backward"></i>
-                开始
-              </button>
-              <button class="control-btn" id="prevBtn" disabled>
-                <i class="fas fa-step-backward"></i>
-                上一步
-              </button>
-              <button class="control-btn" id="nextBtn" disabled>
-                <i class="fas fa-step-forward"></i>
-                下一步
-              </button>
-              <button class="control-btn" id="endBtn" disabled>
-                <i class="fas fa-fast-forward"></i>
-                结束
-              </button>
-              <button class="control-btn" id="autoPlayBtn" disabled>
-                <i class="fas fa-play"></i>
-                自动播放
-              </button>
-            </div>
-          </div>
-
-          <div class="analysis-results-section">
-            <h3 class="section-title">
-              <i class="fas fa-lightbulb"></i>
-              分析结果
-            </h3>
-            <div class="analysis-results" id="analysisResults">
-              <div style="text-align: center; color: #6c757d; padding: 20px">
-                <i class="fas fa-info-circle"></i>
-                <p>开始分析后，结果将在此显示</p>
-              </div>
+        <div class="analysis-results-section">
+          <h3 class="section-title">
+            <i class="fas fa-lightbulb"></i>
+            分析结果
+          </h3>
+          <div class="analysis-results" id="analysisResults">
+            <div style="text-align: center; color: #6c757d; padding: 20px">
+              <i class="fas fa-info-circle"></i>
+              <p>开始分析后，结果将在此显示</p>
             </div>
           </div>
         </div>
       </div>
 
+      <!-- 右侧边栏 -->
       <div class="sidebar">
         <div class="analysis-panel">
           <h3 class="panel-title">
@@ -209,10 +297,325 @@
       </div>
     </div>
 
+    <!-- 保留原有结构以兼容JS，但隐藏显示 -->
+    <div class="upload-board-container" style="display: none">
+      <div class="upload-section">
+        <h2 class="upload-title">
+          <i class="fas fa-upload"></i>
+          上传棋谱文件
+        </h2>
+        <div class="upload-area" id="uploadArea">
+          <div class="upload-icon">
+            <i class="fas fa-cloud-upload-alt"></i>
+          </div>
+          <div class="upload-text">拖拽 SGF 文件到此处</div>
+          <div class="upload-hint">或点击选择文件</div>
+        </div>
+        <input type="file" id="fileInput" class="file-input" accept=".sgf" />
+
+        <div class="upload-buttons">
+          <button class="upload-btn" id="selectFileBtn">
+            <i class="fas fa-folder-open"></i>
+            选择文件
+          </button>
+          <button class="analyze-file-btn" id="analyzeFileBtn" disabled>
+            <i class="fas fa-play-circle"></i>
+            开始分析
+          </button>
+        </div>
+
+        <div class="file-info" id="fileInfo">
+          <div class="file-name" id="fileName"></div>
+          <div class="file-details" id="fileDetails"></div>
+        </div>
+      </div>
+
+      <div class="board-container">
+        <div class="board-placeholder" id="boardPlaceholder">
+          <i class="fas fa-chess-board"></i>
+          <div>上传 SGF 文件后，棋盘将在此显示</div>
+        </div>
+        <div class="analysis-controls">
+          <button class="control-btn" id="startBtn" disabled>
+            <i class="fas fa-fast-backward"></i>
+            开始
+          </button>
+          <button class="control-btn" id="prevBtn" disabled>
+            <i class="fas fa-step-backward"></i>
+            上一步
+          </button>
+          <button class="control-btn" id="nextBtn" disabled>
+            <i class="fas fa-step-forward"></i>
+            下一步
+          </button>
+          <button class="control-btn" id="endBtn" disabled>
+            <i class="fas fa-fast-forward"></i>
+            结束
+          </button>
+          <button class="control-btn" id="autoPlayBtn" disabled>
+            <i class="fas fa-play"></i>
+            自动播放
+          </button>
+        </div>
+      </div>
+    </div>
+
     <script src="js/config.js"></script>
     <script src="js/SGFParser.js"></script>
+    <script src="js/GoBoard12.js"></script>
     <script src="js/KataGoAPI.js"></script>
     <script src="js/navbar.js"></script>
     <script src="js/SGFAnalysis.js"></script>
+
+    <!-- 🔥 新增：从Post11.html复制的棋盘创建代码 -->
+    <script>
+      const maxWinSize = 3000;
+      const minWinSize = 300;
+      
+      // 🔥 新增：计算棋盘大小的函数（从Post11.html复制）
+      function calculateBoardSize() {
+        const winWidth = window.innerWidth;
+        const winHeight = window.innerHeight;
+        
+        let cellSizeFromWidth, cellSizeFromHeight;
+
+        // 根据宽度计算 cellSize
+        if (winWidth < 480) {
+          cellSizeFromWidth = Math.floor((winWidth - 20) / 20);
+          if (winWidth < minWinSize) {
+            cellSizeFromWidth = Math.floor((minWinSize - 20) / 20);
+          }
+        } else if (winWidth > 768) {
+          cellSizeFromWidth = Math.floor(winWidth / 28);
+          if (winWidth > maxWinSize) {
+            cellSizeFromWidth = Math.floor(maxWinSize / 28);
+          }
+        } else {
+          cellSizeFromWidth = 30;
+        }
+
+        // 根据高度计算 cellSize
+        if (winHeight < 480) {
+          cellSizeFromHeight = Math.floor((winHeight - 20) / 20);
+          if (winHeight < minWinSize) {
+            cellSizeFromHeight = Math.floor((minWinSize - 20) / 20);
+          }
+        } else if (winHeight > 768) {
+          cellSizeFromHeight = Math.floor(winHeight / 25);
+          if (winHeight > maxWinSize) {
+            cellSizeFromHeight = Math.floor(maxWinSize / 25);
+          }
+        } else {
+          cellSizeFromHeight = 30;
+        }
+
+        let cellSize = Math.min(cellSizeFromWidth, cellSizeFromHeight);
+        const boardSize = 19;
+        const stoneSize = Math.floor(cellSize * 0.95);
+        let maxFrameWidth = cellSize * (boardSize + 3);
+
+        return { cellSize, stoneSize, maxFrameWidth };
+      }
+
+      // 🔥 新增：更新CSS变量的函数（从Post11.html复制）
+      function updateStoneSizeCSS(cellSize) {
+        document.documentElement.style.setProperty(
+          "--stone-size",
+          `${cellSize}px`
+        );
+        document.documentElement.style.setProperty(
+          "--cell-size",
+          `${cellSize}px`
+        );
+        document.documentElement.style.setProperty(
+          "--font-size",
+          `${cellSize * 0.4}px`
+        );
+      }
+
+      // 🔥 新增：创建棋盘的函数（从Post11.html复制）
+      function createBoard3(options) {
+        let {
+            domElement,
+            boardSize = 19,
+            cellSize,
+            lineColor = '#000',
+            backgroundColor = '#DEB887'
+        } = options;
+
+        domElement.innerHTML = '';
+        console.log('Creating board on element', domElement);
+        domElement.style.width = `${boardSize * cellSize}px`;
+        domElement.style.height = `${boardSize * cellSize}px`;
+        domElement.style.position = 'relative';
+        domElement.style.backgroundColor = backgroundColor;
+
+        // 绘制棋盘线
+        for (let i = 0; i < boardSize; i++) {
+            // 垂直线
+            const vertical = document.createElement('div');
+            vertical.style.position = 'absolute';
+            vertical.style.left = `${cellSize/2 + i * cellSize}px`;
+            vertical.style.top = `${cellSize/2}px`;
+            vertical.style.width = '1px';
+            vertical.style.height = `${(boardSize - 1) * cellSize}px`;
+            vertical.style.backgroundColor = lineColor;
+            vertical.style.zIndex = '1';
+            domElement.appendChild(vertical);
+
+            // 水平线
+            const horizontal = document.createElement('div');
+            horizontal.style.position = 'absolute';
+            horizontal.style.left = `${cellSize/2}px`;
+            horizontal.style.top = `${cellSize/2 + i * cellSize}px`;
+            horizontal.style.width = `${(boardSize - 1) * cellSize}px`;
+            horizontal.style.height = '1px';
+            horizontal.style.backgroundColor = lineColor;
+            horizontal.style.zIndex = '1';
+            domElement.appendChild(horizontal);
+        }
+
+        // 创建交叉点
+        for (let i = 0; i < boardSize; i++) {
+            for (let j = 0; j < boardSize; j++) {
+                const intersection = document.createElement('div');
+                intersection.className = 'intersection';
+                intersection.dataset.row = i;
+                intersection.dataset.col = j;
+                intersection.style.position = 'absolute';
+                intersection.style.left = `${j * cellSize}px`;
+                intersection.style.top = `${i * cellSize}px`;
+                intersection.style.width = `${cellSize}px`;
+                intersection.style.height = `${cellSize}px`;
+                intersection.style.zIndex = '2';
+                intersection.addEventListener('click', (e) => handleClick(e));
+
+                domElement.appendChild(intersection);
+            }
+        }
+
+        // 添加星位
+        const starPoints = [
+            [3, 3], [3, 9], [3, 15],
+            [9, 3], [9, 9], [9, 15],
+            [15, 3], [15, 9], [15, 15]
+        ];
+
+        starPoints.forEach(([row, col]) => {
+            const intersection = domElement.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+            if (intersection) {
+                const starPoint = document.createElement('div');
+                starPoint.style.position = 'absolute';
+                starPoint.style.top = '50%';
+                starPoint.style.left = '50%';
+                starPoint.style.transform = 'translate(-50%, -50%)';
+                starPoint.style.width = `${cellSize * 0.2}px`;
+                starPoint.style.height = `${cellSize * 0.2}px`;
+                starPoint.style.backgroundColor = lineColor;
+                starPoint.style.borderRadius = '50%';
+                starPoint.style.zIndex = '3';
+                intersection.appendChild(starPoint);
+            }
+        });
+
+        console.log('Board creation completed');
+      }
+
+      // 🔥 新增：点击处理函数（从Post11.html复制，简化版）
+      function handleClick(event) {
+        try {
+          const row = parseInt(event.target.dataset.row, 10);
+          const col = parseInt(event.target.dataset.col, 10);
+
+          if (isNaN(row) || isNaN(col)) {
+            console.log("Invalid intersection clicked");
+            return;
+          }
+
+          console.log(`Clicked on intersection: (${row}, ${col})`);
+          // 在分析页面中，可能需要根据具体需求处理点击事件
+          
+        } catch (error) {
+          console.error("Error in handleClick:", error.message);
+        }
+      }
+
+      // 🔥 新增：初始化棋盘和添加必要的全局变量
+      function initializeBoard() {
+        console.log("初始化棋盘");
+        
+        // 🔥 添加必要的全局变量，防止GoBoard12.js报错
+        window.currentMoves = [];
+        window.currentMoveIndex = -1;
+        window.displayMode = 0;
+        window.showingRecentMoves = false;
+        
+        // 计算棋盘大小
+        let { cellSize, stoneSize } = calculateBoardSize();
+        console.log("计算得到的 cellSize:", cellSize);
+        
+        // 更新CSS变量
+        updateStoneSizeCSS(cellSize);
+        
+        // 创建棋盘
+        const mainBoard = document.getElementById("board");
+        if (mainBoard) {
+          createBoard3({
+            domElement: mainBoard,
+            boardSize: 19,
+            cellSize: cellSize,
+          });
+          console.log("棋盘创建完成");
+        } else {
+          console.error("找不到棋盘容器元素");
+        }
+      }
+
+      // 🔥 新增：页面加载完成后初始化棋盘
+      document.addEventListener('DOMContentLoaded', function() {
+        console.log('SGFAnalysis.html DOMContentLoaded');
+        
+        // 加载导航栏
+        if (typeof loadNavbar === 'function') {
+          loadNavbar();
+        }
+        
+        // 初始化棋盘
+        initializeBoard();
+        
+        // 🔥 新增：添加icon按钮的事件监听器（参考Post11.html）
+        const iconButtons = [
+          { id: 'logostartBtn', handler: () => { if (typeof moveToStart === 'function') moveToStart(); } },
+          { id: 'logofastBackwardBtn', handler: () => { if (typeof fastBackward === 'function') fastBackward(); } },
+          { id: 'logobackwardBtn', handler: () => { if (typeof moveBackward === 'function') moveBackward(); } },
+          { id: 'logoforwardBtn', handler: () => { if (typeof moveForward === 'function') moveForward(); } },
+          //{ id: 'logoforwardBtn', handler: () => { if (typeof moveForward === 'function') nextMove(); } },        
+          { id: 'logofastForwardBtn', handler: () => { if (typeof fastForward === 'function') fastForward(); } },
+          { id: 'logoendBtn', handler: () => { if (typeof moveToEnd === 'function') moveToEnd(); } },
+          { id: 'logoshowMovesBtn', handler: () => { if (typeof toggleMoveDisplay === 'function') toggleMoveDisplay(); } }
+        ];
+
+        iconButtons.forEach(({ id, handler }) => {
+          const btn = document.getElementById(id);
+          if (btn) {
+            btn.addEventListener('click', handler);
+            console.log(`已添加 ${id} 事件监听器`);
+          } else {
+            console.warn(`按钮 ${id} 未找到`);
+          }
+        });
+        
+        console.log('SGFAnalysis.html 初始化完成');
+      });
+
+      // 🔥 新增：窗口大小改变时重新计算棋盘大小
+      window.addEventListener('resize', function() {
+        console.log('窗口大小改变，重新初始化棋盘');
+        initializeBoard();
+      });
+    </script>
+
+        <!--  增加落子音效 -->
+    <audio id="stoneSound" src="Sounds/PlayStone2.mp3" preload="auto"></audio>
   </body>
 </html>

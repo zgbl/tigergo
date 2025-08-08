@@ -91,7 +91,7 @@ function handleClick(event) {  //新版加上了error handle, 点到星位的时
     }
 }
 
-function placeStone(row, col, color) {    // 8/13 正测试是不是可以删
+/*function placeStone(row, col, color) {    // 2024.8.13 正测试是不是可以删  //2025.8。7 注释掉
     //这个函数 目前只用于画大棋盘棋子
     //console.log(`Placing stone at (${row}, ${col}), color: ${color}`);
    try{
@@ -113,24 +113,35 @@ function placeStone(row, col, color) {    // 8/13 正测试是不是可以删
     playStoneSound();
     checkCaptures(row, col, color, boardState);
   } catch (error) {
-    console.error("Error in placeStone3:", error.message);
+    console.error("Error in placeStone:", error.message);
     // 不执行任何操作，保持棋谱状态不变
   }
-}  
+}   */
 
 function placeStone3(row, col, color, stoneSize) {
     //console.log(`Placing stone at (${row}, ${col}), color: ${color}`);
+    console.log("调用了Gobard12.js, placeStone3(), Line 121")
     const stone = document.createElement("div");
     stone.className = `stone ${color}`;
     stone.style.width = `${stoneSize}px`;
     console.log("stone.style.width is:", stone.style.width);
     stone.style.height = `${stoneSize}px`;
     const intersection = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+    console.log("placeStone3()中的intersection is:", intersection)
+    console.log("placeStone3()中的 stone =", stone)
+    console.log("placeStone3()中的 row = ", row, " col = ", col)
     intersection.appendChild(stone);
     boardState[row][col] = color;
     playStoneSound();
     checkCaptures(row, col, color, boardState);
 } 
+
+function playStoneSound() {
+const audio = document.getElementById("stoneSound");
+audio.volume = 0.2; // 设置音量为50%
+audio.currentTime = 0; // 重置音频到开始
+audio.play();
+}
 
 function removeStone(row, col) {
     const intersection = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
@@ -227,7 +238,8 @@ function updateGameInfo() {
     }
 }
 
-function renderMoves(moves) {
+function renderMoves(moves) {  //好像没有被调用，至少是SGFAnalysis没有调用这里
+    console.log("GOBoard12.js, renderMoves Line 238, moves is:", moves);
     currentMoves = moves;
     currentMoveIndex = -1;
     clearBoard();
@@ -235,6 +247,7 @@ function renderMoves(moves) {
 }
 
 function renderMove(moves) {
+    console.log("GOBoard12.js, renderMove Line 245, moves is:", moves);
     currentMoves = moves;
     currentMoveIndex = -1;
     clearBoard();
@@ -315,11 +328,24 @@ function clearBoard() {
 }
 
 function moveForward() {
+    console.log("点击了前进，BoBoard12.js， moveForward(), Line 327")
+    console.log("currentMoveIndex is", currentMoveIndex);
+    console.log("currentMoves is", currentMoves);
     if (currentMoveIndex < currentMoves.length - 1) {
         currentMoveIndex++;
         const move = currentMoves[currentMoveIndex];
+        // 🔹 颜色映射处理
+        if (move.color) {
+            const colorLower = move.color.toLowerCase();
+            if (colorLower === "b") {
+                move.color = "black";
+            } else if (colorLower === "w") {
+                move.color = "white";
+            }
+        }
         if (!move.pass) {
            // placeStone(move.row, move.col, move.color, stoneSize);  // 8/13
+           console.log("在GoBoard12.js中， 339行，move.color is:", move.color)
             placeStone3(move.row, move.col, move.color, stoneSize);
         }
         updateMoveInfo();
@@ -328,6 +354,7 @@ function moveForward() {
 }
 
 function moveBackward() {
+    console.log("点击了后退（大棋盘?)，BoBoard12.js， moveBackward(), Line 357")
     if (currentMoveIndex >= 0) {
         const move = currentMoves[currentMoveIndex];
         if (!move.pass) {
@@ -335,6 +362,7 @@ function moveBackward() {
         }
         currentMoveIndex--;
         updateMoveInfo();
+        //renderMovesToIndex(currentMoveIndex);  //2025.8.7 被提掉的子要恢复显示，看是不是要用这个。
         updateMoveDisplay();
     }
 }
@@ -483,26 +511,12 @@ function saveQipu() {
     });
 }
 
-/*function handleFileSelect(event) {
-    const file = event.target.files[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const sgfContent = e.target.result;
-            console.log("function handleFileSelect() parseSGFing from GoBoard11.js line 491");
-            const parsedMoves = parseSGF(sgfContent);  //应该没有被用到 8.13
-            renderMoves(parsedMoves);
-        };
-        reader.readAsText(file);
-    }
-}  */
-
 //Add by TXY 7/11/2024, 增加研究功能
 let isStudyMode = false;
 let originalMoves = [];
 let studyStartMoveIndex = -1;
 
-function toggleStudyMode() {
+function toggleStudyMode() {   //这个在被使用  2025.8.7
     console.log("正在调用toggleStudyMode()");
     isStudyMode = !isStudyMode;
     const studyButton = document.getElementById('studyButton');
@@ -523,6 +537,7 @@ function toggleStudyMode() {
         //console.log("toggleStudyMode, currentMoves = ...originalMoves:", JSON.stringify(currentMoves, null, 2));
 
         renderMovesToIndex(studyStartMoveIndex);
+        console.log("GoBoard12.js line 554, renderMovesToIndex to: ", studyStartMoveIndex);
         // 恢复小棋盘内容2024/7/20
         if (smallBoards && smallBoards.length > 0) {
             smallBoards.forEach(board => {
@@ -538,8 +553,8 @@ function toggleStudyMode() {
 
 let indctID = '';
 
-
-function toggleStudyMode2(indctID) {  
+/*
+function toggleStudyMode2(indctID) {   //好像没被使用 2025.8.7
     console.log("正在调用toggleStudyMode2(), indctID:", indctID);
     isStudyMode = !isStudyMode;
     const studyButton = document.getElementById('studyButton');
@@ -560,7 +575,8 @@ function toggleStudyMode2(indctID) {
         //console.log("toggleStudyMode, currentMoves = ...originalMoves:", JSON.stringify(currentMoves, null, 2));
 
         renderMovesToIndex(studyStartMoveIndex);
-        // 恢复小棋盘内容2024/7/20
+        console.log("GoBoard12.js line 591, renderMovesToIndex to: ", studyStartMoveIndex);
+        // 恢复小棋盘内容2024/7/20/2024
         if (smallBoards && smallBoards.length > 0) {
             smallBoards.forEach(board => {
                 if (board && typeof board.renderBoard === 'function') {
@@ -573,7 +589,7 @@ function toggleStudyMode2(indctID) {
     //console.log("toggleStudyMode.updateMoveInto.")
     toggleIndicator(indctID);  //此行只对于有指示灯的情况，
     publishBtn.style.display = isStudyMode ? 'inline-block' : 'none';
-} 
+}   */
 
 
 function handleStudyClick(row, col) {
@@ -739,7 +755,7 @@ function initializeSmallBoard(boardElement, moves) {
     boardElement.style.position = 'relative';
 
     // 初始化棋盘状态
-    let currentMoveIndex = 0;
+    let currentMoveIndex = -1;
     const boardState = Array(boardSize).fill().map(() => Array(boardSize).fill(null));
 
     // 渲染初始状态
@@ -903,16 +919,19 @@ function parseSGF2(sgfContent) {
 
 //恢复棋盘到研究开始时候的步数
 function renderMovesToIndex(targetIndex) {
-    console.log("renderMovesToIndex, line 811, targetIndex:", targetIndex);
+    console.log("renderMovesToIndex, line 934, targetIndex:", targetIndex);
     clearBoard();
     for (let i = 0; i <= targetIndex; i++) {
         const move = currentMoves[i];
+        console.log("currentMoves is", currentMoves)
         if (!move.pass) {
             //placeStone(move.row, move.col, move.color);  // 8/13
+            console.log('row=', move.row, 'col=', move.col, 'color=', move.color);
             placeStone3(move.row, move.col, move.color);
         }
     }
     currentMoveIndex = targetIndex;
+    console.log("renderMovesToIndex, line 944, currentMoveIndex:", currentMoveIndex);
     updateMoveInfo();
     updateMoveDisplay();
 }
@@ -1141,7 +1160,8 @@ class SmallBoard {
                 //this.placeStone2(move.row, move.col, move.color, smStoneSize);  //8/13
                 //console.log("Current context 'this' 是:", this);
                 //this.placeStone3(move.row, move.col, move.color, smStoneSize);
-                this.placeStone2(move.row, move.col, move.color, smStoneSize);  //try call placeStone3 directly
+                //this.placeStone2(move.row, move.col, move.color, smStoneSize);  //try call placeStone3 directly
+                //this.placeStone3(move.row, move.col, move.color, smStoneSize);  //try call placeStone3 directly //2还在用吗？改成3，2025.8.7
                 //console.log("原始步数：", move.row, move.col, move.color);
                 //console.log("0777 原始步数：", row, col);
                 //currentColor = (currentColor === 'black') ? 'white' : 'black';
@@ -1179,7 +1199,7 @@ class SmallBoard {
     }
 
     moveBackward() {
-        //console.log("小棋盘后退：", this.currentIndex); // 8/13 确认这个function在起作用，currentIndex正确
+        console.log("小棋盘后退：", this.currentIndex); // 8/13 确认这个function在起作用，currentIndex正确
         //console.log("变化图起点步长:",this.originalMoves.length);  //8/13确认没问题
         //console.log("检查一下现在who is 'this':", this);
         if (this.currentIndex > this.originalMoves.length - 1) {
@@ -1198,7 +1218,7 @@ class SmallBoard {
         }
     }
 
-    placeStone2(row, col, color, smStoneSize, number = null) {  
+    placeStone2(row, col, color, smStoneSize, number = null) {    //可能是小棋盘在用 2025.8.7
         //这个函数用于画已有变化图的棋子
         if (!this.boardElement) {
             console.error('No board element to place stone on');
@@ -1235,7 +1255,7 @@ class SmallBoard {
         }
     }
 
-    placeStone3(row, col, color, stoneSize, moveNumber = null) {
+    /*placeStone3(row, col, color, stoneSize, moveNumber = null) {  //重复了，暂时注释掉
         const stone = document.createElement("div");
         stone.className = `stone ${color}`;
         stone.style.width = `${stoneSize}px`;
@@ -1249,7 +1269,7 @@ class SmallBoard {
         } else {
             console.error(`No intersection found for row ${row}, col ${col}`);
         }
-    }
+    } */
 }
 
 // 新函数合并变化图发布和评论文本发布，（以后要删掉submitComment() 和 publishVariation()）2024/7/20

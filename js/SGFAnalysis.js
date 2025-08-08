@@ -1,5 +1,4 @@
-// SGF 分析页面主控制器 - 完整功能版本
-
+// SGF 分析页面主控制器 - 修复版本
 class SGFAnalyzer {
     constructor() {
         // 等待DOM和所有依赖加载完成
@@ -31,7 +30,7 @@ class SGFAnalyzer {
             this.sgfContent = null;
             this.gameData = null;
             this.analysisResults = [];
-            this.currentMoveIndex = 0;
+            this.currentMoveIndex = 1;
             this.isAnalyzing = false;
             this.analysisAborted = false;
             this.logEntries = [];
@@ -122,7 +121,7 @@ class SGFAnalyzer {
                 });
             }
 
-            // 控制按钮
+            // 控制按钮 - 使用原始按钮
             const buttons = [
                 { id: 'startBtn', handler: () => this.goToMove(0) },
                 { id: 'prevBtn', handler: () => this.previousMove() },
@@ -283,21 +282,42 @@ class SGFAnalyzer {
         if (fileInfo) fileInfo.classList.add('show');
     }
 
+    // 带调试信息的 parseSGF 方法
     parseSGF(sgfContent) {
+        console.log("🔥 parseSGF 方法被调用了！");
+        
         try {
+            console.log("🔥 开始验证SGF格式...");
             // 验证SGF格式
             const validation = this.sgfParser.validateSGF(sgfContent);
             if (!validation.valid) {
+                console.log("❌ SGF验证失败:", validation.error);
                 throw new Error(validation.error);
             }
+            console.log("✅ SGF格式验证通过");
             
+            console.log("🔥 开始解析SGF moves...");
             // 解析SGF内容
+            const rawMoves = this.sgfParser.parseSGFMoves(sgfContent);
+            console.log("✅ SGF moves解析完成，rawMoves数量:", rawMoves.length);
+            console.log("rawMoves前3手:", rawMoves.slice(0, 3));
+            
+            console.log("🔥 准备调用 convertMovesToGoBoard12Format...");
+            // 转换为GoBoard12.js期望的格式
+            const convertedMoves = this.convertMovesToGoBoard12Format(rawMoves);
+            console.log("✅ convertMovesToGoBoard12Format 调用完成");
+            console.log("convertedMoves前3手:", convertedMoves.slice(0, 3));
+            
             this.gameData = {
-                moves: this.sgfParser.parseSGFMoves(sgfContent),
+                moves: convertedMoves, // 用于棋盘显示的格式
+                rawMoves: rawMoves,    // 保存原始KataGo格式用于API调用
                 gameInfo: this.sgfParser.extractGameInfo(sgfContent)
             };
             
             console.log(`✅ SGF 解析完成，共 ${this.gameData.moves.length} 手棋`);
+            console.log('最终gameData.moves格式:', this.gameData.moves.slice(0, 3)); // 显示前3手
+            console.log('rawMoves格式:', this.gameData.rawMoves.slice(0, 3)); // 显示前3手
+            
             this.addLogEntry(`SGF 解析完成，共 ${this.gameData.moves.length} 手棋`, 'success');
             
             // 显示游戏信息
@@ -308,75 +328,299 @@ class SGFAnalyzer {
                 this.addLogEntry(`白方: ${this.gameData.gameInfo.whitePlayer}`, 'info');
             }
             
-            // 显示着法预览
-            const preview = this.sgfParser.getMovesPreview(this.gameData.moves, 3);
-            preview.forEach(line => {
-                this.addLogEntry(line, 'info');
-            });
-            
+            console.log("🔥 准备调用 renderBoard...");
             this.renderBoard();
+            console.log("✅ renderBoard 调用完成");
             
         } catch (error) {
-            console.error('SGF 解析错误:', error);
+            console.error('❌ SGF 解析错误:', error);
+            console.error('错误发生在:', error.stack);
             this.addLogEntry(`SGF 解析失败: ${error.message}`, 'error');
             alert('SGF 文件解析失败，请检查文件格式');
         }
     }
 
+    // 添加这个辅助函数来转换坐标格式  2025.8.7
+    convertMovesToGoBoard12Format(moves) {
+        console.log("调用了convertMovesToGoBoard12Format")
+        return moves.map(move => {
+            const [color, position] = move;
+            
+            if (position === 'pass') {
+                const normalizedColor = color === 'B' ? 'black' : 'white';  //颜色用black/white 表示 2025.8.7
+                return { pass: true, color: color.toLowerCase() };
+            }
+            
+            // 将 KataGo 格式(如 'Q16') 转换为 row/col
+            const col = position[0]; // 'Q'
+            const rowStr = position.slice(1); // '16'
+            
+            // 列坐标转换: A-T (跳过I) -> 0-18
+            let colIndex;
+            if (col <= 'H') {
+                colIndex = col.charCodeAt(0) - 65; // A-H -> 0-7
+            } else {
+                colIndex = col.charCodeAt(0) - 66; // J-T -> 8-18 (跳过I)
+            }
+            
+            // 行坐标转换: 1-19 -> 18-0 (SGF中1是底部，但显示时19是顶部)
+            const rowIndex = 19 - parseInt(rowStr);
+
+            // 修改这里：将 B/W 转换为 black/white 而不是 b/w
+            //const normalizedColor = color === 'B' ? 'black' : 'white';
+            const normalizedColor = (color && color.toUpperCase() === 'B') ? 'black' : 'white';
+            //console.log("convertMovesToGoBoard12Format, color =", color,) 
+            console.log("convertMovesToGoBoard12Format, color =", color, "normalizedColor =", normalizedColor) 
+            
+            return {
+                row: rowIndex,
+                col: colIndex,
+                //color: color.toLowerCase()  //b，w 问题的罪魁祸首
+                color: normalizedColor  //这里应该是 black/white
+            };
+        });
+    }
+
+
+    // 同时修改 renderBoard 方法中设置全局变量的部分  2025.8.7
     renderBoard() {
-        // 棋盘渲染占位符
-        const boardPlaceholder = document.getElementById('boardPlaceholder');
-        if (boardPlaceholder && this.gameData) {
-            boardPlaceholder.innerHTML = `
-                <div style="text-align: center; padding: 20px;">
-                    <i class="fas fa-chess-board" style="font-size: 2.5em; color: #8B4513; margin-bottom: 15px;"></i>
-                    <h3 style="color: #8B4513; margin-bottom: 10px;">棋谱已加载</h3>
-                    <p style="color: #666;">共 ${this.gameData.moves.length} 手棋</p>
-                    <p style="color: #666; font-size: 0.9em;">点击"开始分析"按钮进行AI分析</p>
-                </div>
-            `;
+        const boardElement = document.getElementById('board');
+        if (boardElement && this.gameData) {
+            console.log("准备渲染棋盘，moves格式:", this.gameData.moves.slice(0, 3));
+            
+            // 清空现有内容
+            boardElement.innerHTML = '';
+            
+            // 计算棋盘大小
+            const cellSize = this.calculateBoardSize();
+            
+            console.log('开始创建棋盘，cellSize:', cellSize);
+            
+            // 🔥 重要：在创建棋盘之前设置全局变量
+            window.currentMoves = this.gameData.moves; // 这里的color 有问题。
+            console.log("可能这里的move 格式有问题，SGFAnalysis.js line 400", this.gameData.moves)
+            window.currentMoveIndex = -1; // 2025.8.7 还是应该 -1
+            window.displayMode = 0;
+            window.showingRecentMoves = false;
+            window.globalParsedMoves = {
+                moves: this.gameData.moves,
+                gameInfo: this.gameData.gameInfo || {}
+            };
+            
+            // 调试输出
+            console.log('设置的全局变量:');
+            console.log('window.currentMoves:', window.currentMoves);
+            console.log('window.currentMoveIndex:', window.currentMoveIndex);
+            console.log('棋谱总手数:', this.gameData.moves.length);
+            
+            // 更新CSS变量
+            if (typeof updateStoneSizeCSS === 'function') {
+                updateStoneSizeCSS(cellSize);
+            }
+            
+            // 使用 createBoard3 函数创建棋盘
+            if (typeof createBoard3 === 'function') {
+                window.cellSize = cellSize;
+                window.stoneSize = Math.floor(cellSize * 0.95);
+                
+                createBoard3({
+                    domElement: boardElement,
+                    boardSize: 19,
+                    cellSize: cellSize,
+                    lineColor: '#000',
+                    backgroundColor: '#DEB887'
+                });
+                
+                this.addLogEntry(`棋盘已创建，cellSize: ${cellSize}`, 'success');
+                
+                // 渲染棋谱 - 但不要调用 renderMoves，因为我们要通过控制按钮逐步显示
+                if (this.gameData.moves && this.gameData.moves.length > 0) {
+                    setTimeout(() => {
+                        // 验证全局变量是否正确设置
+                        if (window.currentMoves && window.currentMoves.length > 0) {
+                            this.addLogEntry(`棋谱数据已加载，共 ${this.gameData.moves.length} 手棋`, 'success');
+                            
+                            // 启用控制按钮
+                            this.enableControlButtons();
+                            
+                            // 显示第一手棋的信息（但不在棋盘上显示）
+                            this.updateMoveInfo();
+                        } else {
+                            this.addLogEntry('全局变量设置失败', 'error');
+                            console.error('window.currentMoves:', window.currentMoves);
+                        }
+                    }, 100);
+                }
+            } else {
+                console.error('createBoard3 函数未找到，请确保 GoBoard12.js 已加载');
+                this.addLogEntry('棋盘创建失败：缺少必要的函数', 'error');
+            }
+        } else {
+            console.error('board元素未找到或gameData为空');
+            this.addLogEntry('棋盘容器未找到', 'error');
         }
     }
 
-    updateUI() {
-        // 更新UI状态
-        const hasGameData = this.gameData && this.gameData.moves.length > 0;
-        
-        // 启用/禁用分析按钮
-        const analyzeFileBtn = document.getElementById('analyzeFileBtn');
-        if (analyzeFileBtn) {
-            analyzeFileBtn.disabled = !hasGameData;
+    // 添加一个更新手数信息的方法
+    updateMoveInfo() {
+        const currentMoveElement = document.getElementById('currentMove');
+        if (currentMoveElement && this.gameData) {
+            const moveNum = Math.max(0, window.currentMoveIndex + 1);
+            currentMoveElement.textContent = `${moveNum} / ${this.gameData.moves.length}`;
         }
+    }
+
+    // 计算棋盘大小的函数（完全参考 Post11.html 的实现）
+    calculateBoardSize() {
+        const winWidth = window.innerWidth;
+        const winHeight = window.innerHeight;
+        const maxWinSize = 3000;
+        const minWinSize = 300;
         
-        // 启用/禁用控制按钮
-        const controlButtons = ['startBtn', 'prevBtn', 'nextBtn', 'endBtn', 'autoPlayBtn'];
-        controlButtons.forEach(id => {
+        let cellSizeFromWidth, cellSizeFromHeight;
+        
+        // 根据宽度计算 cellSize
+        if (winWidth < 480) {
+            cellSizeFromWidth = Math.floor((winWidth - 20) / 20); // 为边框留出一些空间
+            if (winWidth < minWinSize) {
+                cellSizeFromWidth = Math.floor((minWinSize - 20) / 20);
+            }
+        } else if (winWidth > 768) {
+            cellSizeFromWidth = Math.floor(winWidth / 28);
+            if (winWidth > maxWinSize) {
+                cellSizeFromWidth = Math.floor(maxWinSize / 28);
+            }
+        } else {
+            cellSizeFromWidth = 30; // 默认尺寸
+        }
+
+        // 根据高度计算 cellSize
+        if (winHeight < 480) {
+            cellSizeFromHeight = Math.floor((winHeight - 20) / 20);
+            if (winHeight < minWinSize) {
+                cellSizeFromHeight = Math.floor((minWinSize - 20) / 20);
+            }
+        } else if (winHeight > 768) {
+            cellSizeFromHeight = Math.floor(winHeight / 25);
+            if (winHeight > maxWinSize) {
+                cellSizeFromHeight = Math.floor(maxWinSize / 25);
+            }
+        } else {
+            cellSizeFromHeight = 30; // 默认尺寸
+        }
+
+        // 取宽度和高度计算结果中的较小值
+        let cellSize = Math.min(cellSizeFromWidth, cellSizeFromHeight);
+        
+        // 确保 cellSize 在合理范围内
+        cellSize = Math.max(15, Math.min(cellSize, 50));
+        
+        console.log('计算的 cellSize:', cellSize);
+        return cellSize;
+    }
+
+    // 添加启用控制按钮的方法  2025.8.7
+    enableControlButtons() {
+        // 启用icon控制按钮
+        const iconButtons = [
+            'logostartBtn', 'logofastBackwardBtn', 'logobackwardBtn', 
+            'logoforwardBtn', 'logofastForwardBtn', 'logoendBtn', 'logoshowMovesBtn'
+        ];
+        
+        iconButtons.forEach(id => {
             const btn = document.getElementById(id);
             if (btn) {
-                btn.disabled = !hasGameData;
+                btn.disabled = false;
+                btn.style.opacity = '1';
             }
         });
         
-        // 更新状态显示
-        const analysisStatus = document.getElementById('analysisStatus');
-        if (analysisStatus) {
-            if (hasGameData) {
-                analysisStatus.textContent = '准备分析';
-            } else {
-                analysisStatus.textContent = '等待上传';
+        // 启用原始控制按钮
+        const originalButtons = ['startBtn', 'prevBtn', 'nextBtn', 'endBtn', 'autoPlayBtn'];
+        originalButtons.forEach(id => {
+            const btn = document.getElementById(id);
+            if (btn) {
+                btn.disabled = false;
             }
-        }
+        });
         
-        const currentMove = document.getElementById('currentMove');
-        if (currentMove && hasGameData) {
-            currentMove.textContent = `${this.currentMoveIndex} / ${this.gameData.moves.length}`;
+        this.addLogEntry('控制按钮已启用', 'success');
+    }
+
+    // 棋盘控制方法 - 使用 GoBoard12.js 的函数
+    goToMove(index) {
+        this.currentMoveIndex = index;
+        if (typeof moveToStart === 'function' && index === 0) {
+            moveToStart();
+        } else if (typeof goToMove === 'function') {
+            // 如果 GoBoard12.js 有 goToMove 函数
+            goToMove(index);
+        }
+        this.addLogEntry(`跳转到第 ${index} 手`, 'info');
+        this.updateUI();
+    }
+
+    previousMove() {
+        if (this.currentMoveIndex > 0) {
+            this.currentMoveIndex--;
+            if (typeof moveBackward === 'function') {
+                moveBackward();
+            }
+            this.addLogEntry(`上一手: 第 ${this.currentMoveIndex} 手`, 'info');
+            this.updateUI();
         }
     }
 
-    // 开始分析 - 实现真正的KataGo分析
+    nextMove() {
+        console.log("SGFAnalysis.js nextMove() 被调用, Line 655");
+        console.log("当前 currentMoveIndex:", window.currentMoveIndex);
+        console.log("当前 currentMoves 长度:", window.currentMoves ? window.currentMoves.length : 'undefined');
+        
+        if (window.currentMoves && window.currentMoves.length > 0) {
+            if (window.currentMoveIndex < window.currentMoves.length - 1) {
+                // 调用 GoBoard12.js 的 moveForward 函数
+                if (typeof moveForward === 'function') {
+                    moveForward();
+                    
+                    // 更新本地索引（moveForward会更新window.currentMoveIndex）
+                    this.currentMoveIndex = window.currentMoveIndex;
+                    
+                    this.addLogEntry(`下一手: 第 ${this.currentMoveIndex + 1} 手`, 'info');
+                    this.updateMoveInfo();
+                } else {
+                    this.addLogEntry('moveForward 函数未找到', 'error');
+                }
+            } else {
+                this.addLogEntry('已经是最后一手了', 'warning');
+            }
+        } else {
+            this.addLogEntry('没有棋谱数据或数据为空', 'error');
+            console.error('window.currentMoves:', window.currentMoves);
+        }
+    }
+
+    goToLastMove() {
+        if (this.gameData) {
+            this.currentMoveIndex = this.gameData.moves.length;
+            if (typeof moveToEnd === 'function') {
+                moveToEnd();
+            }
+            this.addLogEntry(`跳转到最后一手: 第 ${this.currentMoveIndex} 手`, 'info');
+            this.updateUI();
+        }
+    }
+
+    // 开始分析功能
     async startAnalysis() {
         if (!this.gameData || this.gameData.moves.length === 0) {
             this.addLogEntry('没有可分析的棋谱数据', 'error');
+        } else {
+            console.log("📊 this.gameData.moves.length =", this.gameData.moves.length);
+        }
+
+        if (!this.gameData || this.gameData.moves.length === 0) {
+            this.addLogEntry('没有可分析的棋谱数据', 'error');
+            console.warn("⛔ 提前 return，因为 gameData 为空或 moves.length=0");
             return;
         }
 
@@ -384,6 +628,8 @@ class SGFAnalyzer {
             this.addLogEntry('分析正在进行中...', 'warning');
             return;
         }
+
+        console.log("✅ 通过了初始检查");
 
         try {
             this.isAnalyzing = true;
@@ -435,13 +681,23 @@ class SGFAnalyzer {
                 // 更新进度
                 const progress = ((moveIndex - startMove + 1) / (endMove - startMove + 1)) * 100;
                 this.updateProgress(progress, moveIndex, endMove);
-                
+
+                // 同步显示棋盘状态到当前分析的步数
+                console.log("typeof renderMovesToIndex is:",typeof renderMovesToIndex , "是不是 = function ?");
+                if (typeof renderMovesToIndex === 'function') {
+                    renderMovesToIndex(moveIndex - 1); // moveIndex是1-based，renderMovesToIndex需要0-based
+                    console.log('应该renderMOveToIndex 到 第', moveIndex -1, '步')
+                    this.addLogEntry(`棋盘已同步到第${moveIndex}手`, 'info');
+                }
+
                 // 分析当前局面
                 const currentMove = this.gameData.moves[moveIndex - 1];
                 this.addLogEntry(`分析第${moveIndex}手: ${currentMove[0]} ${currentMove[1]}`, 'info');
                 
                 try {
-                    const result = await this.katagoAPI.analyzePosition(this.gameData.moves, moveIndex);
+
+                    console.log("this.gameData.rawMoves:", this.gameData.rawMoves);  // 调试确认move 格式， 2025.8.6
+                    const result = await this.katagoAPI.analyzePosition(this.gameData.rawMoves, moveIndex);
                     
                     if (result.success) {
                         this.analysisResults.push({
@@ -476,26 +732,63 @@ class SGFAnalyzer {
         }
     }
 
-    // 更新分析进度
-    updateProgress(percentage, currentMove, totalMoves) {
+
+    // 模拟分析功能（后续替换为真实的KataGo调用）
+    async simulateAnalysis(move, depth) {
+        const analysisTime = {
+            'fast': 1000,
+            'normal': 2000,
+            'deep': 3000,
+            'ultra': 5000
+        };
+        
+        await new Promise(resolve => setTimeout(resolve, analysisTime[depth] || 2000));
+        
+        // 模拟分析结果
+        const result = {
+            move: move,
+            evaluation: Math.random() * 0.4 - 0.2, // -0.2 到 0.2 的随机评估
+            bestMoves: [
+                { move: 'D4', visits: 1000, winRate: 0.52 },
+                { move: 'Q16', visits: 800, winRate: 0.51 },
+                { move: 'D16', visits: 600, winRate: 0.50 }
+            ]
+        };
+        
+        this.analysisResults.push(result);
+        return result;
+    }
+
+    // 更新进度显示
+    updateProgress(percentage, current, total) {
         const progressFill = document.getElementById('progressFill');
         const analysisProgress = document.getElementById('analysisProgress');
-        const currentMoveElement = document.getElementById('currentMove');
+        const currentMove = document.getElementById('currentMove');
+        const estimatedTime = document.getElementById('estimatedTime');
         
         if (progressFill) {
             progressFill.style.width = `${percentage}%`;
         }
         
         if (analysisProgress) {
-            analysisProgress.textContent = `${percentage.toFixed(1)}%`;
+            analysisProgress.textContent = `${percentage}%`;
         }
         
-        if (currentMoveElement) {
-            currentMoveElement.textContent = `${currentMove} / ${totalMoves}`;
+        if (currentMove) {
+            currentMove.textContent = `${current} / ${total}`;
+        }
+        
+        // 估算剩余时间（简单计算）
+        if (estimatedTime && percentage > 0 && percentage < 100) {
+            const elapsed = Date.now() - (this.analysisStartTime || Date.now());
+            const remainingTime = Math.round((elapsed / percentage) * (100 - percentage) / 1000);
+            estimatedTime.textContent = `约 ${remainingTime} 秒`;
+        } else if (estimatedTime && percentage >= 100) {
+            estimatedTime.textContent = '已完成';
         }
     }
 
-    // 更新分析结果显示
+        // 更新分析结果显示
     updateAnalysisResults(analysisData, moveNumber, currentMove) {
         const resultsContainer = document.getElementById('analysisResults');
         if (!resultsContainer) return;
@@ -526,39 +819,71 @@ class SGFAnalyzer {
         resultsContainer.scrollTop = resultsContainer.scrollHeight;
     }
 
-    // 工具函数
+        // 工具函数
     sleep(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 
-    // 棋盘控制方法 - 占位符实现
-    goToMove(index) {
-        this.currentMoveIndex = index;
-        this.addLogEntry(`跳转到第 ${index} 手`, 'info');
-        this.updateUI();
-    }
-
-    previousMove() {
-        if (this.currentMoveIndex > 0) {
-            this.currentMoveIndex--;
-            this.addLogEntry(`上一手: 第 ${this.currentMoveIndex} 手`, 'info');
-            this.updateUI();
-        }
-    }
-
-    nextMove() {
-        if (this.gameData && this.currentMoveIndex < this.gameData.moves.length) {
-            this.currentMoveIndex++;
-            this.addLogEntry(`下一手: 第 ${this.currentMoveIndex} 手`, 'info');
-            this.updateUI();
-        }
-    }
-
-    goToLastMove() {
-        if (this.gameData) {
-            this.currentMoveIndex = this.gameData.moves.length;
-            this.addLogEntry(`跳转到最后一手: 第 ${this.currentMoveIndex} 手`, 'info');
-            this.updateUI();
+    // 更新UI状态
+    updateUI() {
+        try {
+            // 更新文件信息显示
+            const fileInfo = document.getElementById('fileInfo');
+            const analyzeFileBtn = document.getElementById('analyzeFileBtn');
+            
+            if (this.selectedFile && this.gameData) {
+                if (fileInfo) fileInfo.classList.add('show');
+                if (analyzeFileBtn) {
+                    if (this.isAnalyzing) {
+                        analyzeFileBtn.disabled = true;
+                        analyzeFileBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 分析中...';
+                    } else {
+                        analyzeFileBtn.disabled = false;
+                        analyzeFileBtn.innerHTML = '<i class="fas fa-play-circle"></i> 开始分析';
+                    }
+                }
+            } else {
+                if (analyzeFileBtn) {
+                    analyzeFileBtn.disabled = true;
+                    analyzeFileBtn.innerHTML = '<i class="fas fa-upload"></i> 请先上传SGF文件';
+                }
+            }
+            
+            // 更新棋盘控制按钮状态
+            const buttons = ['startBtn', 'prevBtn', 'nextBtn', 'endBtn'];
+            const hasGameData = this.gameData && this.gameData.moves && this.gameData.moves.length > 0;
+            
+            buttons.forEach(btnId => {
+                const btn = document.getElementById(btnId);
+                if (btn) {
+                    btn.disabled = !hasGameData || this.isAnalyzing;
+                }
+            });
+            
+            // 更新当前手数显示
+            if (hasGameData) {
+                const currentMoveElement = document.getElementById('currentMove');
+                if (currentMoveElement) {
+                    currentMoveElement.textContent = `${this.currentMoveIndex} / ${this.gameData.moves.length}`;
+                }
+            }
+            
+            // 更新分析状态显示
+            const analysisStatus = document.getElementById('analysisStatus');
+            if (analysisStatus) {
+                if (this.isAnalyzing) {
+                    analysisStatus.textContent = '正在分析中...';
+                } else if (this.analysisResults.length > 0) {
+                    analysisStatus.textContent = '分析完成';
+                } else if (this.gameData) {
+                    analysisStatus.textContent = '准备就绪';
+                } else {
+                    analysisStatus.textContent = '等待上传';
+                }
+            }
+            
+        } catch (error) {
+            console.error('更新UI失败:', error);
         }
     }
 

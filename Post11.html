@@ -627,9 +627,10 @@
       const logostudyBtn = document.getElementById("logostudyBtn");
       if (logostudyBtn) {
         logostudyBtn.addEventListener("click", function () {
-          toggleStudyMode2("studyIndicator");
+          //toggleStudyMode2("studyIndicator");
+          toggleStudyMode("studyIndicator");  //改用1
           //toggleStudyMode();
-          console.log("调用了toggleStudyMode2()")
+          console.log("调用了toggleStudyMode()")
         });
       }
 
@@ -744,12 +745,13 @@
       //检查localStorage还有用户信息
       console.log("User in localStorage:", localStorage.getItem("user"));
 
-      function playStoneSound() {
+      // 转移到GoBoard12.js
+      /*function playStoneSound() {
         const audio = document.getElementById("stoneSound");
         audio.volume = 0.2; // 设置音量为50%
         audio.currentTime = 0; // 重置音频到开始
         audio.play();
-      }
+      } */
 
       //const indicator = document.querySelector('.status-indicator');  //const放在开始了
 

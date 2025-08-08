@@ -37,8 +37,11 @@ function getConfig() {
             API_VERCEL_NEXTJS_BASE_URL: "http://localhost:3000",
             GITHUB_PAGE_FORUM_URL: "http://localhost:8090/Forum11.html",
             FORUM_POST_ENDPOINT: "/forum/Posts",
+            // 保持原有的 KataGo 直连地址
             KATAGO_BASE_URL: "http://192.168.0.249:8080",
             KATAGO_BOT_NAME: "katago_gtp_bot",
+            // 新增：Next.js 代理 API 地址（可选使用）
+            KATAGO_PROXY_URL: "http://localhost:3000/api/katago",
             ENV: "local"
         },
         github: {
@@ -46,8 +49,11 @@ function getConfig() {
             API_VERCEL_NEXTJS_BASE_URL: "https://blackricegobackend2-nextjs.vercel.app",
             GITHUB_PAGE_FORUM_URL: "https://zgbl.github.io/tigergo/Forum11.html",
             FORUM_POST_ENDPOINT: "/forum/Posts",
+            // 保持原有的 KataGo 直连地址
             KATAGO_BASE_URL: "http://192.168.0.249:8080",
             KATAGO_BOT_NAME: "katago_gtp_bot",
+            // 新增：Next.js 代理 API 地址（可选使用）
+            KATAGO_PROXY_URL: "https://blackricegobackend2-nextjs.vercel.app/api/katago",
             ENV: "github"
         },
         production: {
@@ -55,8 +61,11 @@ function getConfig() {
             API_VERCEL_NEXTJS_BASE_URL: "https://blackricegobackend2-nextjs.vercel.app",
             GITHUB_PAGE_FORUM_URL: "https://zgbl.github.io/tigergo/Forum11.html",
             FORUM_POST_ENDPOINT: "/forum/Posts",
+            // 保持原有的 KataGo 直连地址
             KATAGO_BASE_URL: "http://192.168.0.249:8080",
             KATAGO_BOT_NAME: "katago_gtp_bot",
+            // 新增：Next.js 代理 API 地址（可选使用）
+            KATAGO_PROXY_URL: "https://blackricegobackend2-nextjs.vercel.app/api/katago",
             ENV: "production"
         }
     };
@@ -75,6 +84,7 @@ console.log(`🌍 最终配置:`);
 console.log(`  - 当前环境: ${CONFIG.ENV}`);
 console.log(`  - API地址: ${CONFIG.API_BASE_URL}`);
 console.log(`  - KataGo地址: ${CONFIG.KATAGO_BASE_URL}`);
+console.log(`  - KataGo代理地址: ${CONFIG.KATAGO_PROXY_URL}`);
 console.log(`  - 当前域名: ${window.location.hostname}:${window.location.port}`);
 
 // 验证配置
