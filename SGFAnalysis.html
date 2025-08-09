@@ -105,6 +105,10 @@
             <i class="fas fa-play-circle"></i>
             开始分析
           </button>
+          <button class="stop-analysis-btn" id="stopAnalysisBtn">
+            <i class="fas fa-stop-circle"></i>
+            结束分析
+          </button>
         </div>
 
         <div class="file-info" id="fileInfo">
@@ -129,6 +133,19 @@
           </div>
           <!-- 🔥 新增：添加移动信息显示 -->
           <div id="moveInfo">当前步数：0 / 0</div>
+          
+          <!-- 🔥 新增：胜率显示条 -->
+          <div class="winrate-container">
+            <div class="winrate-bar">
+              <div class="winrate-black" id="winrateBlack"></div>
+              <div class="winrate-white" id="winrateWhite"></div>
+            </div>
+            <div class="winrate-labels">
+              <span class="winrate-label-black">黑棋</span>
+              <span class="winrate-percentage" id="winratePercentage">50% - 50%</span>
+              <span class="winrate-label-white">白棋</span>
+            </div>
+          </div>
           
           <!-- 🔥 修改：使用icon格式的控制按钮（参考Post11.html） -->
           <div id="controls2">
@@ -360,10 +377,14 @@
       </div>
     </div>
 
+    <!-- 在现有的 script 标签之前添加新的 JS 文件 -->
     <script src="js/config.js"></script>
     <script src="js/SGFParser.js"></script>
     <script src="js/GoBoard12.js"></script>
     <script src="js/KataGoAPI.js"></script>
+    <script src="js/AnalysisStorage.js"></script>
+    <script src="js/AnalysisEngine.js"></script>
+    <script src="js/AnalysisDisplay.js"></script>
     <script src="js/navbar.js"></script>
     <script src="js/SGFAnalysis.js"></script>
 
@@ -589,7 +610,6 @@
           { id: 'logofastBackwardBtn', handler: () => { if (typeof fastBackward === 'function') fastBackward(); } },
           { id: 'logobackwardBtn', handler: () => { if (typeof moveBackward === 'function') moveBackward(); } },
           { id: 'logoforwardBtn', handler: () => { if (typeof moveForward === 'function') moveForward(); } },
-          //{ id: 'logoforwardBtn', handler: () => { if (typeof moveForward === 'function') nextMove(); } },        
           { id: 'logofastForwardBtn', handler: () => { if (typeof fastForward === 'function') fastForward(); } },
           { id: 'logoendBtn', handler: () => { if (typeof moveToEnd === 'function') moveToEnd(); } },
           { id: 'logoshowMovesBtn', handler: () => { if (typeof toggleMoveDisplay === 'function') toggleMoveDisplay(); } }
@@ -608,10 +628,64 @@
         console.log('SGFAnalysis.html 初始化完成');
       });
 
-      // 🔥 新增：窗口大小改变时重新计算棋盘大小
+      // 🔥 修改：窗口大小改变时只重新计算棋盘大小，不重新初始化
       window.addEventListener('resize', function() {
-        console.log('窗口大小改变，重新初始化棋盘');
-        initializeBoard();
+        console.log('窗口大小改变，重新计算棋盘大小');
+        
+        // 只重新计算和更新CSS变量，不重新创建棋盘
+        let { cellSize, stoneSize } = calculateBoardSize();
+        console.log("重新计算得到的 cellSize:", cellSize);
+        
+        // 更新CSS变量
+        updateStoneSizeCSS(cellSize);
+        
+        // 更新棋盘容器大小
+        const mainBoard = document.getElementById("board");
+        if (mainBoard) {
+          const boardSize = 19;
+          mainBoard.style.width = `${boardSize * cellSize}px`;
+          mainBoard.style.height = `${boardSize * cellSize}px`;
+          
+          // 更新所有交叉点的大小
+          const intersections = mainBoard.querySelectorAll('.intersection');
+          intersections.forEach(intersection => {
+            intersection.style.width = `${cellSize}px`;
+            intersection.style.height = `${cellSize}px`;
+          });
+          
+          // 重新定位所有元素
+          const lines = mainBoard.querySelectorAll('div');
+          lines.forEach(line => {
+            if (line.style.position === 'absolute') {
+              // 重新计算线条位置
+              const isVertical = line.style.height.includes('px') && parseInt(line.style.height) > 10;
+              const isHorizontal = line.style.width.includes('px') && parseInt(line.style.width) > 10;
+              
+              if (isVertical) {
+                const leftIndex = Math.round(parseFloat(line.style.left) / window.oldCellSize || cellSize);
+                line.style.left = `${cellSize/2 + leftIndex * cellSize}px`;
+                line.style.top = `${cellSize/2}px`;
+                line.style.height = `${(boardSize - 1) * cellSize}px`;
+              } else if (isHorizontal) {
+                const topIndex = Math.round(parseFloat(line.style.top) / window.oldCellSize || cellSize);
+                line.style.left = `${cellSize/2}px`;
+                line.style.top = `${cellSize/2 + topIndex * cellSize}px`;
+                line.style.width = `${(boardSize - 1) * cellSize}px`;
+              }
+            }
+          });
+          
+          // 重新定位交叉点
+          intersections.forEach(intersection => {
+            const row = parseInt(intersection.dataset.row);
+            const col = parseInt(intersection.dataset.col);
+            intersection.style.left = `${col * cellSize}px`;
+            intersection.style.top = `${row * cellSize}px`;
+          });
+          
+          window.oldCellSize = cellSize;
+          console.log("棋盘大小已更新");
+        }
       });
     </script>
 

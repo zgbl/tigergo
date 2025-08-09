@@ -63,6 +63,7 @@ class KataGoAPI {
     async testConnection() {
         try {
             this.printStatus("测试 KataGo 服务器连接...", "INFO");
+            console.log(`🔍 尝试连接: ${this.baseUrl}/health`);
             
             // 先尝试简单的连接测试，避免CORS预检请求
             const response = await fetch(`${this.baseUrl}/health`, {
@@ -74,23 +75,44 @@ class KataGoAPI {
                 signal: AbortSignal.timeout(10000)
             });
             
+            console.log(`🔍 响应状态: ${response.status}`);
+            
             if (response.ok) {
                 const data = await response.json();
                 this.printStatus(`服务器连接成功: ${data.status || 'OK'}`, "SUCCESS");
+                console.log('✅ KataGo 连接成功');
                 return { success: true, data };
             } else {
-                this.printStatus(`服务器连接失败: HTTP ${response.status}`, "ERROR");
-                return { success: false, error: `HTTP ${response.status}` };
+                const errorMsg = `HTTP ${response.status} - ${response.statusText}`;
+                this.printStatus(`服务器连接失败: ${errorMsg}`, "ERROR");
+                console.error('❌ KataGo 连接失败:', errorMsg);
+                
+                if (response.status === 404) {
+                    return { 
+                        success: false, 
+                        error: `服务器返回 404 错误，请检查 KataGo 服务是否正在运行在 ${this.baseUrl}` 
+                    };
+                } else {
+                    return { success: false, error: errorMsg };
+                }
             }
         } catch (error) {
+            console.error('❌ KataGo 连接异常:', error);
+            
             // 处理CORS错误
             if (error.message.includes('CORS') || error.message.includes('Failed to fetch')) {
-                this.printStatus(`CORS错误: KataGo服务器需要配置CORS头`, "ERROR");
+                const corsError = `网络连接失败 - 可能是 CORS 配置问题或服务未启动`;
+                this.printStatus(corsError, "ERROR");
                 this.printStatus(`建议: 在KataGo启动时添加 --cors-allowed-origins "*"`, "WARNING");
-                return { success: false, error: 'CORS配置错误' };
+                return { success: false, error: corsError };
+            } else if (error.name === 'AbortError') {
+                const timeoutError = `连接超时 - KataGo 服务可能未响应`;
+                this.printStatus(timeoutError, "ERROR");
+                return { success: false, error: timeoutError };
             } else {
-                this.printStatus(`服务器连接异常: ${error.message}`, "ERROR");
-                return { success: false, error: error.message };
+                const generalError = `连接异常: ${error.message}`;
+                this.printStatus(generalError, "ERROR");
+                return { success: false, error: generalError };
             }
         }
     }
