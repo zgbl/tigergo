@@ -414,7 +414,13 @@ function toggleMoveDisplay() {
 }
 
 function updateButtonText() {
-    const button = document.getElementById('showMovesBtn');
+    // 在 SGFAnalysis.html 中使用 logoshowMovesBtn 而不是 showMovesBtn
+    const button = document.getElementById('logoshowMovesBtn') || document.getElementById('showMovesBtn');
+    if (!button) {
+        console.warn('未找到显示步数按钮元素');
+        return;
+    }
+    
     switch (displayMode) {
         case 0:
             button.textContent = '显示最后1步';

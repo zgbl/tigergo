@@ -197,23 +197,65 @@ class KataGoAPI {
     }
 
     // 分析指定手数的局面
-    async analyzePosition(moves, moveNumber) {
+    async analyzePosition(moves, moveIndex, signal = null) {
         try {
             // 只取到指定手数的着法
+            const moveNumber = moveIndex + 1;
             const apiMoves = moves.slice(0, moveNumber);
-            
-            this.debugPrint(`分析第${moveNumber}手，使用着法`, apiMoves);
-            
-            const result = await this.selectMove(apiMoves, 19);
-            
-            if (result.success) {
-                return { success: true, data: result.data };
-            } else {
-                return { success: false, error: result.error };
+
+            this.debugPrint(`分析第 ${moveNumber} 手，使用着法`, apiMoves);
+
+            // 🔥 修复：使用和 selectMove 相同的请求体格式
+            const payload = {
+                board_size: 19,
+                moves: apiMoves
+            };
+
+            const requestOptions = {
+                method: 'POST',
+                headers: this.headers,  // 🔥 使用统一的 headers
+                body: JSON.stringify(payload)
+            };
+
+            // 🔥 如果提供了 signal，添加到请求选项中（支持中断分析）
+            if (signal) {
+                requestOptions.signal = signal;
             }
-                
+
+            // 🔥 修复：使用正确的 API 端点，和 selectMove 相同
+            const apiUrl = `${this.baseUrl}/select-move/${this.botName}`;
+            console.log(`🔍 API 请求地址: ${apiUrl}`);
+
+            const startTime = Date.now();
+
+            // 发请求到 KataGo API
+            const response = await fetch(apiUrl, requestOptions);
+
+            this.debugPrint(`API响应状态: ${response.status}`);
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                this.printStatus(`API错误: ${response.status}`, "ERROR");
+                this.printStatus(`错误内容: ${errorText}`, "ERROR");
+                throw new Error(`API 请求失败: ${response.status} ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            const elapsedTime = (Date.now() - startTime) / 1000;
+            data.analysis_time = elapsedTime;
+
+            this.debugPrint("API响应数据", data);
+
+            // 🔥 修复：直接返回数据，不需要检查 result.success
+            return { success: true, data };
+
         } catch (error) {
-            this.printStatus(`分析异常: ${error.message}`, "ERROR");
+            // 如果是中断请求，fetch 会抛 AbortError
+            if (error.name === 'AbortError') {
+                this.printStatus(`分析已中断 (手数: ${moveIndex + 1})`, "INFO");
+            } else {
+                this.printStatus(`分析异常: ${error.message}`, "ERROR");
+            }
             return { success: false, error: error.message };
         }
     }

@@ -79,13 +79,24 @@ class AnalysisStorage {
 
     // 保存单步分析结果到内存缓存
     addAnalysisResult(sgfHash, moveNumber, moveData, analysisResult) {
+        // 确保颜色格式正确转换
+        let normalizedColor = 'black'; // 默认值
+        if (moveData && moveData.color) {
+            const colorLower = moveData.color.toLowerCase(); // 统一转小写
+            if (colorLower === 'b' || colorLower === 'black') {
+                normalizedColor = 'black';
+            } else if (colorLower === 'w' || colorLower === 'white') {
+                normalizedColor = 'white';
+            }
+        }
+        
         const result = {
             sgfHash: sgfHash,
             moveNumber: moveNumber,
             move: moveData ? {
                 row: moveData.row,
                 col: moveData.col,
-                color: moveData.color,
+                color: normalizedColor, // 使用规范化的颜色
                 position: this.convertToSGFPosition(moveData.row, moveData.col) // 如 "Q16"
             } : null,
             analysis: {
@@ -102,7 +113,7 @@ class AnalysisStorage {
         };
 
         this.analysisCache.push(result);
-        console.log(`已添加第${moveNumber}手分析结果到缓存`);
+        console.log(`已添加第${moveNumber}手分析结果到缓存，颜色: ${normalizedColor}`);
         return result;
     }
 
@@ -160,6 +171,47 @@ class AnalysisStorage {
     // 获取当前缓存的分析结果
     getCachedResults() {
         return this.analysisCache;
+    }
+
+    // 清空指定 SGF 的分析结果
+    async clearAnalysisResults(sgfHash) {
+        if (!this.db) {
+            console.warn('数据库未初始化');
+            return;
+        }
+
+        const transaction = this.db.transaction(['analysisResults'], 'readwrite');
+        const store = transaction.objectStore('analysisResults');
+        const index = store.index('sgfHash');
+        
+        return new Promise((resolve, reject) => {
+            const request = index.getAll(sgfHash);
+            request.onsuccess = () => {
+                const results = request.result;
+                if (results.length === 0) {
+                    console.log('没有找到需要清空的分析结果');
+                    resolve();
+                    return;
+                }
+
+                // 删除所有匹配的记录
+                const deletePromises = results.map(result => {
+                    return new Promise((deleteResolve, deleteReject) => {
+                        const deleteRequest = store.delete(result.id);
+                        deleteRequest.onsuccess = () => deleteResolve();
+                        deleteRequest.onerror = () => deleteReject(deleteRequest.error);
+                    });
+                });
+
+                Promise.all(deletePromises)
+                    .then(() => {
+                        console.log(`已清空 ${results.length} 条分析结果`);
+                        resolve();
+                    })
+                    .catch(reject);
+            };
+            request.onerror = () => reject(request.error);
+        });
     }
 
     // 辅助方法：将 row/col 转换为 SGF 位置格式

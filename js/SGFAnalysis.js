@@ -43,11 +43,11 @@ class SGFAnalyzer {
         const analyzeFileBtn = document.getElementById('analyzeFileBtn');
         const uploadArea = document.getElementById('uploadArea');
 
-        console.log('🔧 设置事件监听器:');
-        console.log('  - fileInput:', fileInput);
-        console.log('  - selectFileBtn:', selectFileBtn);
+        //console.log('🔧 设置事件监听器:');
+       // console.log('  - fileInput:', fileInput);
+        //console.log('  - selectFileBtn:', selectFileBtn);
         console.log('  - analyzeFileBtn:', analyzeFileBtn);
-        console.log('  - uploadArea:', uploadArea);
+        //console.log('  - uploadArea:', uploadArea);
 
         if (fileInput) {
             fileInput.addEventListener('change', (e) => this.handleFileUpload(e));
@@ -57,12 +57,12 @@ class SGFAnalyzer {
             selectFileBtn.addEventListener('click', () => fileInput?.click());
         }
 
-        if (analyzeFileBtn) {
+        /*if (analyzeFileBtn) {
             analyzeFileBtn.addEventListener('click', () => {
                 console.log('🎯 分析按钮被点击！');
                 this.startAnalysis();
             });
-        }
+        } */
 
         if (uploadArea) {
             uploadArea.addEventListener('click', () => fileInput?.click());
@@ -244,10 +244,13 @@ class SGFAnalyzer {
             this.currentSGFHash = await this.analysisStorage.saveSGFFile(sgfContent, filename);
             this.analysisEngine.setSGFHash(this.currentSGFHash);
             
-            // 检查是否有已有的分析结果
+            // 重新上传文件时，直接清空已有的分析结果，不再提示
             const existingResults = await this.analysisStorage.loadAnalysisResults(this.currentSGFHash);
             if (existingResults.length > 0) {
-                this.analysisDisplay.showExistingAnalysisPrompt(existingResults);
+                console.log(`发现已有 ${existingResults.length} 条分析结果，重新上传文件时自动清空`);
+                // 清空IndexedDB中的分析结果
+                await this.analysisStorage.clearAnalysisResults(this.currentSGFHash);
+                this.analysisDisplay.addLogEntry(`已清空 ${existingResults.length} 条历史分析结果`, 'info');
             }
 
             // 解析 SGF 内容
@@ -268,6 +271,9 @@ class SGFAnalyzer {
             
             // 更新文件信息显示
             this.updateFileInfo(filename, this.gameData.moves.length);
+            
+            // 重置按钮状态为idle
+            this.updateAnalysisButtons('idle');
             
         } catch (error) {
             console.error('SGF 解析失败:', error);
@@ -502,15 +508,8 @@ class SGFAnalyzer {
 
     // 开始分析
     async startAnalysis() {
-        console.log('🚀 startAnalysis 方法被调用');
-        console.log('  - gameData:', this.gameData);
-        console.log('  - moves length:', this.gameData?.moves?.length);
+        console.log('🚀 开始分析');
         
-        if (!this.gameData || this.gameData.moves.length === 0) {
-            this.analysisDisplay.addLogEntry('没有可分析的棋谱数据', 'error');
-            return;
-        }
-
         try {
             console.log('🧹 清空日志和重置进度');
             this.analysisDisplay.clearLog();
@@ -520,17 +519,22 @@ class SGFAnalyzer {
             this.analysisDisplay.updateStatus('开始分析，正在连接 KataGo 服务...');
             
             // 更新按钮状态
-            this.updateAnalysisButtons(true);
+            this.updateAnalysisButtons('analyzing');
             
             // 确保 analysisEngine 有正确的 SGF 哈希值
             if (this.currentSGFHash) {
                 this.analysisEngine.setSGFHash(this.currentSGFHash);
             }
             
+            // 🔥 获取分析设置
+            const analysisDepthSelect = document.getElementById('analysisDepth');
+            const analysisDepth = analysisDepthSelect ? analysisDepthSelect.value : 'normal';
+            console.log(`🎯 使用分析深度: ${analysisDepth}`);
+            
             console.log('🎯 开始调用 analysisEngine.startAnalysis');
             await this.analysisEngine.startAnalysis(
                 this.gameData,
-                'normal', // 分析深度
+                analysisDepth, // 🔥 使用从UI获取的分析深度
                 (current, total) => {
                     // 进度回调
                     this.analysisDisplay.updateProgress(current, total);
@@ -539,9 +543,9 @@ class SGFAnalyzer {
                 (results) => {
                     // 完成回调
                     const totalTime = results.reduce((sum, r) => sum + (r.analysis.time || 0), 0);
-                    this.analysisDisplay.displayAnalysisComplete(results.length, totalTime);
+                    this.analysisDisplay.displayAnalysisComplete(results.length, totalTime, this.analysisStorage, this.currentSGFHash);
                     this.analysisDisplay.updateStatus('分析完成');
-                    this.updateAnalysisButtons(false);
+                    this.updateAnalysisButtons('idle');
                 },
                 (moveNumber, moveData, analysisData) => {
                     // 每步分析完成回调 - 显示分析结果
@@ -561,23 +565,111 @@ class SGFAnalyzer {
             });
             
             this.analysisDisplay.updateStatus('分析失败');
-            this.updateAnalysisButtons(false);
+            this.updateAnalysisButtons('idle');
         }
     }
 
-    // 更新分析按钮状态 - 简化版本，不隐藏按钮
-    updateAnalysisButtons(isAnalyzing) {
+    // 暂停分析
+    async pauseAnalysis() {
+        console.log('🛑 暂停分析');
+        
+        // 暂停分析引擎
+        this.analysisEngine.pauseAnalysis();
+        
+        // 更新状态和按钮
+        this.analysisDisplay.updateStatus('分析已暂停');
+        this.updateAnalysisButtons('paused');
+        
+        // 显示当前分析结果
+        try {
+            await this.analysisDisplay.displayIndexedDBResults(this.analysisStorage, this.currentSGFHash);
+            const currentResults = this.analysisEngine.analysisResults;
+            this.analysisDisplay.addLogEntry(`分析已暂停，当前已完成 ${currentResults.length} 步分析`, 'info');
+        } catch (error) {
+            console.error('显示暂停结果失败:', error);
+            this.analysisDisplay.addLogEntry(`分析已暂停，显示结果时出错: ${error.message}`, 'warning');
+        }
+    }
+
+    // 恢复分析
+    async resumeAnalysis() {
+        console.log('▶️ 恢复分析');
+        
+        try {
+            // 更新状态和按钮
+            this.analysisDisplay.updateStatus('恢复分析中...');
+            this.updateAnalysisButtons('analyzing');
+            
+            // 恢复分析引擎
+            await this.analysisEngine.resumeAnalysis();
+            
+        } catch (error) {
+            console.error('恢复分析失败:', error);
+            this.analysisDisplay.addLogEntry(`恢复分析失败: ${error.message}`, 'error');
+            this.analysisDisplay.updateStatus('恢复分析失败');
+            this.updateAnalysisButtons('paused');
+        }
+    }
+
+    // 更新分析按钮状态 - 支持三种状态：idle, analyzing, paused
+    updateAnalysisButtons(state) {
         const analyzeBtn = document.getElementById('analyzeFileBtn');
         const stopBtn = document.getElementById('stopAnalysisBtn');
         
+        console.log('updateAnalysisButtons called with state:', state);
+        
         if (analyzeBtn) {
-            analyzeBtn.disabled = isAnalyzing;
-            analyzeBtn.textContent = isAnalyzing ? '分析中...' : '开始分析';
+            // 移除之前的事件监听器
+            //analyzeBtn.onclick = null;
+            const newBtn = analyzeBtn.cloneNode(true);
+            analyzeBtn.parentNode.replaceChild(newBtn, analyzeBtn);
+            const refreshedBtn = document.getElementById('analyzeFileBtn');
+            
+            switch (state) {
+                case 'analyzing':
+                    refreshedBtn.disabled = false;
+                    refreshedBtn.innerHTML = '<i class="fas fa-pause-circle"></i> 中断分析';
+                    refreshedBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        this.pauseAnalysis();
+                    });
+                    break;
+                case 'paused':
+                    refreshedBtn.disabled = false;
+                    refreshedBtn.innerHTML = '<i class="fas fa-play-circle"></i> 恢复分析';
+                    refreshedBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        this.resumeAnalysis();
+                    });
+                    break;
+                case 'idle':
+                default:
+                    refreshedBtn.disabled = false;
+                    refreshedBtn.innerHTML = '<i class="fas fa-play-circle"></i> 开始分析';
+                    refreshedBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        this.startAnalysis();
+                    });
+                    break;
+            }
         }
         
         if (stopBtn) {
-            stopBtn.disabled = !isAnalyzing;
-            stopBtn.textContent = isAnalyzing ? '结束分析' : '停止分析';
+            stopBtn.disabled = (state === 'idle');
+            stopBtn.textContent = (state === 'idle') ? '停止分析' : '结束分析';
+            
+            // 为停止分析按钮添加事件监听器
+            if (state !== 'idle') {
+                // 移除之前的事件监听器
+                const newStopBtn = stopBtn.cloneNode(true);
+                stopBtn.parentNode.replaceChild(newStopBtn, stopBtn);
+                const refreshedStopBtn = document.getElementById('stopAnalysisBtn');
+                
+                refreshedStopBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.stopAnalysis();
+                });
+            }
         }
     }
 
@@ -590,7 +682,7 @@ class SGFAnalyzer {
         
         // 更新状态和按钮
         this.analysisDisplay.updateStatus('分析已停止');
-        this.updateAnalysisButtons(false);
+        this.updateAnalysisButtons('idle');
         
         // 立即保存当前分析结果到 MongoDB
         try {
@@ -645,7 +737,7 @@ class SGFAnalyzer {
                 }
             };
 
-            const response = await fetch('/api/analysis/save', {
+            const response = await fetch('/api/saveAnalysis', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'

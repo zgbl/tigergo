@@ -6,30 +6,52 @@ class AnalysisEngine {
         this.katagoAPI = katagoAPI;
         this.analysisStorage = analysisStorage;
         this.isAnalyzing = false;
+        this.isPaused = false; // 新增：暂停状态
         this.analysisResults = [];
         this.currentSGFHash = null;
-        this.gameData = null; // 添加 gameData 属性
+        this.gameData = null;
+        this.abortController = null; // 🔥 新增：用于中断HTTP请求 2025.8.8
+        // 新增：保存分析状态以便恢复
+        this.analysisState = {
+            gameData: null,
+            analysisDepth: 'normal',
+            currentMoveIndex: 0,
+            onProgress: null,
+            onComplete: null,
+            onMoveAnalyzed: null
+        };
     }
 
     // 开始分析
     async startAnalysis(gameData, analysisDepth = 'normal', onProgress = null, onComplete = null, onMoveAnalyzed = null) {
-        this.gameData = gameData; // 设置 gameData
-        this.isAnalyzing = true;
-        this.analysisResults = [];
-        
-        // 清空缓存
-        this.analysisStorage.clearCache();
-        
         try {
-            console.log(`开始分析棋谱，共 ${gameData.moves.length} 手`);
+            console.log('🚀 开始分析，深度:', analysisDepth);
             
-            // 首先测试 KataGo 连接
+            // 设置分析状态
+            this.isAnalyzing = true;
+            this.isPaused = false;
+            
+            // 保存分析状态以便恢复
+            this.analysisState = {
+                gameData,
+                analysisDepth,
+                onProgress,
+                onComplete,
+                onMoveAnalyzed,
+                currentMoveIndex: this.analysisState.currentMoveIndex || 0
+            };
+            
+            // 清空之前的分析结果（如果是新开始的分析）
+            if (this.analysisState.currentMoveIndex === 0) {
+                this.analysisResults = [];
+                this.analysisStorage.clearCache();
+            }
+            
             console.log('🔍 测试 KataGo 连接...');
             const connectionTest = await this.katagoAPI.testConnection();
             console.log('🔍 连接测试结果:', connectionTest);
             
             if (!connectionTest.success) {
-                // 提供更详细的错误信息
                 let errorMessage = `KataGo 连接失败: ${connectionTest.error}`;
                 
                 if (connectionTest.error.includes('404')) {
@@ -45,12 +67,74 @@ class AnalysisEngine {
             
             console.log('✅ KataGo 连接成功，开始分析...');
             
-            for (let moveIndex = 1; moveIndex <= gameData.moves.length; moveIndex++) {
-                // 检查是否被停止
+            // 开始分析循环
+            await this.continueAnalysis();
+
+        } catch (error) {
+            console.error('分析过程中出错:', error);
+            this.isAnalyzing = false;
+            this.isPaused = false;
+            throw error;
+        }
+    }
+
+    // 暂停分析
+    pauseAnalysis() {
+        console.log('AnalysisEngine: 暂停分析');
+        this.isPaused = true;
+        
+        // 🔥 中断当前的HTTP请求
+        if (this.abortController) {
+            this.abortController.abort();
+            this.abortController = null;
+        }
+    }
+
+    // 恢复分析
+    async resumeAnalysis() {
+        console.log('AnalysisEngine: 恢复分析');
+        if (!this.isAnalyzing) {
+            console.log('没有正在进行的分析，无法恢复');
+            return;
+        }
+        
+        if (!this.isPaused) {
+            console.log('分析未暂停，无需恢复');
+            return;
+        }
+        
+        // 取消暂停状态
+        this.isPaused = false;
+        console.log(`从第${this.analysisState.currentMoveIndex + 1}手继续分析`);
+        
+        // 🔥 重新启动分析循环
+        await this.continueAnalysis();
+    }
+
+    // 继续分析的内部方法
+    async continueAnalysis() {
+        try {
+            const { gameData, analysisDepth, onProgress, onComplete, onMoveAnalyzed } = this.analysisState;
+            
+            // 从当前位置继续分析
+            const startIndex = this.analysisState.currentMoveIndex + 1;
+            
+            for (let moveIndex = startIndex; moveIndex <= gameData.moves.length; moveIndex++) {
+                // 检查是否被停止或暂停
                 if (!this.isAnalyzing) {
-                    console.log('分析被用户停止');
-                    break;
+                    console.log('分析被停止');
+                    return;
                 }
+                
+                if (this.isPaused) {
+                    console.log('分析被暂停');
+                    // 🔥 暂停时保存当前位置
+                    this.analysisState.currentMoveIndex = moveIndex - 1;
+                    return;
+                }
+                
+                // 更新当前分析位置
+                this.analysisState.currentMoveIndex = moveIndex;
                 
                 // 更新进度
                 if (onProgress) {
@@ -63,41 +147,63 @@ class AnalysisEngine {
                     console.log(`棋盘已同步到第${moveIndex}手`);
                 }
 
-                // 分析当前局面
-                const analysisData = await this.analyzeMove(gameData, moveIndex);
-                
-                // 调用分析结果回调，显示分析结果
-                if (onMoveAnalyzed && analysisData) {
-                    const currentMove = gameData.moves[moveIndex - 1];
-                    console.log('调用 onMoveAnalyzed 回调:', { moveIndex, currentMove, analysisData });
-                    onMoveAnalyzed(moveIndex, currentMove, analysisData);
+                try {
+                    // 🔥 分析前再次检查状态
+                    if (!this.isAnalyzing || this.isPaused) {
+                        console.log(this.isPaused ? '分析在分析单步前被暂停' : '分析在分析单步前被停止');
+                        return;
+                    }
+                    
+                    // 分析当前局面
+                    const analysisData = await this.analyzeMove(gameData, moveIndex);
+                    
+                    // 🔥 分析完成后再次检查状态
+                    if (!this.isAnalyzing || this.isPaused) {
+                        console.log(this.isPaused ? '分析在分析单步后被暂停' : '分析在分析单步后被停止');
+                        return;
+                    }
+                    
+                    // 调用分析结果回调，显示分析结果
+                    if (onMoveAnalyzed && analysisData) {
+                        const currentMove = gameData.moves[moveIndex - 1];
+                        console.log('调用 onMoveAnalyzed 回调:', { moveIndex, currentMove, analysisData });
+                        onMoveAnalyzed(moveIndex, currentMove, analysisData);
+                    }
+                                
+                } catch (error) {
+                    console.error(`分析第${moveIndex}手时出错:`, error);
+                    // 分析出错时也要检查是否应该停止
+                    if (!this.isAnalyzing || this.isPaused) {
+                        return;
+                    }
+                    // 出错时也要记录，但不跳过延迟
+                    console.log(`第${moveIndex}手分析失败，将在延迟后继续下一手`);
                 }
                 
-                // 检查是否被停止
-                if (!this.isAnalyzing) {
-                    console.log('分析被用户停止');
-                    break;
-                }
-                
-                // 根据分析深度添加延迟
-                const delays = { fast: 1000, normal: 2000, deep: 3000, ultra: 4000 };
-                await this.sleep(delays[analysisDepth] || 2000);
+                // 🔥 无论成功还是失败，都要执行延迟（移到这里确保总是执行）
+                const delays = { fast: 2000, normal: 5000, deep: 8000, ultra: 10000 };
+                console.log(`第${moveIndex}手分析完成，等待 ${delays[analysisDepth] || 5000}ms 后继续...`);
+                await this.sleep(delays[analysisDepth] || 5000);
             }
 
             // 分析完成后保存
-            if (this.isAnalyzing) {
+            if (this.isAnalyzing && !this.isPaused) {
                 await this.saveResults();
                 
                 if (onComplete) {
                     onComplete(this.analysisResults);
                 }
+                
+                // 分析完成，重置状态
+                this.isAnalyzing = false;
+                this.isPaused = false;
             }
 
         } catch (error) {
-            console.error('分析过程中出错:', error);
-            throw error;
-        } finally {
+            console.error('继续分析过程中出错:', error);
             this.isAnalyzing = false;
+            this.isPaused = false;
+            throw error;
         }
     }
 
@@ -105,6 +211,25 @@ class AnalysisEngine {
     stopAnalysis() {
         console.log('AnalysisEngine: 停止分析');
         this.isAnalyzing = false;
+        this.isPaused = false;
+        
+        // 🔥 中断当前的HTTP请求
+        if (this.abortController) {
+            this.abortController.abort();
+            this.abortController = null;
+        }
+        // 重置分析状态
+        this.analysisState.currentMoveIndex = 0;
+    }
+
+    // 获取分析状态
+    getAnalysisStatus() {
+        return {
+            isAnalyzing: this.isAnalyzing,
+            isPaused: this.isPaused,
+            resultsCount: this.analysisResults.length,
+            currentMoveIndex: this.analysisState.currentMoveIndex
+        };
     }
 
     // 分析单步
@@ -114,19 +239,34 @@ class AnalysisEngine {
         console.log(`分析第${moveIndex}手`);
         
         try {
-            const result = await this.katagoAPI.analyzePosition(gameData.rawMoves, moveIndex);
+            // 🔥 检查是否应该停止
+            if (!this.isAnalyzing || this.isPaused) {
+                throw new Error('分析已被中断');
+            }
+            
+            // 🔥 创建新的 AbortController
+            this.abortController = new AbortController();
+
+            const result = await this.katagoAPI.analyzePosition(
+                gameData.rawMoves, 
+                moveIndex, 
+                this.abortController.signal // 🔥 传递 signal
+            );
             
             if (result.success) {
                 // 解析分析结果
                 const analysisData = this.parseAnalysisResult(result.data);
                 
-                // 添加到缓存
-                this.analysisStorage.addAnalysisResult(
+                // 立即保存到IndexedDB（单条记录）
+                const analysisResult = this.analysisStorage.addAnalysisResult(
                     this.currentSGFHash,
                     moveIndex,
                     currentMove,
                     analysisData
                 );
+
+                // 立即保存到IndexedDB
+                await this.saveCurrentAnalysisToIndexedDB(analysisResult);
 
                 // 添加到本地结果数组
                 this.analysisResults.push({
@@ -140,31 +280,108 @@ class AnalysisEngine {
                 throw new Error(result.error);
             }
         } catch (error) {
+            if (error.name === 'AbortError') {
+                console.log(`第${moveIndex}手分析被中断`);
+                throw new Error('分析被中断');
+            }
             console.error(`分析第${moveIndex}手失败:`, error);
+            throw error;
+        }
+    }
+
+    // 立即保存单条分析结果到IndexedDB
+    async saveCurrentAnalysisToIndexedDB(analysisResult) {
+        try {
+            const transaction = this.analysisStorage.db.transaction(['analysisResults'], 'readwrite');
+            const store = transaction.objectStore('analysisResults');
+            
+            return new Promise((resolve, reject) => {
+                const request = store.add(analysisResult);
+                request.onsuccess = () => {
+                    console.log(`第${analysisResult.moveNumber}手分析结果已保存到IndexedDB`);
+                    resolve(request.result);
+                };
+                request.onerror = () => {
+                    console.error(`保存第${analysisResult.moveNumber}手到IndexedDB失败:`, request.error);
+                    reject(request.error);
+                };
+            });
+        } catch (error) {
+            console.error('保存到IndexedDB失败:', error);
             throw error;
         }
     }
 
     // 解析 KataGo 分析结果
     parseAnalysisResult(rawData) {
-        return {
-            recommendedMove: rawData.moveInfos?.[0]?.move || '',
-            winRate: rawData.rootInfo?.winrate ? (rawData.rootInfo.winrate * 100).toFixed(1) : 0,
-            score: rawData.rootInfo?.scoreMean?.toFixed(2) || 0,
-            visits: rawData.rootInfo?.visits || 0,
-            time: rawData.time || 0,
-            policy: rawData.moveInfos?.map(info => ({
+        console.log('parseAnalysisResult 接收到的原始数据:', rawData);
+        
+        // 参考老版本的正确数据路径
+        let winRate = 0;
+        let recommendedMove = '';
+        let score = 0;
+        let visits = 0;
+        let time = rawData.analysis_time || 0;
+        
+        // 首先尝试从主要字段获取数据
+        if (rawData.winrate !== null && rawData.winrate !== undefined) {
+            winRate = (rawData.winrate * 100).toFixed(1);
+        }
+        
+        if (rawData.bot_move) {
+            recommendedMove = rawData.bot_move;
+        }
+        
+        if (rawData.score !== null && rawData.score !== undefined) {
+            score = rawData.score.toFixed(2);
+        }
+        
+        if (rawData.visits) {
+            visits = rawData.visits;
+        }
+        
+        // 如果主要字段为空，尝试从 analysis 数组中获取
+        if (rawData.analysis && rawData.analysis.length > 0) {
+            const firstAnalysis = rawData.analysis[0];
+            
+            if (!recommendedMove && firstAnalysis.move) {
+                recommendedMove = firstAnalysis.move;
+            }
+            
+            if (winRate === 0 && firstAnalysis.winrate !== null && firstAnalysis.winrate !== undefined) {
+                winRate = (firstAnalysis.winrate * 100).toFixed(1);
+            }
+            
+            if (score === 0 && (firstAnalysis.scoreLead !== null || firstAnalysis.scoreMean !== null)) {
+                score = (firstAnalysis.scoreLead || firstAnalysis.scoreMean || 0).toFixed(2);
+            }
+            
+            if (visits === 0 && firstAnalysis.visits) {
+                visits = firstAnalysis.visits;
+            }
+        }
+        
+        const result = {
+            recommendedMove: recommendedMove || '',
+            winRate: winRate,
+            score: score,
+            visits: visits,
+            time: time,
+            policy: rawData.analysis?.map(info => ({
                 move: info.move,
-                probability: info.prior
+                probability: info.prior || info.probability
             })) || [],
-            variations: rawData.moveInfos?.slice(0, 5).map(info => ({
+            variations: rawData.analysis?.slice(0, 5).map(info => ({
                 moves: [info.move],
-                winRate: (info.winrate * 100).toFixed(1),
-                score: info.scoreMean?.toFixed(2) || 0,
-                visits: info.visits
+                winRate: info.winrate ? (info.winrate * 100).toFixed(1) : '0.0',
+                score: (info.scoreLead || info.scoreMean || 0).toFixed(2),
+                visits: info.visits || 0
             })) || [],
             rawData: rawData
         };
+        
+        console.log('parseAnalysisResult 解析后的结果:', result);
+        return result;
     }
 
     // 保存分析结果
@@ -188,13 +405,28 @@ class AnalysisEngine {
         const analysisResults = this.analysisStorage.getCachedResults();
         if (analysisResults.length === 0) return;
 
+        // 🔥 从正确的位置获取gameData
+        const gameData = this.analysisState.gameData;
+        if (!gameData) {
+            console.error('gameData 不存在，无法保存到MongoDB');
+            return;
+        }
+
+        // 🔥 添加调试信息，检查sgfContent
+        console.log('gameData检查:', {
+            hasGameData: !!gameData,
+            hasSgfContent: !!gameData.sgfContent,
+            sgfContentLength: gameData.sgfContent?.length || 0,
+            filename: gameData.filename
+        });
+
         const payload = {
             sgf: {
                 hash: this.currentSGFHash,
-                filename: this.gameData?.filename || 'unknown.sgf',
-                content: this.gameData?.sgfContent || '',
+                filename: gameData.filename || 'unknown.sgf',
+                content: gameData.sgfContent || '', // 🔥 使用正确的gameData
                 uploadTime: new Date().toISOString(),
-                gameInfo: this.gameData?.gameInfo || {}
+                gameInfo: gameData.gameInfo || {}
             },
             analysisConfig: {
                 engine: 'katago',
@@ -220,8 +452,14 @@ class AnalysisEngine {
             }
         };
 
+        // 🔥 检查sgf.content是否存在
+        if (!payload.sgf.content) {
+            console.error('警告: sgf.content 为空，这将导致后端验证失败');
+            console.log('gameData详细信息:', gameData);
+        }
+
         try {
-            const response = await fetch('/api/analysis/save', {
+            const response = await fetch('/api/saveAnalysis', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -232,7 +470,10 @@ class AnalysisEngine {
             if (response.ok) {
                 console.log('分析结果已保存到数据库');
             } else {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                // 🔥 获取详细的错误信息
+                const errorText = await response.text();
+                console.error('后端返回的错误信息:', errorText);
+                throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
             }
         } catch (error) {
             console.error('保存到 MongoDB 失败:', error);
@@ -243,19 +484,6 @@ class AnalysisEngine {
     // 设置当前 SGF 哈希值
     setSGFHash(hash) {
         this.currentSGFHash = hash;
-    }
-
-    // 停止分析
-    stopAnalysis() {
-        this.isAnalyzing = false;
-    }
-
-    // 获取分析状态
-    getAnalysisStatus() {
-        return {
-            isAnalyzing: this.isAnalyzing,
-            resultsCount: this.analysisResults.length
-        };
     }
 
     // 工具方法：延迟

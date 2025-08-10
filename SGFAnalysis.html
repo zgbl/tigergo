@@ -231,7 +231,7 @@
             <div class="setting-group">
               <label class="setting-label">分析深度</label>
               <select class="setting-select" id="analysisDepth">
-                <option value="fast">快速分析 (3秒/步)</option>
+                <option value="fast">快速分析 (2秒/步)</option>
                 <option value="normal" selected>标准分析 (5秒/步)</option>
                 <option value="deep">深度分析 (8秒/步)</option>
                 <option value="ultra">超深度分析 (12秒/步)</option>
@@ -628,63 +628,84 @@
         console.log('SGFAnalysis.html 初始化完成');
       });
 
-      // 🔥 修改：窗口大小改变时只重新计算棋盘大小，不重新初始化
+      // 🔥 修改：窗口大小改变时重新创建棋盘
       window.addEventListener('resize', function() {
-        console.log('窗口大小改变，重新计算棋盘大小');
+        console.log('窗口大小改变，重新创建棋盘');
         
-        // 只重新计算和更新CSS变量，不重新创建棋盘
+        // 重新计算棋盘大小
         let { cellSize, stoneSize } = calculateBoardSize();
         console.log("重新计算得到的 cellSize:", cellSize);
         
         // 更新CSS变量
         updateStoneSizeCSS(cellSize);
         
-        // 更新棋盘容器大小
+        // 保存当前棋子状态
         const mainBoard = document.getElementById("board");
         if (mainBoard) {
-          const boardSize = 19;
-          mainBoard.style.width = `${boardSize * cellSize}px`;
-          mainBoard.style.height = `${boardSize * cellSize}px`;
-          
-          // 更新所有交叉点的大小
-          const intersections = mainBoard.querySelectorAll('.intersection');
-          intersections.forEach(intersection => {
-            intersection.style.width = `${cellSize}px`;
-            intersection.style.height = `${cellSize}px`;
+          // 保存当前的棋子信息
+          const stones = [];
+          const stoneElements = mainBoard.querySelectorAll('.stone');
+          stoneElements.forEach(stone => {
+            const row = parseInt(stone.dataset.row);
+            const col = parseInt(stone.dataset.col);
+            const color = stone.classList.contains('black') ? 'black' : 'white';
+            const moveNumber = stone.dataset.moveNumber;
+            stones.push({ row, col, color, moveNumber });
           });
           
-          // 重新定位所有元素
-          const lines = mainBoard.querySelectorAll('div');
-          lines.forEach(line => {
-            if (line.style.position === 'absolute') {
-              // 重新计算线条位置
-              const isVertical = line.style.height.includes('px') && parseInt(line.style.height) > 10;
-              const isHorizontal = line.style.width.includes('px') && parseInt(line.style.width) > 10;
+          // 重新创建棋盘
+          createBoard3({
+            domElement: mainBoard,
+            boardSize: 19,
+            cellSize: cellSize,
+          });
+          
+          // 恢复棋子
+          stones.forEach(stone => {
+            const intersection = mainBoard.querySelector(`[data-row="${stone.row}"][data-col="${stone.col}"]`);
+            if (intersection) {
+              const stoneElement = document.createElement('div');
+              stoneElement.className = `stone ${stone.color}`;
+              stoneElement.dataset.row = stone.row;
+              stoneElement.dataset.col = stone.col;
+              stoneElement.dataset.moveNumber = stone.moveNumber;
+              stoneElement.style.position = 'absolute';
+              stoneElement.style.top = '50%';
+              stoneElement.style.left = '50%';
+              stoneElement.style.transform = 'translate(-50%, -50%)';
+              stoneElement.style.width = `${cellSize * 0.9}px`;
+              stoneElement.style.height = `${cellSize * 0.9}px`;
+              stoneElement.style.borderRadius = '50%';
+              stoneElement.style.zIndex = '4';
               
-              if (isVertical) {
-                const leftIndex = Math.round(parseFloat(line.style.left) / window.oldCellSize || cellSize);
-                line.style.left = `${cellSize/2 + leftIndex * cellSize}px`;
-                line.style.top = `${cellSize/2}px`;
-                line.style.height = `${(boardSize - 1) * cellSize}px`;
-              } else if (isHorizontal) {
-                const topIndex = Math.round(parseFloat(line.style.top) / window.oldCellSize || cellSize);
-                line.style.left = `${cellSize/2}px`;
-                line.style.top = `${cellSize/2 + topIndex * cellSize}px`;
-                line.style.width = `${(boardSize - 1) * cellSize}px`;
+              if (stone.color === 'black') {
+                stoneElement.style.background = 'radial-gradient(circle at 30% 30%, #666, #000)';
+                stoneElement.style.border = '1px solid #333';
+              } else {
+                stoneElement.style.background = 'radial-gradient(circle at 30% 30%, #fff, #ddd)';
+                stoneElement.style.border = '1px solid #999';
               }
+              
+              // 如果需要显示步数
+              if (window.displayMode === 1 && stone.moveNumber) {
+                const numberElement = document.createElement('div');
+                numberElement.textContent = stone.moveNumber;
+                numberElement.style.position = 'absolute';
+                numberElement.style.top = '50%';
+                numberElement.style.left = '50%';
+                numberElement.style.transform = 'translate(-50%, -50%)';
+                numberElement.style.fontSize = `${cellSize * 0.3}px`;
+                numberElement.style.fontWeight = 'bold';
+                numberElement.style.color = stone.color === 'black' ? '#fff' : '#000';
+                numberElement.style.pointerEvents = 'none';
+                stoneElement.appendChild(numberElement);
+              }
+              
+              intersection.appendChild(stoneElement);
             }
           });
           
-          // 重新定位交叉点
-          intersections.forEach(intersection => {
-            const row = parseInt(intersection.dataset.row);
-            const col = parseInt(intersection.dataset.col);
-            intersection.style.left = `${col * cellSize}px`;
-            intersection.style.top = `${row * cellSize}px`;
-          });
-          
-          window.oldCellSize = cellSize;
-          console.log("棋盘大小已更新");
+          console.log("棋盘重新创建完成，已恢复棋子");
         }
       });
     </script>
