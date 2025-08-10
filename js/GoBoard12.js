@@ -328,13 +328,10 @@ function clearBoard() {
 }
 
 function moveForward() {
-    console.log("点击了前进，BoBoard12.js， moveForward(), Line 327")
-    console.log("currentMoveIndex is", currentMoveIndex);
-    console.log("currentMoves is", currentMoves);
+    console.log("点击了前进（大棋盘?），GoBoard12.js， moveForward(), Line 327")
     if (currentMoveIndex < currentMoves.length - 1) {
         currentMoveIndex++;
         const move = currentMoves[currentMoveIndex];
-        // 🔹 颜色映射处理
         if (move.color) {
             const colorLower = move.color.toLowerCase();
             if (colorLower === "b") {
@@ -350,6 +347,11 @@ function moveForward() {
         }
         updateMoveInfo();
         updateMoveDisplay();
+        
+        // 更新候选点显示
+        if (typeof displayCandidatePoints === 'function') {
+            displayCandidatePoints();
+        }
     }
 }
 
@@ -364,6 +366,11 @@ function moveBackward() {
         updateMoveInfo();
         //renderMovesToIndex(currentMoveIndex);  //2025.8.7 被提掉的子要恢复显示，看是不是要用这个。
         updateMoveDisplay();
+        
+        // 更新候选点显示
+        if (typeof displayCandidatePoints === 'function') {
+            displayCandidatePoints();
+        }
     }
 }
   
@@ -940,6 +947,11 @@ function renderMovesToIndex(targetIndex) {
     console.log("renderMovesToIndex, line 944, currentMoveIndex:", currentMoveIndex);
     updateMoveInfo();
     updateMoveDisplay();
+    
+    // 更新候选点显示
+    if (typeof displayCandidatePoints === 'function') {
+        displayCandidatePoints();
+    }
 }
 
 

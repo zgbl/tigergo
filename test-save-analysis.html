@@ -3,190 +3,173 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>测试 /api/saveAnalysis API</title>
+    <title>测试 saveAnalysis API</title>
     <style>
       body {
         font-family: Arial, sans-serif;
-        max-width: 1200px;
-        margin: 0 auto;
-        padding: 20px;
-        background-color: #f5f5f5;
+        margin: 20px;
       }
       .container {
-        background: white;
-        padding: 20px;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        margin-bottom: 20px;
-      }
-      h1,
-      h2 {
-        color: #333;
-      }
-      button {
-        background-color: #007bff;
-        color: white;
-        border: none;
-        padding: 10px 20px;
-        margin: 5px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 14px;
-      }
-      button:hover {
-        background-color: #0056b3;
-      }
-      button:disabled {
-        background-color: #6c757d;
-        cursor: not-allowed;
-      }
-      .error {
-        background-color: #f8d7da;
-        color: #721c24;
-        padding: 10px;
-        border-radius: 4px;
-        margin: 10px 0;
-      }
-      .success {
-        background-color: #d4edda;
-        color: #155724;
-        padding: 10px;
-        border-radius: 4px;
-        margin: 10px 0;
-      }
-      .info {
-        background-color: #d1ecf1;
-        color: #0c5460;
-        padding: 10px;
-        border-radius: 4px;
-        margin: 10px 0;
-      }
-      pre {
-        background-color: #f8f9fa;
-        padding: 15px;
-        border-radius: 4px;
-        overflow-x: auto;
-        white-space: pre-wrap;
-        word-wrap: break-word;
+        max-width: 1000px;
+        margin: 0 auto;
       }
       .test-section {
-        border-left: 4px solid #007bff;
-        padding-left: 15px;
         margin: 20px 0;
+        padding: 15px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+      }
+      button {
+        padding: 10px 15px;
+        margin: 5px;
+        background: #007bff;
+        color: white;
+        border: none;
+        border-radius: 3px;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #0056b3;
+      }
+      .result {
+        margin-top: 10px;
+        padding: 10px;
+        background: #f8f9fa;
+        border-radius: 3px;
+        white-space: pre-wrap;
+        max-height: 400px;
+        overflow-y: auto;
+      }
+      .error {
+        background: #f8d7da;
+        color: #721c24;
+      }
+      .success {
+        background: #d4edda;
+        color: #155724;
+      }
+      textarea {
+        width: 100%;
+        height: 200px;
+        margin: 10px 0;
+        font-family: monospace;
+      }
+      input {
+        width: 100%;
+        padding: 5px;
+        margin: 5px 0;
+      }
+      .json-input {
+        font-family: monospace;
+        font-size: 12px;
       }
     </style>
   </head>
   <body>
     <div class="container">
-      <h1>测试 /api/saveAnalysis API</h1>
-      <p>这个页面用于测试 SGF 分析结果保存 API 的各种功能。</p>
+      <h1>测试 saveAnalysis API</h1>
 
       <div class="test-section">
-        <h2>基本功能测试</h2>
-        <button onclick="testSaveAnalysis()">1. 测试保存新分析结果</button>
-        <button onclick="testCustomData()">2. 测试自定义数据</button>
-        <button onclick="testDuplicateHash()">3. 测试重复哈希更新</button>
+        <h3>1. 测试保存分析结果</h3>
+        <p>这将使用示例数据测试 <code>POST /api/saveAnalysis</code> 端点</p>
+        <button onclick="testSaveAnalysis()">发送测试数据</button>
+        <div id="saveResult" class="result"></div>
       </div>
 
       <div class="test-section">
-        <h2>错误处理测试</h2>
-        <button onclick="testMissingFields()">4. 测试缺少必需字段</button>
-        <button onclick="testInvalidData()">5. 测试无效数据类型</button>
+        <h3>2. 自定义测试数据</h3>
+        <p>你可以修改下面的 JSON 数据来测试不同的情况：</p>
+        <textarea
+          id="customData"
+          class="json-input"
+          placeholder="输入自定义的 JSON 数据..."
+        ></textarea>
+        <button onclick="testCustomData()">发送自定义数据</button>
+        <div id="customResult" class="result"></div>
       </div>
 
-      <div id="results"></div>
+      <div class="test-section">
+        <h3>3. 测试重复哈希（更新功能）</h3>
+        <p>使用相同的哈希值再次发送数据，测试更新功能：</p>
+        <button onclick="testDuplicateHash()">测试重复哈希</button>
+        <div id="duplicateResult" class="result"></div>
+      </div>
+
+      <div class="test-section">
+        <h3>4. 测试错误情况</h3>
+        <button onclick="testMissingFields()">测试缺少必需字段</button>
+        <button onclick="testInvalidData()">测试无效数据</button>
+        <div id="errorResult" class="result"></div>
+      </div>
     </div>
 
     <script>
-      const API_BASE = "http://localhost:8090";
+      // 生成示例测试数据
+      function generateTestData() {
+        const now = new Date().toISOString();
+        const hash = "test_hash_" + Date.now();
 
-      function displayResult(title, data, isError = false) {
-        const resultsDiv = document.getElementById("results");
-        const resultDiv = document.createElement("div");
-        resultDiv.className = isError ? "error" : "success";
-        resultDiv.innerHTML = `
-                <h3>${title}</h3>
-                <pre>${JSON.stringify(data, null, 2)}</pre>
-            `;
-        resultsDiv.appendChild(resultDiv);
-        resultsDiv.scrollTop = resultsDiv.scrollHeight;
-      }
-
-      function displayInfo(title, message) {
-        const resultsDiv = document.getElementById("results");
-        const resultDiv = document.createElement("div");
-        resultDiv.className = "info";
-        resultDiv.innerHTML = `<h3>${title}</h3><p>${message}</p>`;
-        resultsDiv.appendChild(resultDiv);
-      }
-
-      // 生成示例数据
-      function generateSampleData() {
         return {
           sgf: {
-            hash: "sample_hash_" + Date.now(),
-            filename: "test_game.sgf",
+            hash: hash,
+            filename: "test-game.sgf",
             content:
-              "(;FF[4]CA[UTF-8]AP[GoGui:1.4.9]SZ[19]KM[7.5]PB[Black]PW[White];B[pd];W[dp];B[pq];W[dd])",
-            uploadTime: new Date().toISOString(),
+              "(;FF[4]CA[UTF-8]AP[CGoban:3]ST[2]RU[Japanese]SZ[19]KM[6.50]TM[1800]PW[White]PB[Black];B[pd];W[dd];B[pq];W[dp];B[fq];W[cn];B[jp];W[qf];B[nc];W[rd];B[qc];W[qi])",
+            uploadTime: now,
             gameInfo: {
-              blackPlayer: "测试黑棋",
-              whitePlayer: "测试白棋",
-              komi: 7.5,
-              boardSize: 19,
-              result: "B+5.5",
-              date: "2024-01-20",
+              black: "测试黑棋",
+              white: "测试白棋",
+              result: "B+R",
+              date: "2024-01-15",
+              event: "测试对局",
+              komi: 6.5,
             },
           },
           analysisConfig: {
-            engineVersion: "KataGo v1.12.3",
-            modelName: "kata1-b40c256-s11840935168-d2898845681.bin.gz",
-            visits: 1000,
-            playoutCap: 500,
-            maxTime: 10.0,
-            analysisDate: new Date().toISOString(),
-            totalMoves: 4,
-            settings: {
-              temperature: 0.0,
-              dynamicScoreUtilityFactor: 0.3,
-              subtreeValueBiasFactor: 0.45,
-            },
+            engine: "katago",
+            engineVersion: "1.11.0",
+            visits: 800,
+            time: 30,
+            analysisDate: now,
+            totalMoves: 12,
           },
           analysisResults: [
             {
               moveNumber: 1,
               move: {
                 row: 15,
-                col: 3,
-                color: "B",
+                col: 15,
+                color: "black",
               },
-              winrate: 0.52,
-              scoreLead: 1.2,
-              visits: 1000,
-              policy: [
-                {
-                  move: { row: 15, col: 3, color: "B" },
-                  probability: 0.15,
-                  visits: 150,
-                  winrate: 0.52,
-                  scoreLead: 1.2,
+              analysis: {
+                recommendedMove: "Q4",
+                winRate: "50.2",
+                score: "+0.1",
+                visits: 800,
+                time: 2.5,
+                policy: [
+                  {
+                    move: "Q4",
+                    probability: 0.15,
+                  },
+                  {
+                    move: "D4",
+                    probability: 0.14,
+                  },
+                ],
+                variations: [
+                  {
+                    moves: ["Q4", "D4", "Q16"],
+                    winRate: "50.5",
+                    score: "+0.2",
+                    visits: 400,
+                  },
+                ],
+                rawData: {
+                  id: "test",
+                  turnNumber: 1,
+                  moveInfos: [],
                 },
-              ],
-              variations: [
-                {
-                  moves: [
-                    { row: 15, col: 3, color: "B" },
-                    { row: 3, col: 3, color: "W" },
-                  ],
-                  winrate: 0.51,
-                  scoreLead: 0.8,
-                  visits: 200,
-                },
-              ],
-              rawData: {
-                ownership: [0.1, 0.2, 0.3],
-                territory: [1, -1, 0],
-                influence: [0.5, -0.3, 0.1],
               },
             },
             {
@@ -194,175 +177,97 @@
               move: {
                 row: 3,
                 col: 3,
-                color: "W",
+                color: "white",
               },
-              winrate: 0.48,
-              scoreLead: -1.1,
-              visits: 1000,
-              policy: [
-                {
-                  move: { row: 3, col: 3, color: "W" },
-                  probability: 0.18,
-                  visits: 180,
-                  winrate: 0.48,
-                  scoreLead: -1.1,
+              analysis: {
+                recommendedMove: "D16",
+                winRate: "49.8",
+                score: "-0.1",
+                visits: 800,
+                time: 2.3,
+                policy: [
+                  {
+                    move: "D16",
+                    probability: 0.16,
+                  },
+                ],
+                variations: [
+                  {
+                    moves: ["D16", "Q16"],
+                    winRate: "49.9",
+                    score: "0.0",
+                    visits: 400,
+                  },
+                ],
+                rawData: {
+                  id: "test",
+                  turnNumber: 2,
+                  moveInfos: [],
                 },
-              ],
-              variations: [
-                {
-                  moves: [
-                    { row: 3, col: 3, color: "W" },
-                    { row: 15, col: 15, color: "B" },
-                  ],
-                  winrate: 0.47,
-                  scoreLead: -1.5,
-                  visits: 150,
-                },
-              ],
-              rawData: {
-                ownership: [0.2, 0.1, 0.4],
-                territory: [-1, 1, 0],
-                influence: [-0.4, 0.6, 0.2],
-              },
-            },
-            {
-              moveNumber: 3,
-              move: {
-                row: 15,
-                col: 15,
-                color: "B",
-              },
-              winrate: 0.53,
-              scoreLead: 1.5,
-              visits: 1000,
-              policy: [
-                {
-                  move: { row: 15, col: 15, color: "B" },
-                  probability: 0.12,
-                  visits: 120,
-                  winrate: 0.53,
-                  scoreLead: 1.5,
-                },
-              ],
-              variations: [
-                {
-                  moves: [
-                    { row: 15, col: 15, color: "B" },
-                    { row: 3, col: 15, color: "W" },
-                  ],
-                  winrate: 0.52,
-                  scoreLead: 1.2,
-                  visits: 180,
-                },
-              ],
-              rawData: {
-                ownership: [0.3, 0.2, 0.5],
-                territory: [1, -1, 1],
-                influence: [0.6, -0.2, 0.4],
-              },
-            },
-            {
-              moveNumber: 4,
-              move: {
-                row: 3,
-                col: 15,
-                color: "W",
-              },
-              winrate: 0.49,
-              scoreLead: -0.8,
-              visits: 1000,
-              policy: [
-                {
-                  move: { row: 3, col: 15, color: "W" },
-                  probability: 0.14,
-                  visits: 140,
-                  winrate: 0.49,
-                  scoreLead: -0.8,
-                },
-              ],
-              variations: [
-                {
-                  moves: [{ row: 3, col: 15, color: "W" }],
-                  winrate: 0.49,
-                  scoreLead: -0.8,
-                  visits: 140,
-                },
-              ],
-              rawData: {
-                ownership: [0.1, 0.3, 0.2],
-                territory: [-1, 1, -1],
-                influence: [-0.3, 0.4, -0.1],
               },
             },
           ],
           metadata: {
+            createdAt: now,
+            updatedAt: now,
             analysisStatus: "completed",
-            totalAnalysisTime: 45.6,
-            averageTimePerMove: 11.4,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
+            totalAnalysisTime: 60,
+            averageTime: "2.4",
             version: "1.0",
-            notes: "完整的 KataGo 分析结果",
           },
         };
       }
 
-      // 1. 测试保存新分析结果
       async function testSaveAnalysis() {
-        displayInfo("测试 1", "正在测试保存新的分析结果...");
+        const resultDiv = document.getElementById("saveResult");
+        const testData = generateTestData();
+
+        // 显示发送的数据
+        document.getElementById("customData").value = JSON.stringify(
+          testData,
+          null,
+          2
+        );
 
         try {
-          const data = generateSampleData();
-
-          const response = await fetch(`${API_BASE}/api/saveAnalysis`, {
+          const response = await fetch("/api/saveAnalysis", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
             },
-            body: JSON.stringify(data),
+            body: JSON.stringify(testData),
           });
 
           const result = await response.json();
+          resultDiv.className =
+            "result " + (result.success ? "success" : "error");
+          resultDiv.textContent =
+            `状态码: ${response.status}\n\n` + JSON.stringify(result, null, 2);
 
-          if (response.ok) {
-            displayResult("✅ 测试 1 - 保存新分析结果成功", {
-              status: response.status,
-              result: result,
-            });
-          } else {
-            displayResult(
-              "❌ 测试 1 - 保存新分析结果失败",
-              {
-                status: response.status,
-                result: result,
-              },
-              true
-            );
+          // 保存 analysisId 用于后续测试
+          if (result.success && result.analysisId) {
+            window.lastAnalysisId = result.analysisId;
           }
         } catch (error) {
-          displayResult(
-            "❌ 测试 1 - 网络错误",
-            {
-              error: error.message,
-            },
-            true
-          );
+          resultDiv.className = "result error";
+          resultDiv.textContent = "请求失败: " + error.message;
         }
       }
 
-      // 2. 测试自定义数据
       async function testCustomData() {
-        displayInfo("测试 2", "正在测试自定义数据保存...");
+        const customData = document.getElementById("customData").value;
+        const resultDiv = document.getElementById("customResult");
+
+        if (!customData.trim()) {
+          resultDiv.className = "result error";
+          resultDiv.textContent = "请输入 JSON 数据";
+          return;
+        }
 
         try {
-          const data = generateSampleData();
-          data.sgf.hash = "custom_hash_" + Date.now();
-          data.sgf.gameInfo.blackPlayer = "自定义黑棋手";
-          data.sgf.gameInfo.whitePlayer = "自定义白棋手";
-          data.analysisConfig.visits = 2000;
-          data.metadata.notes = "这是一个自定义的测试数据";
+          const data = JSON.parse(customData);
 
-          const response = await fetch(`${API_BASE}/api/saveAnalysis`, {
+          const response = await fetch("/api/saveAnalysis", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -371,171 +276,63 @@
           });
 
           const result = await response.json();
-
-          if (response.ok) {
-            displayResult("✅ 测试 2 - 自定义数据保存成功", {
-              status: response.status,
-              result: result,
-            });
-          } else {
-            displayResult(
-              "❌ 测试 2 - 自定义数据保存失败",
-              {
-                status: response.status,
-                result: result,
-              },
-              true
-            );
-          }
+          resultDiv.className =
+            "result " + (result.success ? "success" : "error");
+          resultDiv.textContent =
+            `状态码: ${response.status}\n\n` + JSON.stringify(result, null, 2);
         } catch (error) {
-          displayResult(
-            "❌ 测试 2 - 网络错误",
-            {
-              error: error.message,
-            },
-            true
-          );
+          resultDiv.className = "result error";
+          resultDiv.textContent = "JSON 解析失败或请求失败: " + error.message;
         }
       }
 
-      // 3. 测试重复哈希更新
       async function testDuplicateHash() {
-        displayInfo("测试 3", "正在测试重复哈希的更新功能...");
+        const resultDiv = document.getElementById("duplicateResult");
+        const testData = generateTestData();
+
+        // 使用固定的哈希值
+        testData.sgf.hash = "duplicate_test_hash";
+        testData.sgf.filename = "updated-game.sgf";
+        testData.metadata.analysisStatus = "completed";
 
         try {
-          const data = generateSampleData();
-          const fixedHash = "duplicate_test_hash_123";
-          data.sgf.hash = fixedHash;
-
-          // 第一次保存
-          const response1 = await fetch(`${API_BASE}/api/saveAnalysis`, {
+          const response = await fetch("/api/saveAnalysis", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
             },
-            body: JSON.stringify(data),
-          });
-
-          const result1 = await response1.json();
-
-          // 修改数据后再次保存相同哈希
-          data.metadata.notes = "这是更新后的数据";
-          data.analysisConfig.visits = 3000;
-
-          const response2 = await fetch(`${API_BASE}/api/saveAnalysis`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(data),
-          });
-
-          const result2 = await response2.json();
-
-          displayResult("✅ 测试 3 - 重复哈希处理", {
-            firstSave: {
-              status: response1.status,
-              result: result1,
-            },
-            secondSave: {
-              status: response2.status,
-              result: result2,
-            },
-          });
-        } catch (error) {
-          displayResult(
-            "❌ 测试 3 - 网络错误",
-            {
-              error: error.message,
-            },
-            true
-          );
-        }
-      }
-
-      // 4. 测试缺少必需字段
-      async function testMissingFields() {
-        displayInfo("测试 4", "正在测试缺少必需字段的错误处理...");
-
-        try {
-          const incompleteData = {
-            sgf: {
-              hash: "incomplete_hash",
-              filename: "test.sgf",
-              // 缺少 content
-            },
-            analysisConfig: {
-              engineVersion: "KataGo v1.12.3",
-              // 缺少 totalMoves
-            },
-            analysisResults: [
-              {
-                // 缺少 moveNumber 和 move
-                winrate: 0.5,
-              },
-            ],
-            metadata: {
-              analysisStatus: "completed",
-            },
-          };
-
-          const response = await fetch(`${API_BASE}/api/saveAnalysis`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(incompleteData),
+            body: JSON.stringify(testData),
           });
 
           const result = await response.json();
-
-          displayResult("✅ 测试 4 - 缺少必需字段错误处理", {
-            status: response.status,
-            result: result,
-          });
+          resultDiv.className =
+            "result " + (result.success ? "success" : "error");
+          resultDiv.textContent =
+            `状态码: ${response.status}\n\n` + JSON.stringify(result, null, 2);
         } catch (error) {
-          displayResult(
-            "❌ 测试 4 - 网络错误",
-            {
-              error: error.message,
-            },
-            true
-          );
+          resultDiv.className = "result error";
+          resultDiv.textContent = "请求失败: " + error.message;
         }
       }
 
-      // 5. 测试无效数据类型
-      async function testInvalidData() {
-        displayInfo("测试 5", "正在测试无效数据类型的错误处理...");
+      async function testMissingFields() {
+        const resultDiv = document.getElementById("errorResult");
+
+        // 缺少必需字段的数据
+        const invalidData = {
+          sgf: {
+            filename: "test.sgf",
+            // 缺少 hash 和 content
+          },
+          analysisConfig: {
+            engine: "katago",
+            // 缺少 engineVersion 和 totalMoves
+          },
+          // 缺少 analysisResults 和 metadata
+        };
 
         try {
-          const invalidData = {
-            sgf: {
-              hash: "invalid_data_hash",
-              filename: "test.sgf",
-              content: "(;FF[4]CA[UTF-8])",
-            },
-            analysisConfig: {
-              engineVersion: "KataGo v1.12.3",
-              totalMoves: "not_a_number", // 应该是数字
-            },
-            analysisResults: [
-              {
-                moveNumber: "not_a_number", // 应该是数字
-                move: {
-                  row: "not_a_number", // 应该是数字
-                  col: "not_a_number", // 应该是数字
-                  color: "B",
-                },
-                winrate: "not_a_number", // 应该是数字
-              },
-            ],
-            metadata: {
-              analysisStatus: "completed",
-            },
-          };
-
-          const response = await fetch(`${API_BASE}/api/saveAnalysis`, {
+          const response = await fetch("/api/saveAnalysis", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -544,29 +341,80 @@
           });
 
           const result = await response.json();
-
-          displayResult("✅ 测试 5 - 无效数据类型错误处理", {
-            status: response.status,
-            result: result,
-          });
+          resultDiv.className = "result error";
+          resultDiv.textContent =
+            `状态码: ${response.status}\n\n` + JSON.stringify(result, null, 2);
         } catch (error) {
-          displayResult(
-            "❌ 测试 5 - 网络错误",
-            {
-              error: error.message,
-            },
-            true
-          );
+          resultDiv.className = "result error";
+          resultDiv.textContent = "请求失败: " + error.message;
         }
       }
 
-      // 页面加载完成后显示说明
-      document.addEventListener("DOMContentLoaded", function () {
-        displayInfo(
-          "使用说明",
-          "点击上方按钮测试不同的 API 功能。前三个测试应该成功，后两个测试应该返回相应的错误信息。"
+      async function testInvalidData() {
+        const resultDiv = document.getElementById("errorResult");
+
+        // 数据类型错误的数据
+        const invalidData = {
+          sgf: {
+            hash: "test_hash",
+            filename: "test.sgf",
+            content: "(;FF[4]...)",
+            uploadTime: "2024-01-15T10:00:00Z",
+            gameInfo: {
+              black: "测试黑棋",
+              white: "测试白棋",
+              komi: "invalid_number", // 应该是数字
+            },
+          },
+          analysisConfig: {
+            engine: "katago",
+            engineVersion: "1.0",
+            totalMoves: "invalid_number", // 应该是数字
+          },
+          analysisResults: [
+            {
+              moveNumber: "invalid_number", // 应该是数字
+              move: {
+                row: "invalid", // 应该是数字
+                col: 15,
+                color: "invalid_color", // 应该是 black 或 white
+              },
+            },
+          ],
+          metadata: {
+            createdAt: "2024-01-15T10:00:00Z",
+            updatedAt: "2024-01-15T10:00:00Z",
+            analysisStatus: "completed",
+          },
+        };
+
+        try {
+          const response = await fetch("/api/saveAnalysis", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(invalidData),
+          });
+
+          const result = await response.json();
+          resultDiv.className = "result error";
+          resultDiv.textContent =
+            `状态码: ${response.status}\n\n` + JSON.stringify(result, null, 2);
+        } catch (error) {
+          resultDiv.className = "result error";
+          resultDiv.textContent = "请求失败: " + error.message;
+        }
+      }
+
+      // 页面加载时初始化示例数据
+      window.onload = function () {
+        document.getElementById("customData").value = JSON.stringify(
+          generateTestData(),
+          null,
+          2
         );
-      });
+      };
     </script>
   </body>
 </html>

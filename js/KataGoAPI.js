@@ -197,7 +197,7 @@ class KataGoAPI {
     }
 
     // 分析指定手数的局面
-    async analyzePosition(moves, moveIndex, signal = null) {
+    async analyzePosition(moves, moveIndex, signal = null, analysisDepth = 'normal') {
         try {
             // 只取到指定手数的着法
             const moveNumber = moveIndex + 1;
@@ -205,11 +205,24 @@ class KataGoAPI {
 
             this.debugPrint(`分析第 ${moveNumber} 手，使用着法`, apiMoves);
 
-            // 🔥 修复：使用和 selectMove 相同的请求体格式
+            // 🔥 根据分析深度设置访问次数和其他参数
+            const analysisConfig = this.getAnalysisConfig(analysisDepth);
+
+            // 🔥 增强的请求体格式，包含分析参数
             const payload = {
                 board_size: 19,
-                moves: apiMoves
+                moves: apiMoves,
+                // 🔥 添加分析参数以获取更多候选变化
+                maxVisits: analysisConfig.maxVisits,
+                analysisWideRootNoise: analysisConfig.wideRootNoise,
+                includeOwnership: true,
+                includeMovesOwnership: false,
+                includePVVisits: true,
+                reportDuringSearchEvery: analysisConfig.reportInterval
             };
+
+            console.log(`🔍 分析配置 (${analysisDepth}):`, analysisConfig);
+            console.log(`🔍 API 请求 payload:`, payload);
 
             const requestOptions = {
                 method: 'POST',
@@ -258,6 +271,34 @@ class KataGoAPI {
             }
             return { success: false, error: error.message };
         }
+    }
+
+    // 🔥 新增：根据分析深度获取分析配置
+    getAnalysisConfig(analysisDepth) {
+        const configs = {
+            fast: {
+                maxVisits: 400,
+                wideRootNoise: 0.02,
+                reportInterval: 100
+            },
+            normal: {
+                maxVisits: 800,
+                wideRootNoise: 0.04,
+                reportInterval: 200
+            },
+            deep: {
+                maxVisits: 1600,
+                wideRootNoise: 0.06,
+                reportInterval: 400
+            },
+            ultra: {
+                maxVisits: 3200,
+                wideRootNoise: 0.08,
+                reportInterval: 800
+            }
+        };
+
+        return configs[analysisDepth] || configs.normal;
     }
 
     // 格式化分析结果

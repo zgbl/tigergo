@@ -50,19 +50,13 @@ class SGFAnalyzer {
         //console.log('  - uploadArea:', uploadArea);
 
         if (fileInput) {
-            fileInput.addEventListener('change', (e) => this.handleFileUpload(e));
-        }
+            //fileInput.addEventListener('change', (e) => this.handleFileUpload(e));  //file类函数已经移出去了
+            fileInput.addEventListener('change', (e) => handleFileUpload(e));
+        }   
 
         if (selectFileBtn) {
             selectFileBtn.addEventListener('click', () => fileInput?.click());
         }
-
-        /*if (analyzeFileBtn) {
-            analyzeFileBtn.addEventListener('click', () => {
-                console.log('🎯 分析按钮被点击！');
-                this.startAnalysis();
-            });
-        } */
 
         if (uploadArea) {
             uploadArea.addEventListener('click', () => fileInput?.click());
@@ -86,28 +80,6 @@ class SGFAnalyzer {
             this.updateConnectionStatus('error');
         }
     }
-
-        // 测试 KataGo 连接
-    /*async testKataGoConnection() {
-        console.log("开始测试KataGo连接");
-        this.updateConnectionStatus('connecting');
-        const result = await this.katagoAPI.testConnection();
-        
-        if (result.success) {
-            // 尝试获取服务器信息，但不强制要求成功
-            try {
-                await this.katagoAPI.getServerInfo();
-            } catch (error) {
-                this.addLogEntry('获取服务器详细信息失败，但基本连接正常', 'warning');
-            }
-        } else {
-            // 如果是CORS错误，提供解决方案
-            if (result.error.includes('CORS')) {
-                this.addLogEntry('解决方案: 启动KataGo时添加参数 --cors-allowed-origins "*"', 'warning');
-                this.addLogEntry('或者使用代理服务器解决跨域问题', 'warning');
-            }
-        }
-    } */
 
     testKataGoConnection = async () => {
         console.log('开始测试KataGo连接');
@@ -186,54 +158,6 @@ class SGFAnalyzer {
             if (btn) {
                 btn.addEventListener('click', handler);
             }
-        });
-    }
-
-    // 文件处理方法
-    async handleFileUpload(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-
-        try {
-            const sgfContent = await this.readFile(file);
-            await this.parseSGF(sgfContent, file.name);
-            this.analysisDisplay.addLogEntry(`文件 ${file.name} 上传成功`, 'success');
-            
-            // 启用分析按钮，确保停止按钮隐藏
-            this.updateAnalysisButtons(false);
-        } catch (error) {
-            console.error('文件上传失败:', error);
-            this.analysisDisplay.addLogEntry(`文件上传失败: ${error.message}`, 'error');
-        }
-    }
-
-    handleDragOver(event) {
-        event.preventDefault();
-        event.currentTarget.classList.add('drag-over');
-    }
-
-    async handleDrop(event) {
-        event.preventDefault();
-        event.currentTarget.classList.remove('drag-over');
-        
-        const files = event.dataTransfer.files;
-        if (files.length > 0) {
-            const file = files[0];
-            if (file.name.endsWith('.sgf')) {
-                const sgfContent = await this.readFile(file);
-                await this.parseSGF(sgfContent, file.name);
-            } else {
-                this.analysisDisplay.addLogEntry('请选择 SGF 格式的文件', 'error');
-            }
-        }
-    }
-
-    readFile(file) {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = (e) => resolve(e.target.result);
-            reader.onerror = (e) => reject(new Error('文件读取失败'));
-            reader.readAsText(file);
         });
     }
 
@@ -450,28 +374,198 @@ class SGFAnalyzer {
         if (typeof renderMovesToIndex === 'function') {
             renderMovesToIndex(index);
         }
-        this.updateMoveInfo();
+        this.updateMoveInfo(); // 这里会调用displayCandidatePoints
     }
 
     previousMove() {
         if (typeof moveBackward === 'function') {
             moveBackward();
         }
-        this.updateMoveInfo();
+        this.updateMoveInfo(); // 这里会调用displayCandidatePoints
     }
 
     nextMove() {
         if (typeof moveForward === 'function') {
             moveForward();
         }
-        this.updateMoveInfo();
+        this.updateMoveInfo(); // 这里会调用displayCandidatePoints
     }
 
     goToLastMove() {
         if (typeof moveToEnd === 'function') {
             moveToEnd();
         }
-        this.updateMoveInfo();
+        this.updateMoveInfo(); // 这里会调用displayCandidatePoints
+    }
+
+    toggleMoveNumbers() {
+        this.analysisDisplay.addLogEntry('显示步数功能开发中...', 'warning');
+    }
+
+    toggleAutoPlay() {
+        this.analysisDisplay.addLogEntry('自动播放功能开发中...', 'warning');
+    }
+
+    // 更新移动信息
+    updateMoveInfo() {
+        const moveInfoElement = document.getElementById('moveInfo');
+        if (moveInfoElement && this.gameData) {
+            const currentIndex = window.currentMoveIndex !== undefined ? window.currentMoveIndex : this.currentMoveIndex;
+            const moveNum = Math.max(0, currentIndex + 1);
+            moveInfoElement.textContent = `当前步数：${moveNum} / ${this.gameData.moves.length}`;
+            
+            // 🔥 新增：显示当前步的候选点
+            this.displayCandidatePoints(currentIndex);
+        }
+    }
+
+    // 🔥 新增：显示候选点
+    async displayCandidatePoints(currentMoveIndex) {
+        // 清除之前的候选点
+        this.clearCandidatePoints();
+        
+        // 如果没有分析结果，不显示候选点
+        if (!this.currentSGFHash) return;
+        
+        try {
+            // 从IndexedDB加载分析结果
+            const analysisResults = await this.analysisStorage.loadAnalysisResults(this.currentSGFHash);
+            
+            // 找到当前步的分析结果（注意：分析结果是滞后一步的）
+            const targetMoveNumber = currentMoveIndex + 1; // 当前显示的是第N步，要显示第N步的分析结果
+            const currentAnalysis = analysisResults.find(result => result.moveNumber === targetMoveNumber);
+            
+            if (currentAnalysis && currentAnalysis.analysis && currentAnalysis.analysis.variations) {
+                console.log(`显示第${targetMoveNumber}手的候选点:`, currentAnalysis.analysis.variations);
+                
+                // 显示前3个候选点（除了实际落子点）
+                const variations = currentAnalysis.analysis.variations.slice(0, 3);
+                variations.forEach((variation, index) => {
+                    if (variation.moves && variation.moves.length > 0) {
+                        const candidateMove = variation.moves[0]; // 取第一个候选手
+                        const winRate = variation.winRate || '0.0';
+                        
+                        // 解析候选手位置（如 "Q16"）
+                        const position = this.parseSGFPosition(candidateMove);
+                        if (position) {
+                            this.addCandidatePoint(position.row, position.col, winRate, index);
+                        }
+                    }
+                });
+            }
+        } catch (error) {
+            console.error('显示候选点失败:', error);
+        }
+    }
+
+    // 🔥 新增：清除候选点
+    clearCandidatePoints() {
+        const candidatePoints = document.querySelectorAll('.candidate-point');
+        candidatePoints.forEach(point => point.remove());
+    }
+
+    // 🔥 新增：添加候选点标记
+    addCandidatePoint(row, col, winRate, index) {
+        const intersection = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+        if (!intersection) {
+            console.warn(`未找到交点 (${row}, ${col})`);
+            return;
+        }
+
+        // 检查该位置是否已有棋子
+        const existingStone = intersection.querySelector('.stone');
+        if (existingStone) {
+            console.log(`位置 (${row}, ${col}) 已有棋子，跳过候选点显示`);
+            return;
+        }
+
+        // 创建候选点元素
+        const candidatePoint = document.createElement('div');
+        candidatePoint.className = 'candidate-point';
+        candidatePoint.style.cssText = `
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: ${window.cellSize * 0.8}px;
+            height: ${window.cellSize * 0.8}px;
+            border: 2px solid #000;
+            background-color: rgba(173, 216, 230, 0.7);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: ${window.cellSize * 0.25}px;
+            font-weight: bold;
+            color: #000;
+            z-index: 10;
+            pointer-events: none;
+        `;
+        
+        // 显示胜率
+        candidatePoint.textContent = `${winRate}%`;
+        
+        // 添加到交点
+        intersection.appendChild(candidatePoint);
+        
+        console.log(`添加候选点 (${row}, ${col}): ${winRate}%`);
+    }
+
+    // 🔥 新增：解析SGF位置格式（如 "Q16" -> {row: 3, col: 16}）
+    parseSGFPosition(sgfPos) {
+        if (!sgfPos || sgfPos.length < 2) return null;
+        
+        const colChar = sgfPos[0].toUpperCase();
+        const rowNum = parseInt(sgfPos.slice(1));
+        
+        // 列转换: A-T -> 0-18 (跳过I)
+        let col;
+        if (colChar <= 'H') {
+            col = colChar.charCodeAt(0) - 65; // A-H -> 0-7
+        } else if (colChar >= 'J') {
+            col = colChar.charCodeAt(0) - 66; // J-T -> 8-18
+        } else {
+            return null; // I不存在
+        }
+        
+        // 行转换: 1-19 -> 18-0
+        const row = 19 - rowNum;
+        
+        if (row >= 0 && row < 19 && col >= 0 && col < 19) {
+            return { row, col };
+        }
+        
+        return null;
+    }
+
+    // 棋盘控制方法
+    goToMove(index) {
+        this.currentMoveIndex = index;
+        if (typeof renderMovesToIndex === 'function') {
+            renderMovesToIndex(index);
+        }
+        this.updateMoveInfo(); // 这里会调用displayCandidatePoints
+    }
+
+    previousMove() {
+        if (typeof moveBackward === 'function') {
+            moveBackward();
+        }
+        this.updateMoveInfo(); // 这里会调用displayCandidatePoints
+    }
+
+    nextMove() {
+        if (typeof moveForward === 'function') {
+            moveForward();
+        }
+        this.updateMoveInfo(); // 这里会调用displayCandidatePoints
+    }
+
+    goToLastMove() {
+        if (typeof moveToEnd === 'function') {
+            moveToEnd();
+        }
+        this.updateMoveInfo(); // 这里会调用displayCandidatePoints
     }
 
     toggleMoveNumbers() {
@@ -709,6 +803,59 @@ class SGFAnalyzer {
                 throw new Error('没有分析结果可保存');
             }
 
+            // 🔥 添加详细的数据大小分析
+            console.log(`🔍 准备保存 ${analysisResults.length} 条分析结果到 MongoDB`);
+            
+            let totalSize = 0;
+            let rawDataTotalSize = 0;
+            let maxSingleResultSize = 0;
+            let maxSingleRawDataSize = 0;
+            
+            analysisResults.forEach((result, index) => {
+                const resultSize = JSON.stringify(result).length;
+                totalSize += resultSize;
+                maxSingleResultSize = Math.max(maxSingleResultSize, resultSize);
+                
+                if (result.analysis && result.analysis.rawData) {
+                    const rawDataSize = JSON.stringify(result.analysis.rawData).length;
+                    rawDataTotalSize += rawDataSize;
+                    maxSingleRawDataSize = Math.max(maxSingleRawDataSize, rawDataSize);
+                    
+                    if (index < 3) { // 只显示前3条的详细信息
+                        console.log(`🔍 第${result.moveNumber}手分析结果:`);
+                        console.log(`  - 总大小: ${(resultSize / 1024).toFixed(2)} KB`);
+                        console.log(`  - rawData大小: ${(rawDataSize / 1024).toFixed(2)} KB (${((rawDataSize / resultSize) * 100).toFixed(1)}%)`);
+                        
+                        // 检查 rawData 中的具体字段
+                        if (result.analysis.rawData.analysis) {
+                            const analysisArraySize = JSON.stringify(result.analysis.rawData.analysis).length;
+                            console.log(`  - rawData.analysis数组大小: ${(analysisArraySize / 1024).toFixed(2)} KB`);
+                            console.log(`  - rawData.analysis包含 ${result.analysis.rawData.analysis.length} 个变化`);
+                            
+                            // 检查第一个变化的详细字段
+                            if (result.analysis.rawData.analysis[0]) {
+                                const firstVariation = result.analysis.rawData.analysis[0];
+                                Object.keys(firstVariation).forEach(key => {
+                                    if (firstVariation[key] && typeof firstVariation[key] === 'object') {
+                                        const fieldSize = JSON.stringify(firstVariation[key]).length;
+                                        if (fieldSize > 500) { // 只显示大于500字节的字段
+                                            console.log(`    - ${key}: ${(fieldSize / 1024).toFixed(2)} KB`);
+                                        }
+                                    }
+                                });
+                            }
+                        }
+                    }
+                }
+            });
+            
+            console.log(`🔍 分析结果数据统计:`);
+            console.log(`  - 总记录数: ${analysisResults.length}`);
+            console.log(`  - 所有结果总大小: ${(totalSize / 1024 / 1024).toFixed(2)} MB`);
+            console.log(`  - rawData总大小: ${(rawDataTotalSize / 1024 / 1024).toFixed(2)} MB (${((rawDataTotalSize / totalSize) * 100).toFixed(1)}%)`);
+            console.log(`  - 单条结果最大: ${(maxSingleResultSize / 1024).toFixed(2)} KB`);
+            console.log(`  - 单条rawData最大: ${(maxSingleRawDataSize / 1024).toFixed(2)} KB`);
+
             const payload = {
                 sgf: {
                     hash: this.currentSGFHash,
@@ -725,7 +872,23 @@ class SGFAnalyzer {
                     analysisDate: new Date().toISOString(),
                     totalMoves: analysisResults.length
                 },
-                analysisResults: analysisResults,
+                // 🔥 关键修复：移除 rawData，只保留核心分析数据
+                analysisResults: analysisResults.map(result => ({
+                    moveNumber: result.moveNumber,
+                    move: result.move,
+                    analysis: {
+                        recommendedMove: result.analysis.recommendedMove,
+                        winRate: result.analysis.winRate,
+                        score: result.analysis.score,
+                        visits: result.analysis.visits,
+                        time: result.analysis.time,
+                        // 只保留前3个变化，减少数据量
+                        variations: result.analysis.variations?.slice(0, 3) || [],
+                        // 只保留前10个策略，减少数据量
+                        policy: result.analysis.policy?.slice(0, 10) || []
+                        // 🔥 完全移除 rawData！这是数据量大的罪魁祸首
+                    }
+                })),
                 metadata: {
                     createdAt: new Date().toISOString(),
                     updatedAt: new Date().toISOString(),
@@ -736,6 +899,31 @@ class SGFAnalyzer {
                     version: '1.0'
                 }
             };
+
+            // 🔥 分析 payload 各部分的大小
+            const sgfSize = JSON.stringify(payload.sgf).length;
+            const configSize = JSON.stringify(payload.analysisConfig).length;
+            const resultsSize = JSON.stringify(payload.analysisResults).length;
+            const metadataSize = JSON.stringify(payload.metadata).length;
+            const totalPayloadSize = JSON.stringify(payload).length;
+            
+            console.log(`🔍 最终 Payload 大小分析:`);
+            console.log(`  - SGF部分: ${(sgfSize / 1024).toFixed(2)} KB (${((sgfSize / totalPayloadSize) * 100).toFixed(1)}%)`);
+            console.log(`  - 配置部分: ${(configSize / 1024).toFixed(2)} KB (${((configSize / totalPayloadSize) * 100).toFixed(1)}%)`);
+            console.log(`  - 分析结果部分: ${(resultsSize / 1024).toFixed(2)} KB (${((resultsSize / totalPayloadSize) * 100).toFixed(1)}%)`);
+            console.log(`  - 元数据部分: ${(metadataSize / 1024).toFixed(2)} KB (${((metadataSize / totalPayloadSize) * 100).toFixed(1)}%)`);
+            console.log(`  - 🚨 总大小: ${(totalPayloadSize / 1024 / 1024).toFixed(2)} MB`);
+            
+            // 🔥 根据大小给出警告
+            if (totalPayloadSize > 50 * 1024 * 1024) { // 50MB
+                console.error(`❌ 数据量极大 (${(totalPayloadSize / 1024 / 1024).toFixed(2)} MB)，必须优化！`);
+            } else if (totalPayloadSize > 16 * 1024 * 1024) { // 16MB
+                console.error(`❌ 数据量过大 (${(totalPayloadSize / 1024 / 1024).toFixed(2)} MB)，可能会导致 HTTP 413 错误`);
+            } else if (totalPayloadSize > 10 * 1024 * 1024) { // 10MB
+                console.warn(`⚠️ 数据量较大 (${(totalPayloadSize / 1024 / 1024).toFixed(2)} MB)，建议优化`);
+            } else {
+                console.log(`✅ 数据量正常 (${(totalPayloadSize / 1024 / 1024).toFixed(2)} MB)`);
+            }
 
             const response = await fetch('/api/saveAnalysis', {
                 method: 'POST',

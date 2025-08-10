@@ -16,67 +16,7 @@
       href="https://zgbl.github.io/tigergo/favicon.ico"
       type="image/x-icon"
     />
-    <style>
-      /* 🔥 新增：添加控制按钮样式（从Post11.html复制） */
-      /*
-      #controls2 {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        margin: 20px auto;
-        text-align: center;
-        flex-wrap: wrap;
-        gap: 5px;
-      }
-      
-      .control-btn {
-        background: linear-gradient(145deg, #f0f0f0, #d1d1d1);
-        border: 2px solid #bbb;
-        border-radius: 8px;
-        color: #333;
-        cursor: pointer;
-        font-size: 16px;
-        margin: 5px;
-        padding: 10px 15px;
-        transition: all 0.3s ease;
-        box-shadow: 3px 3px 8px rgba(0,0,0,0.2);
-      }
 
-      .control-btn:hover {
-        background: linear-gradient(145deg, #e0e0e0, #c1c1c1);
-        box-shadow: 2px 2px 6px rgba(0,0,0,0.3);
-        transform: translateY(-1px);
-      }
-
-      .control-btn:active {
-        background: linear-gradient(145deg, #d0d0d0, #b1b1b1);
-        box-shadow: 1px 1px 3px rgba(0,0,0,0.2);
-        transform: translateY(0px);
-      }
-
-      .control-btn:disabled {
-        background: #f5f5f5;
-        border-color: #ddd;
-        color: #aaa;
-        cursor: not-allowed;
-        box-shadow: none;
-        transform: none;
-      }  */
-
-      /* 移动信息显示样式 */
-      /*
-      #moveInfo {
-        text-align: center;
-        margin: 10px 0;
-        font-size: 16px;
-        font-weight: bold;
-        color: #333;
-        background: #f8f9fa;
-        padding: 8px 16px;
-        border-radius: 4px;
-        border: 1px solid #dee2e6;
-      }  */
-    </style>
   <body>
     <div id="navbar-placeholder"></div>
 
@@ -386,6 +326,7 @@
     <script src="js/AnalysisEngine.js"></script>
     <script src="js/AnalysisDisplay.js"></script>
     <script src="js/navbar.js"></script>
+    <script src="js/FileHandler.js"></script>
     <script src="js/SGFAnalysis.js"></script>
 
     <!-- 🔥 新增：从Post11.html复制的棋盘创建代码 -->
@@ -660,7 +601,7 @@
             cellSize: cellSize,
           });
           
-          // 恢复棋子
+          // 🔥 修复：恢复棋子时使用统一的尺寸计算
           stones.forEach(stone => {
             const intersection = mainBoard.querySelector(`[data-row="${stone.row}"][data-col="${stone.col}"]`);
             if (intersection) {
@@ -673,8 +614,11 @@
               stoneElement.style.top = '50%';
               stoneElement.style.left = '50%';
               stoneElement.style.transform = 'translate(-50%, -50%)';
-              stoneElement.style.width = `${cellSize * 0.9}px`;
-              stoneElement.style.height = `${cellSize * 0.9}px`;
+              
+              // 🔥 关键修复：使用统一的棋子大小计算
+              const actualStoneSize = cellSize * 0.9;
+              stoneElement.style.width = `${actualStoneSize}px`;
+              stoneElement.style.height = `${actualStoneSize}px`;
               stoneElement.style.borderRadius = '50%';
               stoneElement.style.zIndex = '4';
               
@@ -694,7 +638,7 @@
                 numberElement.style.top = '50%';
                 numberElement.style.left = '50%';
                 numberElement.style.transform = 'translate(-50%, -50%)';
-                numberElement.style.fontSize = `${cellSize * 0.3}px`;
+                numberElement.style.fontSize = `${actualStoneSize * 0.4}px`; // 🔥 修复：使用实际棋子大小计算字体
                 numberElement.style.fontWeight = 'bold';
                 numberElement.style.color = stone.color === 'black' ? '#fff' : '#000';
                 numberElement.style.pointerEvents = 'none';

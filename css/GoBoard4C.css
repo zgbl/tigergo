@@ -72,11 +72,30 @@
   position: absolute;
   top: 50%; left: 50%;
   transform: translate(-50%, -50%);
-  width: calc(var(--cell-size) * 0.9); /* 使用cell-size计算 */
-  height: calc(var(--cell-size) * 0.9); /* 使用cell-size计算 */
+  /* 🔥 修复：统一使用 cell-size 计算棋子大小 */
+  width: calc(var(--cell-size) * 0.9);
+  height: calc(var(--cell-size) * 0.9);
   border-radius: 50%;
-  background-size: cover; /*设置使得棋子图片全覆盖，显示完整棋子图片 */
+  background-size: cover;
   z-index: 3;
+  }
+
+  .move-number {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    /* 🔥 修复：统一使用 cell-size 计算 */
+    width: calc(var(--cell-size) * 0.9);
+    height: calc(var(--cell-size) * 0.9);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    /* 🔥 修复：字体大小也使用 cell-size 计算 */
+    font-size: calc(var(--cell-size) * 0.4);
+    font-weight: bold;
+    z-index: 2;
+    color: white;
   }
     
   .stone.black {

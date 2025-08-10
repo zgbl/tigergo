@@ -247,10 +247,12 @@ class AnalysisEngine {
             // 🔥 创建新的 AbortController
             this.abortController = new AbortController();
 
+            // 🔥 传递分析深度参数
             const result = await this.katagoAPI.analyzePosition(
                 gameData.rawMoves, 
                 moveIndex, 
-                this.abortController.signal // 🔥 传递 signal
+                this.abortController.signal,
+                this.analysisState.analysisDepth // 🔥 添加分析深度参数
             );
             
             if (result.success) {
@@ -316,6 +318,32 @@ class AnalysisEngine {
     parseAnalysisResult(rawData) {
         console.log('parseAnalysisResult 接收到的原始数据:', rawData);
         
+        // 🔥 添加原始数据大小检查
+        const rawDataSize = JSON.stringify(rawData).length;
+        console.log(`🔍 原始 rawData 大小: ${(rawDataSize / 1024).toFixed(2)} KB`);
+        
+        // 🔥 检查 rawData 的主要字段大小
+        if (rawData.analysis) {
+            const analysisSize = JSON.stringify(rawData.analysis).length;
+            console.log(`🔍 rawData.analysis 大小: ${(analysisSize / 1024).toFixed(2)} KB, 包含 ${rawData.analysis.length} 个变化`);
+            
+            // 检查每个 analysis 项的大小
+            rawData.analysis.slice(0, 3).forEach((item, index) => {
+                const itemSize = JSON.stringify(item).length;
+                console.log(`🔍 analysis[${index}] 大小: ${(itemSize / 1024).toFixed(2)} KB`);
+                
+                // 检查具体字段
+                Object.keys(item).forEach(key => {
+                    if (item[key] && typeof item[key] === 'object') {
+                        const fieldSize = JSON.stringify(item[key]).length;
+                        if (fieldSize > 1000) { // 只显示大于1KB的字段
+                            console.log(`🔍   - ${key}: ${(fieldSize / 1024).toFixed(2)} KB`);
+                        }
+                    }
+                });
+            });
+        }
+        
         // 参考老版本的正确数据路径
         let winRate = 0;
         let recommendedMove = '';
@@ -380,6 +408,11 @@ class AnalysisEngine {
             rawData: rawData
         };
         
+        // 🔥 检查解析后结果的大小
+        const resultSize = JSON.stringify(result).length;
+        console.log(`🔍 解析后结果大小: ${(resultSize / 1024).toFixed(2)} KB`);
+        console.log(`🔍 其中 rawData 占用: ${(rawDataSize / 1024).toFixed(2)} KB (${((rawDataSize / resultSize) * 100).toFixed(1)}%)`);
+        
         console.log('parseAnalysisResult 解析后的结果:', result);
         return result;
     }
@@ -404,6 +437,38 @@ class AnalysisEngine {
     async saveToMongoDB() {
         const analysisResults = this.analysisStorage.getCachedResults();
         if (analysisResults.length === 0) return;
+
+        // 🔥 详细分析 analysisResults 的数据大小
+        console.log(`🔍 准备保存 ${analysisResults.length} 条分析结果`);
+        
+        let totalSize = 0;
+        let rawDataTotalSize = 0;
+        
+        analysisResults.forEach((result, index) => {
+            const resultSize = JSON.stringify(result).length;
+            totalSize += resultSize;
+            
+            if (result.analysis && result.analysis.rawData) {
+                const rawDataSize = JSON.stringify(result.analysis.rawData).length;
+                rawDataTotalSize += rawDataSize;
+                
+                if (index < 3) { // 只显示前3条的详细信息
+                    console.log(`🔍 第${result.moveNumber}手分析结果:`);
+                    console.log(`  - 总大小: ${(resultSize / 1024).toFixed(2)} KB`);
+                    console.log(`  - rawData大小: ${(rawDataSize / 1024).toFixed(2)} KB (${((rawDataSize / resultSize) * 100).toFixed(1)}%)`);
+                    
+                    // 检查 rawData 中的大字段
+                    if (result.analysis.rawData.analysis) {
+                        const analysisArraySize = JSON.stringify(result.analysis.rawData.analysis).length;
+                        console.log(`  - rawData.analysis数组大小: ${(analysisArraySize / 1024).toFixed(2)} KB`);
+                        console.log(`  - rawData.analysis包含 ${result.analysis.rawData.analysis.length} 个变化`);
+                    }
+                }
+            }
+        });
+        
+        console.log(`🔍 所有分析结果总大小: ${(totalSize / 1024 / 1024).toFixed(2)} MB`);
+        console.log(`🔍 其中 rawData 总大小: ${(rawDataTotalSize / 1024 / 1024).toFixed(2)} MB (${((rawDataTotalSize / totalSize) * 100).toFixed(1)}%)`);
 
         // 🔥 从正确的位置获取gameData
         const gameData = this.analysisState.gameData;
@@ -451,6 +516,27 @@ class AnalysisEngine {
                 version: '1.0'
             }
         };
+
+        // 🔥 详细分析 payload 各部分的大小
+        const sgfSize = JSON.stringify(payload.sgf).length;
+        const configSize = JSON.stringify(payload.analysisConfig).length;
+        const resultsSize = JSON.stringify(payload.analysisResults).length;
+        const metadataSize = JSON.stringify(payload.metadata).length;
+        const totalPayloadSize = JSON.stringify(payload).length;
+        
+        console.log(`🔍 Payload 各部分大小分析:`);
+        console.log(`  - SGF部分: ${(sgfSize / 1024).toFixed(2)} KB (${((sgfSize / totalPayloadSize) * 100).toFixed(1)}%)`);
+        console.log(`  - 配置部分: ${(configSize / 1024).toFixed(2)} KB (${((configSize / totalPayloadSize) * 100).toFixed(1)}%)`);
+        console.log(`  - 分析结果部分: ${(resultsSize / 1024 / 1024).toFixed(2)} MB (${((resultsSize / totalPayloadSize) * 100).toFixed(1)}%)`);
+        console.log(`  - 元数据部分: ${(metadataSize / 1024).toFixed(2)} KB (${((metadataSize / totalPayloadSize) * 100).toFixed(1)}%)`);
+        console.log(`  - 总大小: ${(totalPayloadSize / 1024 / 1024).toFixed(2)} MB`);
+        
+        // 🔥 如果超过一定大小，给出警告
+        if (totalPayloadSize > 16 * 1024 * 1024) { // 16MB
+            console.error(`❌ 数据量过大 (${(totalPayloadSize / 1024 / 1024).toFixed(2)} MB)，可能会导致 HTTP 413 错误`);
+        } else if (totalPayloadSize > 10 * 1024 * 1024) { // 10MB
+            console.warn(`⚠️ 数据量较大 (${(totalPayloadSize / 1024 / 1024).toFixed(2)} MB)，建议优化`);
+        }
 
         // 🔥 检查sgf.content是否存在
         if (!payload.sgf.content) {
