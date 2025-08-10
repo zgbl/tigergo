@@ -12,6 +12,7 @@ class SGFAnalyzer {
         this.analysisStorage = new AnalysisStorage();
         this.analysisEngine = new AnalysisEngine(this.katagoAPI, this.analysisStorage);
         this.analysisDisplay = new AnalysisDisplay();
+        this.boardController = new BoardController(this.analysisDisplay);
         
         this.currentSGFHash = null;
         this.isAnalyzing = false;
@@ -65,7 +66,8 @@ class SGFAnalyzer {
         }
 
         // 棋盘控制按钮
-        this.setupBoardControls();
+        //this.setupBoardControls();
+        this.boardController.setupEventListeners();  //setupBoardControls 已被迁移
     }
 
 
@@ -95,7 +97,7 @@ class SGFAnalyzer {
                 // 连接成功，获取服务器信息（这一步即使失败也不影响连接状态）
                 try {
                     const serverInfo = await this.katagoAPI.getServerInfo();
-                    console.log('成功获取服务器信息:', serverInfo);
+                    console.log('服务器信息:', serverInfo);
                 } catch (infoError) {
                     console.warn('警告: 获取服务器信息失败，但连接是正常的。', infoError);
                 }
@@ -137,7 +139,7 @@ class SGFAnalyzer {
         }
     }
 
-    setupBoardControls() {
+    /*setupBoardControls() {
         const controls = {
             'logostartBtn': () => this.goToMove(0),
             'logofastBackwardBtn': () => this.goToMove(Math.max(0, this.currentMoveIndex - 10)),
@@ -159,7 +161,7 @@ class SGFAnalyzer {
                 btn.addEventListener('click', handler);
             }
         });
-    }
+    } */
 
     // SGF 解析
     async parseSGF(sgfContent, filename = 'unknown.sgf') {
@@ -189,8 +191,8 @@ class SGFAnalyzer {
                 gameInfo: this.sgfParser.extractGameInfo(sgfContent)
             };
 
-            // 渲染棋盘
-            this.renderBoard();
+            // 设置游戏数据并渲染棋盘
+            this.boardController.setGameData(this.gameData);
             this.analysisDisplay.addLogEntry(`SGF 解析完成，共 ${this.gameData.moves.length} 手棋`, 'success');
             
             // 更新文件信息显示
@@ -239,62 +241,6 @@ class SGFAnalyzer {
                 color: normalizedColor  // 使用正确的颜色格式
             };
         });
-    }
-
-    // 渲染棋盘
-    renderBoard() {
-        const boardElement = document.getElementById('board');
-        if (boardElement && this.gameData) {
-            console.log("准备渲染棋盘，moves格式:", this.gameData.moves.slice(0, 3));
-            
-            // 清空现有内容
-            boardElement.innerHTML = '';
-            
-            // 计算棋盘大小
-            const cellSize = this.calculateBoardSize();
-            
-            console.log('开始创建棋盘，cellSize:', cellSize);
-            
-            // 设置全局变量
-            window.currentMoves = this.gameData.moves;
-            window.currentMoveIndex = -1;
-            window.displayMode = 0;
-            window.showingRecentMoves = false;
-            window.globalParsedMoves = {
-                moves: this.gameData.moves,
-                gameInfo: this.gameData.gameInfo || {}
-            };
-            
-            // 更新CSS变量
-            if (typeof updateStoneSizeCSS === 'function') {
-                updateStoneSizeCSS(cellSize);
-            }
-            
-            // 使用 createBoard3 函数创建棋盘
-            if (typeof createBoard3 === 'function') {
-                window.cellSize = cellSize;
-                window.stoneSize = Math.floor(cellSize * 0.95);
-                
-                createBoard3({
-                    domElement: boardElement,
-                    boardSize: 19,
-                    cellSize: cellSize,
-                    lineColor: '#000',
-                    backgroundColor: '#DEB887'
-                });
-                
-                this.analysisDisplay.addLogEntry(`棋盘已创建，cellSize: ${cellSize}`, 'success');
-                
-                // 启用控制按钮
-                setTimeout(() => {
-                    this.enableControlButtons();
-                    this.updateMoveInfo();
-                }, 100);
-            } else {
-                console.error('createBoard3 函数未找到，请确保 GoBoard12.js 已加载');
-                this.analysisDisplay.addLogEntry('棋盘创建失败：缺少必要的函数', 'error');
-            }
-        }
     }
 
     // 计算棋盘大小
@@ -366,57 +312,6 @@ class SGFAnalyzer {
         });
         
         this.analysisDisplay.addLogEntry('控制按钮已启用', 'success');
-    }
-
-    // 棋盘控制方法
-    goToMove(index) {
-        this.currentMoveIndex = index;
-        if (typeof renderMovesToIndex === 'function') {
-            renderMovesToIndex(index);
-        }
-        this.updateMoveInfo(); // 这里会调用displayCandidatePoints
-    }
-
-    previousMove() {
-        if (typeof moveBackward === 'function') {
-            moveBackward();
-        }
-        this.updateMoveInfo(); // 这里会调用displayCandidatePoints
-    }
-
-    nextMove() {
-        if (typeof moveForward === 'function') {
-            moveForward();
-        }
-        this.updateMoveInfo(); // 这里会调用displayCandidatePoints
-    }
-
-    goToLastMove() {
-        if (typeof moveToEnd === 'function') {
-            moveToEnd();
-        }
-        this.updateMoveInfo(); // 这里会调用displayCandidatePoints
-    }
-
-    toggleMoveNumbers() {
-        this.analysisDisplay.addLogEntry('显示步数功能开发中...', 'warning');
-    }
-
-    toggleAutoPlay() {
-        this.analysisDisplay.addLogEntry('自动播放功能开发中...', 'warning');
-    }
-
-    // 更新移动信息
-    updateMoveInfo() {
-        const moveInfoElement = document.getElementById('moveInfo');
-        if (moveInfoElement && this.gameData) {
-            const currentIndex = window.currentMoveIndex !== undefined ? window.currentMoveIndex : this.currentMoveIndex;
-            const moveNum = Math.max(0, currentIndex + 1);
-            moveInfoElement.textContent = `当前步数：${moveNum} / ${this.gameData.moves.length}`;
-            
-            // 🔥 新增：显示当前步的候选点
-            this.displayCandidatePoints(currentIndex);
-        }
     }
 
     // 🔥 新增：显示候选点
@@ -536,54 +431,6 @@ class SGFAnalyzer {
         }
         
         return null;
-    }
-
-    // 棋盘控制方法
-    goToMove(index) {
-        this.currentMoveIndex = index;
-        if (typeof renderMovesToIndex === 'function') {
-            renderMovesToIndex(index);
-        }
-        this.updateMoveInfo(); // 这里会调用displayCandidatePoints
-    }
-
-    previousMove() {
-        if (typeof moveBackward === 'function') {
-            moveBackward();
-        }
-        this.updateMoveInfo(); // 这里会调用displayCandidatePoints
-    }
-
-    nextMove() {
-        if (typeof moveForward === 'function') {
-            moveForward();
-        }
-        this.updateMoveInfo(); // 这里会调用displayCandidatePoints
-    }
-
-    goToLastMove() {
-        if (typeof moveToEnd === 'function') {
-            moveToEnd();
-        }
-        this.updateMoveInfo(); // 这里会调用displayCandidatePoints
-    }
-
-    toggleMoveNumbers() {
-        this.analysisDisplay.addLogEntry('显示步数功能开发中...', 'warning');
-    }
-
-    toggleAutoPlay() {
-        this.analysisDisplay.addLogEntry('自动播放功能开发中...', 'warning');
-    }
-
-    // 更新移动信息
-    updateMoveInfo() {
-        const moveInfoElement = document.getElementById('moveInfo');
-        if (moveInfoElement && this.gameData) {
-            const currentIndex = window.currentMoveIndex !== undefined ? window.currentMoveIndex : this.currentMoveIndex;
-            const moveNum = Math.max(0, currentIndex + 1);
-            moveInfoElement.textContent = `当前步数：${moveNum} / ${this.gameData.moves.length}`;
-        }
     }
 
     // 更新文件信息显示

@@ -327,6 +327,8 @@
     <script src="js/AnalysisDisplay.js"></script>
     <script src="js/navbar.js"></script>
     <script src="js/FileHandler.js"></script>
+    <script src="js/BoardController.js"></script>
+    <script src="js/CandidatePointsDisplay.js"></script>
     <script src="js/SGFAnalysis.js"></script>
 
     <!-- 🔥 新增：从Post11.html复制的棋盘创建代码 -->
@@ -544,28 +546,6 @@
         
         // 初始化棋盘
         initializeBoard();
-        
-        // 🔥 新增：添加icon按钮的事件监听器（参考Post11.html）
-        const iconButtons = [
-          { id: 'logostartBtn', handler: () => { if (typeof moveToStart === 'function') moveToStart(); } },
-          { id: 'logofastBackwardBtn', handler: () => { if (typeof fastBackward === 'function') fastBackward(); } },
-          { id: 'logobackwardBtn', handler: () => { if (typeof moveBackward === 'function') moveBackward(); } },
-          { id: 'logoforwardBtn', handler: () => { if (typeof moveForward === 'function') moveForward(); } },
-          { id: 'logofastForwardBtn', handler: () => { if (typeof fastForward === 'function') fastForward(); } },
-          { id: 'logoendBtn', handler: () => { if (typeof moveToEnd === 'function') moveToEnd(); } },
-          { id: 'logoshowMovesBtn', handler: () => { if (typeof toggleMoveDisplay === 'function') toggleMoveDisplay(); } }
-        ];
-
-        iconButtons.forEach(({ id, handler }) => {
-          const btn = document.getElementById(id);
-          if (btn) {
-            btn.addEventListener('click', handler);
-            console.log(`已添加 ${id} 事件监听器`);
-          } else {
-            console.warn(`按钮 ${id} 未找到`);
-          }
-        });
-        
         console.log('SGFAnalysis.html 初始化完成');
       });
 

@@ -328,7 +328,7 @@ function clearBoard() {
 }
 
 function moveForward() {
-    console.log("点击了前进（大棋盘?），GoBoard12.js， moveForward(), Line 327")
+    console.log("点击了前进（大棋盘?），GoBoard12.js， moveForward(), Line 331")
     if (currentMoveIndex < currentMoves.length - 1) {
         currentMoveIndex++;
         const move = currentMoves[currentMoveIndex];
@@ -1203,7 +1203,7 @@ class SmallBoard {
         //console.log("小棋盘渲染完成");
     }
 
-    moveForward() {
+    moveForward() {    //有名称重复的函数。是不是这个是小棋棋盘专属？
         //console.log("小棋盘前进：", this.currentIndex);
         if (this.currentIndex < this.originalMoves.length + this.variationMoves.length - 1) {
             this.currentIndex++;
