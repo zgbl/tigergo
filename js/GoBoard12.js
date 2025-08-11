@@ -341,16 +341,21 @@ function moveForward() {
             }
         }
         if (!move.pass) {
-           // placeStone(move.row, move.col, move.color, stoneSize);  // 8/13
            console.log("在GoBoard12.js中， 339行，move.color is:", move.color)
             placeStone3(move.row, move.col, move.color, stoneSize);
         }
         updateMoveInfo();
         updateMoveDisplay();
         
-        // 更新候选点显示
+        // 更新候选点显示 - 修复：传入正确的参数
+        console.log("GoBoard12.js moveForward: 准备调用 displayCandidatePoints");
+        console.log("GoBoard12.js moveForward: currentMoveIndex =", currentMoveIndex);
+        
         if (typeof displayCandidatePoints === 'function') {
-            displayCandidatePoints();
+            console.log("GoBoard12.js moveForward: 正在调用 displayCandidatePoints(" + currentMoveIndex + ")");
+            displayCandidatePoints(currentMoveIndex);
+        } else {
+            console.log("GoBoard12.js moveForward: displayCandidatePoints 不是函数");
         }
     }
 }
@@ -367,9 +372,15 @@ function moveBackward() {
         //renderMovesToIndex(currentMoveIndex);  //2025.8.7 被提掉的子要恢复显示，看是不是要用这个。
         updateMoveDisplay();
         
-        // 更新候选点显示
+        // 更新候选点显示 - 修复：传入正确的参数
+        console.log("GoBoard12.js moveBackward: 准备调用 displayCandidatePoints");
+        console.log("GoBoard12.js moveBackward: currentMoveIndex =", currentMoveIndex);
+        
         if (typeof displayCandidatePoints === 'function') {
-            displayCandidatePoints();
+            console.log("GoBoard12.js moveBackward: 正在调用 displayCandidatePoints(" + currentMoveIndex + ")");
+            displayCandidatePoints(currentMoveIndex);
+        } else {
+            console.log("GoBoard12.js moveBackward: displayCandidatePoints 不是函数");
         }
     }
 }

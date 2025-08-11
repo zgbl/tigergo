@@ -231,4 +231,159 @@ class AnalysisStorage {
         
         return colChar + rowNum;
     }
+
+    // 🔥 新增：获取所有已分析的棋谱信息
+    async getAllAnalyzedGames() {
+        if (!this.db) {
+            console.warn('数据库未初始化');
+            return [];
+        }
+
+        const transaction = this.db.transaction(['sgfFiles', 'analysisResults'], 'readonly');
+        const sgfStore = transaction.objectStore('sgfFiles');
+        const analysisStore = transaction.objectStore('analysisResults');
+        
+        return new Promise((resolve, reject) => {
+            const sgfRequest = sgfStore.getAll();
+            sgfRequest.onsuccess = async () => {
+                const sgfFiles = sgfRequest.result;
+                const analyzedGames = [];
+
+                // 为每个SGF文件检查是否有分析结果
+                for (const sgfFile of sgfFiles) {
+                    const analysisRequest = analysisStore.index('sgfHash').getAll(sgfFile.hash);
+                    await new Promise((analysisResolve) => {
+                        analysisRequest.onsuccess = () => {
+                            const analysisResults = analysisRequest.result;
+                            if (analysisResults.length > 0) {
+                                // 解析SGF内容获取棋手信息
+                                const gameInfo = this.parseSGFGameInfo(sgfFile.content);
+                                
+                                analyzedGames.push({
+                                    id: sgfFile.hash,
+                                    filename: sgfFile.filename,
+                                    blackPlayer: gameInfo.blackPlayer || '未知',
+                                    whitePlayer: gameInfo.whitePlayer || '未知',
+                                    analysisTime: analysisResults[0].timestamp,
+                                    analysisCount: analysisResults.length,
+                                    sgfContent: sgfFile.content,
+                                    uploadTime: sgfFile.uploadTime
+                                });
+                            }
+                            analysisResolve();
+                        };
+                    });
+                }
+
+                // 按分析时间排序（最新的在前）
+                analyzedGames.sort((a, b) => new Date(b.analysisTime) - new Date(a.analysisTime));
+                resolve(analyzedGames);
+            };
+            sgfRequest.onerror = () => reject(sgfRequest.error);
+        });
+    }
+
+    // 🔥 新增：解析SGF内容获取游戏信息
+    parseSGFGameInfo(sgfContent) {
+        const gameInfo = {
+            blackPlayer: '',
+            whitePlayer: '',
+            gameDate: '',
+            result: ''
+        };
+
+        try {
+            // 解析黑棋棋手
+            const blackMatch = sgfContent.match(/PB\[([^\]]*)\]/);
+            if (blackMatch) {
+                gameInfo.blackPlayer = blackMatch[1];
+            }
+
+            // 解析白棋棋手
+            const whiteMatch = sgfContent.match(/PW\[([^\]]*)\]/);
+            if (whiteMatch) {
+                gameInfo.whitePlayer = whiteMatch[1];
+            }
+
+            // 解析比赛日期
+            const dateMatch = sgfContent.match(/DT\[([^\]]*)\]/);
+            if (dateMatch) {
+                gameInfo.gameDate = dateMatch[1];
+            }
+
+            // 解析比赛结果
+            const resultMatch = sgfContent.match(/RE\[([^\]]*)\]/);
+            if (resultMatch) {
+                gameInfo.result = resultMatch[1];
+            }
+        } catch (error) {
+            console.warn('解析SGF游戏信息失败:', error);
+        }
+
+        return gameInfo;
+    }
+
+    // 🔥 新增：删除指定的已分析棋谱
+    async deleteAnalyzedGame(sgfHash) {
+        if (!this.db) {
+            console.warn('数据库未初始化');
+            return false;
+        }
+
+        const transaction = this.db.transaction(['sgfFiles', 'analysisResults'], 'readwrite');
+        const sgfStore = transaction.objectStore('sgfFiles');
+        const analysisStore = transaction.objectStore('analysisResults');
+        
+        try {
+            // 删除SGF文件
+            await new Promise((resolve, reject) => {
+                const deleteRequest = sgfStore.delete(sgfHash);
+                deleteRequest.onsuccess = () => resolve();
+                deleteRequest.onerror = () => reject(deleteRequest.error);
+            });
+
+            // 删除相关的分析结果
+            await this.clearAnalysisResults(sgfHash);
+            
+            console.log(`已删除棋谱 ${sgfHash} 及其分析结果`);
+            return true;
+        } catch (error) {
+            console.error('删除棋谱失败:', error);
+            return false;
+        }
+    }
+
+    // 🔥 新增：清空所有已分析的棋谱
+    async clearAllAnalyzedGames() {
+        if (!this.db) {
+            console.warn('数据库未初始化');
+            return false;
+        }
+
+        const transaction = this.db.transaction(['sgfFiles', 'analysisResults'], 'readwrite');
+        const sgfStore = transaction.objectStore('sgfFiles');
+        const analysisStore = transaction.objectStore('analysisResults');
+        
+        try {
+            // 清空SGF文件表
+            await new Promise((resolve, reject) => {
+                const clearRequest = sgfStore.clear();
+                clearRequest.onsuccess = () => resolve();
+                clearRequest.onerror = () => reject(clearRequest.error);
+            });
+
+            // 清空分析结果表
+            await new Promise((resolve, reject) => {
+                const clearRequest = analysisStore.clear();
+                clearRequest.onsuccess = () => resolve();
+                clearRequest.onerror = () => reject(clearRequest.error);
+            });
+            
+            console.log('已清空所有已分析的棋谱');
+            return true;
+        } catch (error) {
+            console.error('清空棋谱失败:', error);
+            return false;
+        }
+    }
 }

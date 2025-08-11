@@ -251,6 +251,48 @@
             <div class="log-entry info">等待开始分析...</div>
           </div>
         </div>
+
+        <!-- 🔥 新增：已分析棋谱表格面板 -->
+        <div class="analysis-panel">
+          <h3 class="panel-title">
+            <i class="fas fa-database"></i>
+            已分析棋谱
+          </h3>
+          <div class="analyzed-games-container">
+            <div class="analyzed-games-controls">
+              <button class="refresh-btn" id="refreshAnalyzedGames">
+                <i class="fas fa-sync-alt"></i>
+                刷新
+              </button>
+              <button class="clear-btn" id="clearAnalyzedGames">
+                <i class="fas fa-trash"></i>
+                清空
+              </button>
+            </div>
+            <div class="analyzed-games-table-container">
+              <table class="analyzed-games-table" id="analyzedGamesTable">
+                <thead>
+                  <tr>
+                    <th>棋谱ID</th>
+                    <th>文件名</th>
+                    <th>黑棋</th>
+                    <th>白棋</th>
+                    <th>分析时间</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody id="analyzedGamesTableBody">
+                  <tr>
+                    <td colspan="6" style="text-align: center; color: #6c757d; padding: 20px;">
+                      <i class="fas fa-info-circle"></i>
+                      <p>暂无已分析的棋谱</p>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -329,6 +371,7 @@
     <script src="js/FileHandler.js"></script>
     <script src="js/BoardController.js"></script>
     <script src="js/CandidatePointsDisplay.js"></script>
+    <script src="js/AnalyzedGamesTable.js"></script>
     <script src="js/SGFAnalysis.js"></script>
 
     <!-- 🔥 新增：从Post11.html复制的棋盘创建代码 -->

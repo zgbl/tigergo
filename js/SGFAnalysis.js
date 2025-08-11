@@ -12,7 +12,11 @@ class SGFAnalyzer {
         this.analysisStorage = new AnalysisStorage();
         this.analysisEngine = new AnalysisEngine(this.katagoAPI, this.analysisStorage);
         this.analysisDisplay = new AnalysisDisplay();
-        this.boardController = new BoardController(this.analysisDisplay);
+        this.boardController = new BoardController(this.analysisDisplay, this.analysisStorage);
+        
+        // 🔥 新增：设置全局变量，供 GoBoard12.js 中的全局函数调用
+        window.candidatePointsDisplay = this.boardController.candidatePointsDisplay;
+        console.log("🔧 设置全局 candidatePointsDisplay:", window.candidatePointsDisplay);
         
         this.currentSGFHash = null;
         this.isAnalyzing = false;
@@ -26,6 +30,61 @@ class SGFAnalyzer {
         try {
             await this.analysisStorage.initDB();
             this.analysisDisplay.addLogEntry('系统初始化完成', 'success');
+            
+            // 🔥 设置全局变量，供AnalyzedGamesTable使用
+            window.sgfParser = this.sgfParser;
+            window.currentMoves = null;
+            window.currentMoveIndex = -1;
+            window.currentSGFHash = null;
+            
+            // 🔥 保存对当前实例的引用，避免this上下文丢失
+            const self = this;
+            
+            // 🔥 设置全局函数，使用闭包保持对实例的引用
+            window.clearBoard = function() {
+                console.log('全局clearBoard被调用，检查boardController:', self.boardController);
+                if (self.boardController && typeof self.boardController.clearBoard === 'function') {
+                    console.log('使用boardController.clearBoard');
+                    self.boardController.clearBoard();
+                } else {
+                    console.log('boardController不可用，使用本地clearBoard函数');
+                    // 如果boardController不可用，使用GoBoard12.js中的clearBoard函数
+                    const intersections = document.querySelectorAll('.intersection');
+                    intersections.forEach(intersection => {
+                        const stone = intersection.querySelector('.stone');
+                        if (stone) {
+                            intersection.removeChild(stone);
+                        }
+                    });
+                    
+                    // 清空棋盘状态
+                    if (typeof boardState !== 'undefined') {
+                        for (let i = 0; i < 19; i++) {
+                            for (let j = 0; j < 19; j++) {
+                                boardState[i][j] = null;
+                            }
+                        }
+                    }
+                }
+            };
+            
+            window.goToStart = function() {
+                console.log('全局goToStart被调用');
+                if (self.boardController && typeof self.boardController.goToMove === 'function') {
+                    self.boardController.goToMove(0);
+                }
+            };
+            
+            // 🔥 设置全局的SGF解析和加载函数
+            window.loadSGFGame = function(sgfContent, filename, gameId) {
+                return self.loadSGFFromTable(sgfContent, filename, gameId);
+            };
+            
+            // 🔥 新增：初始化已分析棋谱表格
+            if (window.analyzedGamesTable) {
+                await window.analyzedGamesTable.init(this.analysisStorage);
+                console.log('已分析棋谱表格初始化完成');
+            }
         } catch (error) {
             console.error('初始化失败:', error);
             this.analysisDisplay.addLogEntry('系统初始化失败', 'error');
@@ -35,6 +94,64 @@ class SGFAnalyzer {
         setTimeout(() => {
             this.testKataGoConnection();
         }, 1000);
+    }
+
+    // 🔥 新增：从表格加载SGF的方法
+    async loadSGFFromTable(sgfContent, filename, gameId) {
+        try {
+            console.log(`从表格加载棋谱: ${filename}`);
+            
+            // 设置当前SGF哈希
+            this.currentSGFHash = gameId;
+            this.analysisEngine.setSGFHash(this.currentSGFHash);
+            
+            // 解析 SGF 内容
+            const rawMoves = this.sgfParser.parseSGFMoves(sgfContent);
+            const convertedMoves = this.convertMovesToGoBoard12Format(rawMoves);
+            
+            this.gameData = {
+                sgfContent: sgfContent,
+                filename: filename,
+                rawMoves: rawMoves,
+                moves: convertedMoves,
+                gameInfo: this.sgfParser.extractGameInfo(sgfContent)
+            };
+
+            // 设置游戏数据并渲染棋盘
+            this.boardController.setGameData(this.gameData);
+            
+            // 设置候选点显示的SGF哈希值
+            this.boardController.candidatePointsDisplay.setSGFHash(this.currentSGFHash);
+            
+            // 确保全局变量也能访问到 SGF 哈希值
+            if (window.candidatePointsDisplay) {
+                window.candidatePointsDisplay.setSGFHash(this.currentSGFHash);
+            }
+            
+            // 设置全局变量
+            window.currentMoves = convertedMoves;
+            window.currentMoveIndex = -1;
+            window.currentSGFHash = gameId;
+            
+            // 清空棋盘并回到开始
+            this.boardController.clearBoard();
+            this.boardController.goToMove(0);
+            
+            this.analysisDisplay.addLogEntry(`已加载棋谱: ${filename}，共 ${this.gameData.moves.length} 手棋`, 'success');
+            
+            // 更新文件信息显示
+            this.updateFileInfo(filename, this.gameData.moves.length);
+            
+            // 重置按钮状态为idle
+            this.updateAnalysisButtons('idle');
+            
+            return true;
+            
+        } catch (error) {
+            console.error('从表格加载SGF失败:', error);
+            this.analysisDisplay.addLogEntry(`加载棋谱失败: ${error.message}`, 'error');
+            return false;
+        }
     }
 
     setupEventListeners() {
@@ -193,6 +310,17 @@ class SGFAnalyzer {
 
             // 设置游戏数据并渲染棋盘
             this.boardController.setGameData(this.gameData);
+            
+            // 🔥 调试：设置候选点显示的SGF哈希值
+            console.log("🔧 设置 SGF 哈希值给 CandidatePointsDisplay:", this.currentSGFHash);
+            this.boardController.candidatePointsDisplay.setSGFHash(this.currentSGFHash);
+            
+            // 🔥 新增：确保全局变量也能访问到 SGF 哈希值
+            if (window.candidatePointsDisplay) {
+                window.candidatePointsDisplay.setSGFHash(this.currentSGFHash);
+                console.log("🔧 全局 candidatePointsDisplay 也已设置 SGF 哈希值");
+            }
+            
             this.analysisDisplay.addLogEntry(`SGF 解析完成，共 ${this.gameData.moves.length} 手棋`, 'success');
             
             // 更新文件信息显示
@@ -315,7 +443,7 @@ class SGFAnalyzer {
     }
 
     // 🔥 新增：显示候选点
-    async displayCandidatePoints(currentMoveIndex) {
+    /*async displayCandidatePoints(currentMoveIndex) {
         // 清除之前的候选点
         this.clearCandidatePoints();
         
@@ -351,10 +479,10 @@ class SGFAnalyzer {
         } catch (error) {
             console.error('显示候选点失败:', error);
         }
-    }
+    } */
 
     // 🔥 新增：清除候选点
-    clearCandidatePoints() {
+    /*clearCandidatePoints() {
         const candidatePoints = document.querySelectorAll('.candidate-point');
         candidatePoints.forEach(point => point.remove());
     }
@@ -404,7 +532,7 @@ class SGFAnalyzer {
         intersection.appendChild(candidatePoint);
         
         console.log(`添加候选点 (${row}, ${col}): ${winRate}%`);
-    }
+    } */
 
     // 🔥 新增：解析SGF位置格式（如 "Q16" -> {row: 3, col: 16}）
     parseSGFPosition(sgfPos) {

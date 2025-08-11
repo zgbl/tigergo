@@ -3,12 +3,16 @@
  */
 class BoardController {
     constructor(analysisDisplay, analysisStorage) {
+        console.log("🔧 BoardController 构造函数被调用");
+        console.log("  - analysisDisplay:", analysisDisplay);
+        console.log("  - analysisStorage:", analysisStorage);
+        
         this.analysisDisplay = analysisDisplay;
         this.gameData = null;
         this.currentMoveIndex = -1;
 
-        //this.candidatePointsDisplay = new CandidatePointsDisplay(this.candidatePointsDisplay);
         this.candidatePointsDisplay = new CandidatePointsDisplay(analysisStorage);
+        console.log("  - candidatePointsDisplay 初始化完成:", this.candidatePointsDisplay);
     }
 
     // 设置游戏数据
@@ -130,19 +134,31 @@ class BoardController {
             const moveNum = Math.max(0, currentIndex + 1);
             moveInfoElement.textContent = `当前步数：${moveNum} / ${this.gameData.moves.length}`;
             
+            // 🔥 调试：添加日志
+            console.log("🔍 BoardController.updateMoveInfo() 被调用");
+            console.log("  - currentIndex:", currentIndex);
+            console.log("  - candidatePointsDisplay:", this.candidatePointsDisplay);
+            console.log("  - candidatePointsDisplay.currentSGFHash:", this.candidatePointsDisplay?.currentSGFHash);
+            
             // 🔥 新增：显示当前步的候选点
-            //this.displayCandidatePoints(currentIndex);
-            this.candidatePointsDisplay.displayCandidatePoints(currentIndex);
+            if (this.candidatePointsDisplay) {
+                console.log("  - 准备调用 displayCandidatePoints");
+                this.candidatePointsDisplay.displayCandidatePoints(currentIndex);
+            } else {
+                console.error("  - candidatePointsDisplay 未初始化！");
+            }
         }
     }
     
 
         goToMove(index) {
+        console.log("🔍 BoardController.goToMove() 被调用，index:", index);
         this.currentMoveIndex = index;
         console.log("currentMoveIndex:", this.currentMoveIndex);
         if (typeof renderMovesToIndex === 'function') {
             renderMovesToIndex(index);
         }
+        console.log("🔍 准备调用 updateMoveInfo()");
         this.updateMoveInfo(); // 这里会调用displayCandidatePoints
     }
 
