@@ -119,8 +119,8 @@ class KataGoAPI {
 
     // 获取服务器信息 - 修复CORS问题
     async getServerInfo() {
-        try {
-            const response = await fetch(`${this.baseUrl}/info`, {
+        /*try {
+            const response = await fetch(`${this.baseUrl}/info`, {  // /info是不存在的
                 method: 'GET',
                 mode: 'cors',
                 headers: {
@@ -151,7 +151,7 @@ class KataGoAPI {
                 this.printStatus(`获取服务器信息异常: ${error.message}`, "ERROR");
                 return { success: false, error: error.message };
             }
-        }
+        } */
     }
 
     // 调用 KataGo 分析 API

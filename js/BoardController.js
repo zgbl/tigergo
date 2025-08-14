@@ -183,6 +183,30 @@ class BoardController {
         this.updateMoveInfo(); // 这里会调用displayCandidatePoints
     }
 
+    // 清空棋盘
+    // 清空棋盘
+    clearBoard() {
+        // 直接实现清空棋盘逻辑，避免调用可能被重写的全局函数
+        const intersections = document.querySelectorAll('.intersection');
+        intersections.forEach(intersection => {
+            const stone = intersection.querySelector('.stone');
+            if (stone) {
+                intersection.removeChild(stone);
+            }
+        });
+        
+        // 清空棋盘状态
+        if (typeof boardState !== 'undefined') {
+            for (let i = 0; i < 19; i++) {
+                for (let j = 0; j < 19; j++) {
+                    boardState[i][j] = null;
+                }
+            }
+        }
+        
+        console.log('BoardController.clearBoard 执行完成');
+    }
+
     // 计算棋盘大小
     calculateBoardSize() {
         if (typeof calculateBoardSize === 'function') {
