@@ -14,6 +14,9 @@ class SGFAnalyzer {
         this.analysisDisplay = new AnalysisDisplay();
         this.boardController = new BoardController(this.analysisDisplay, this.analysisStorage);
         
+        // 初始化测试题生成器
+        this.testQuestionGenerator = null;
+        
         // 🔥 新增：设置全局变量，供 GoBoard12.js 中的全局函数调用
         window.candidatePointsDisplay = this.boardController.candidatePointsDisplay;
         console.log("🔧 设置全局 candidatePointsDisplay:", window.candidatePointsDisplay);
@@ -90,7 +93,7 @@ class SGFAnalyzer {
             this.analysisDisplay.addLogEntry('系统初始化失败', 'error');
         }
 
-                // 延迟测试连接
+                        // 延迟测试连接
         setTimeout(() => {
             this.testKataGoConnection();
         }, 1000);
@@ -145,6 +148,12 @@ class SGFAnalyzer {
             // 重置按钮状态为idle
             this.updateAnalysisButtons('idle');
             
+            // 🔥 触发sgfLoaded事件，通知测试题生成器
+            document.dispatchEvent(new CustomEvent('sgfLoaded'));
+            
+            // 🔥 新增：触发gameDataChanged事件
+            document.dispatchEvent(new CustomEvent('gameDataChanged'));
+            
             return true;
             
         } catch (error) {
@@ -161,14 +170,9 @@ class SGFAnalyzer {
         const analyzeFileBtn = document.getElementById('analyzeFileBtn');
         const uploadArea = document.getElementById('uploadArea');
 
-        //console.log('🔧 设置事件监听器:');
-       // console.log('  - fileInput:', fileInput);
-        //console.log('  - selectFileBtn:', selectFileBtn);
         console.log('  - analyzeFileBtn:', analyzeFileBtn);
-        //console.log('  - uploadArea:', uploadArea);
 
         if (fileInput) {
-            //fileInput.addEventListener('change', (e) => this.handleFileUpload(e));  //file类函数已经移出去了
             fileInput.addEventListener('change', (e) => handleFileUpload(e));
         }   
 
@@ -183,9 +187,14 @@ class SGFAnalyzer {
         }
 
         // 棋盘控制按钮
-        //this.setupBoardControls();
-        this.boardController.setupEventListeners();  //setupBoardControls 已被迁移
+        this.boardController.setupEventListeners();
+        
+        // 初始化测试题生成器
+        if (window.TestQuestionGenerator) {
+            this.testQuestionGenerator = new TestQuestionGenerator(this);
+        }
     }
+
 
 
         // 处理KataGo状态更新
@@ -255,31 +264,6 @@ class SGFAnalyzer {
                 break;
         }
     }
-
-    /*setupBoardControls() {
-        const controls = {
-            'logostartBtn': () => this.goToMove(0),
-            'logofastBackwardBtn': () => this.goToMove(Math.max(0, this.currentMoveIndex - 10)),
-            'logobackwardBtn': () => this.previousMove(),
-            'logoforwardBtn': () => this.nextMove(),
-            'logofastForwardBtn': () => this.goToMove(Math.min(this.gameData?.moves.length || 0, this.currentMoveIndex + 10)),
-            'logoendBtn': () => this.goToLastMove(),
-            'logoshowMovesBtn': () => this.toggleMoveNumbers(),
-            'startBtn': () => this.goToMove(0),
-            'prevBtn': () => this.previousMove(),
-            'nextBtn': () => this.nextMove(),
-            'endBtn': () => this.goToLastMove(),
-            'autoPlayBtn': () => this.toggleAutoPlay()
-        };
-
-        Object.entries(controls).forEach(([id, handler]) => {
-            const btn = document.getElementById(id);
-            if (btn) {
-                btn.addEventListener('click', handler);
-            }
-        });
-    } */
-
     // SGF 解析
     async parseSGF(sgfContent, filename = 'unknown.sgf') {
         try {
@@ -328,6 +312,11 @@ class SGFAnalyzer {
             
             // 重置按钮状态为idle
             this.updateAnalysisButtons('idle');
+            
+            // 触发SGF加载完成事件
+            document.dispatchEvent(new CustomEvent('sgfLoaded', {
+                detail: { sgfHash: this.currentSGFHash, filename: filename }
+            }));
             
         } catch (error) {
             console.error('SGF 解析失败:', error);
@@ -441,98 +430,6 @@ class SGFAnalyzer {
         
         this.analysisDisplay.addLogEntry('控制按钮已启用', 'success');
     }
-
-    // 🔥 新增：显示候选点
-    /*async displayCandidatePoints(currentMoveIndex) {
-        // 清除之前的候选点
-        this.clearCandidatePoints();
-        
-        // 如果没有分析结果，不显示候选点
-        if (!this.currentSGFHash) return;
-        
-        try {
-            // 从IndexedDB加载分析结果
-            const analysisResults = await this.analysisStorage.loadAnalysisResults(this.currentSGFHash);
-            
-            // 找到当前步的分析结果（注意：分析结果是滞后一步的）
-            const targetMoveNumber = currentMoveIndex + 1; // 当前显示的是第N步，要显示第N步的分析结果
-            const currentAnalysis = analysisResults.find(result => result.moveNumber === targetMoveNumber);
-            
-            if (currentAnalysis && currentAnalysis.analysis && currentAnalysis.analysis.variations) {
-                console.log(`显示第${targetMoveNumber}手的候选点:`, currentAnalysis.analysis.variations);
-                
-                // 显示前3个候选点（除了实际落子点）
-                const variations = currentAnalysis.analysis.variations.slice(0, 3);
-                variations.forEach((variation, index) => {
-                    if (variation.moves && variation.moves.length > 0) {
-                        const candidateMove = variation.moves[0]; // 取第一个候选手
-                        const winRate = variation.winRate || '0.0';
-                        
-                        // 解析候选手位置（如 "Q16"）
-                        const position = this.parseSGFPosition(candidateMove);
-                        if (position) {
-                            this.addCandidatePoint(position.row, position.col, winRate, index);
-                        }
-                    }
-                });
-            }
-        } catch (error) {
-            console.error('显示候选点失败:', error);
-        }
-    } */
-
-    // 🔥 新增：清除候选点
-    /*clearCandidatePoints() {
-        const candidatePoints = document.querySelectorAll('.candidate-point');
-        candidatePoints.forEach(point => point.remove());
-    }
-
-    // 🔥 新增：添加候选点标记
-    addCandidatePoint(row, col, winRate, index) {
-        const intersection = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
-        if (!intersection) {
-            console.warn(`未找到交点 (${row}, ${col})`);
-            return;
-        }
-
-        // 检查该位置是否已有棋子
-        const existingStone = intersection.querySelector('.stone');
-        if (existingStone) {
-            console.log(`位置 (${row}, ${col}) 已有棋子，跳过候选点显示`);
-            return;
-        }
-
-        // 创建候选点元素
-        const candidatePoint = document.createElement('div');
-        candidatePoint.className = 'candidate-point';
-        candidatePoint.style.cssText = `
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: ${window.cellSize * 0.8}px;
-            height: ${window.cellSize * 0.8}px;
-            border: 2px solid #000;
-            background-color: rgba(173, 216, 230, 0.7);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: ${window.cellSize * 0.25}px;
-            font-weight: bold;
-            color: #000;
-            z-index: 10;
-            pointer-events: none;
-        `;
-        
-        // 显示胜率
-        candidatePoint.textContent = `${winRate}%`;
-        
-        // 添加到交点
-        intersection.appendChild(candidatePoint);
-        
-        console.log(`添加候选点 (${row}, ${col}): ${winRate}%`);
-    } */
 
     // 🔥 新增：解析SGF位置格式（如 "Q16" -> {row: 3, col: 16}）
     parseSGFPosition(sgfPos) {

@@ -293,6 +293,94 @@
             </div>
           </div>
         </div>
+
+        <!-- 🔥 新增：生成测试题面板 -->
+        <div class="analysis-panel">
+          <h3 class="panel-title">
+            <i class="fas fa-brain"></i>
+            生成测试题
+          </h3>
+          <div class="test-generation-container">
+            <div class="test-settings">
+              <div class="setting-group">
+                <label class="setting-label">以哪方为主？</label>
+                <select class="setting-select" id="testPlayerSide">
+                  <option value="black">黑棋</option>
+                  <option value="white">白棋</option>
+                  <option value="both">黑白双方</option>
+                </select>
+              </div>
+              
+              <div class="setting-group">
+                <label class="setting-label">胜率降幅前n名</label>
+                <input
+                  type="number"
+                  class="setting-input"
+                  id="testTopN"
+                  min="1"
+                  max="20"
+                  value="5"
+                  title="选择胜率损失最大的前n步作为测试题"
+                />
+                <small class="setting-hint">选择胜率损失最大的前n步</small>
+              </div>
+              
+              <div class="setting-group">
+                <label class="setting-label">每步候选点数量</label>
+                <input
+                  type="number"
+                  class="setting-input"
+                  id="testCandidateCount"
+                  min="3"
+                  max="8"
+                  value="4"
+                  title="每个测试题包含的候选点数量"
+                />
+                <small class="setting-hint">包含实战选点、最佳选点和次选点</small>
+              </div>
+              
+              <div class="setting-group">
+                <label class="setting-label">最小胜率损失</label>
+                <input
+                  type="number"
+                  class="setting-input"
+                  id="testMinWinrateLoss"
+                  min="0.01"
+                  max="0.5"
+                  step="0.01"
+                  value="0.05"
+                  title="只有胜率损失大于此值的步数才会被选为测试题"
+                />
+                <small class="setting-hint">胜率损失阈值（0.01-0.5）</small>
+              </div>
+            </div>
+            
+            <div class="test-generation-controls">
+              <button class="generate-test-btn" id="generateTestBtn" disabled>
+                <i class="fas fa-magic"></i>
+                生成测试题
+              </button>
+              <button class="preview-test-btn" id="previewTestBtn" disabled>
+                <i class="fas fa-eye"></i>
+                预览测试题
+              </button>
+            </div>
+            
+            <div class="test-generation-status" id="testGenerationStatus" style="display: none;">
+              <div class="status-item">
+                <span class="status-label">生成状态</span>
+                <span class="status-value" id="testStatus">准备中...</span>
+              </div>
+              <div class="status-item">
+                <span class="status-label">测试题数量</span>
+                <span class="status-value" id="testCount">0</span>
+              </div>
+              <div class="progress-bar">
+                <div class="progress-fill" id="testProgressFill"></div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -359,7 +447,8 @@
       </div>
     </div>
 
-    <!-- 在现有的 script 标签之前添加新的 JS 文件 -->
+    <!-- 在现有的script标签之后添加 -->
+    <script src="js/TestQuestionGenerator.js"></script>
     <script src="js/config.js"></script>
     <script src="js/SGFParser.js"></script>
     <script src="js/GoBoard12.js"></script>

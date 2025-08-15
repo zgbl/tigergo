@@ -1,0 +1,308 @@
+
+## 4. 完整的后端API接口要求
+### 4.1 数据库设计
+Collection: testQuestions
+
+```
+// MongoDB文档结构
+{
+  _id: ObjectId,
+  id: String, // 唯一标识: 
+  sgfHash_moveNumber
+  sgfHash: String, // 关联的SGF文件哈希
+  sgfFilename: String, // SGF文件名
+  moveNumber: Number, // 步数
+  boardState: [[String]], // 19x19棋盘状态
+  数组，值为'black'|'white'|null
+  currentPlayer: String, // 当前下棋方 
+  'black' | 'white'
+  candidatePoints: [{
+    type: String, // 'actual' | 'best' | 
+    'alternate'
+    position: String, // SGF格式位置 如 
+    'Q16'
+    row: Number, // 行坐标 0-18
+    col: Number, // 列坐标 0-18
+    winRate: Number, // 胜率
+    description: String // 描述
+  }],
+  correctAnswer: {
+    position: String, // SGF格式位置
+    winRate: Number, // 胜率
+    explanation: String // 解释
+  },
+  winRateLoss: Number, // 胜率损失
+  difficulty: String, // 难度 'easy' | 
+  'medium' | 'hard'
+  questionText: String, // 题目文本
+  createdAt: Date, // 创建时间
+  updatedAt: Date // 更新时间
+}
+```
+索引设计：
+
+```
+// 创建索引
+db.testQuestions.createIndex({ "sgfHash": 
+1 })
+db.testQuestions.createIndex({ 
+"difficulty": 1 })
+db.testQuestions.createIndex({ 
+"moveNumber": 1 })
+db.testQuestions.createIndex({ 
+"createdAt": -1 })
+db.testQuestions.createIndex({ "id": 1 }, 
+{ unique: true })
+```
+### 4.2 API接口详细规范 POST /api/testQuestions
+功能： 批量创建测试题
+
+请求头：
+
+```
+Content-Type: application/json
+```
+请求体：
+
+```
+{
+  "questions": [
+    {
+      "id": "abc123_15",
+      "sgfHash": "abc123",
+      "sgfFilename": "game1.sgf",
+      "moveNumber": 15,
+      "boardState": [[null, 
+      null, ...], ...], // 19x19数组
+      "currentPlayer": "black",
+      "candidatePoints": [
+        {
+          "type": "actual",
+          "position": "Q16",
+          "row": 3,
+          "col": 16,
+          "winRate": 45.2,
+          "description": "实战选点"
+        },
+        {
+          "type": "best",
+          "position": "D4",
+          "row": 15,
+          "col": 3,
+          "winRate": 52.8,
+          "description": "最佳选点"
+        }
+      ],
+      "correctAnswer": {
+        "position": "D4",
+        "winRate": 52.8,
+        "explanation": "最佳选点，胜率: 52.
+        8%"
+      },
+      "winRateLoss": 7.6,
+      "difficulty": "easy",
+      "questionText": "第15手，黑方下一步最佳
+      选择是？",
+      "createdAt": "2024-01-15T10:30:00.
+      000Z"
+    }
+  ],
+  "metadata": {
+    "sgfHash": "abc123",
+    "sgfFilename": "game1.sgf",
+    "totalQuestions": 1,
+    "createdAt": "2024-01-15T10:30:00.
+    000Z"
+  }
+}
+```
+成功响应 (200)：
+
+```
+{
+  "success": true,
+  "message": "测试题创建成功",
+  "data": {
+    "insertedCount": 1,
+    "insertedIds": 
+    ["507f1f77bcf86cd799439011"],
+    "duplicateCount": 0,
+    "skippedIds": []
+  }
+}
+```
+错误响应 (400)：
+
+```
+{
+  "success": false,
+  "message": "请求数据格式错误",
+  "error": "questions字段是必需的"
+}
+```
+错误响应 (409)：
+
+```
+{
+  "success": false,
+  "message": "部分测试题已存在",
+  "data": {
+    "insertedCount": 2,
+    "duplicateCount": 1,
+    "duplicateIds": ["abc123_15"]
+  }
+}
+``` GET /api/testQuestions
+功能： 获取测试题列表（支持分页和筛选）
+
+查询参数：
+
+```
+page=1              // 页码，默认1
+limit=20            // 每页数量，默认20，最大
+100
+sgfHash=abc123      // 按SGF哈希筛选
+difficulty=medium   // 按难度筛选 easy|
+medium|hard
+sortBy=createdAt    // 排序字段 createdAt|
+moveNumber|winRateLoss
+sortOrder=desc      // 排序方向 asc|desc
+```
+成功响应 (200)：
+
+```
+{
+  "success": true,
+  "data": {
+    "questions": [
+      {
+        "_id": "507f1f77bcf86cd799439011",
+        "id": "abc123_15",
+        "sgfHash": "abc123",
+        "sgfFilename": "game1.sgf",
+        "moveNumber": 15,
+        "difficulty": "easy",
+        "winRateLoss": 7.6,
+        "questionText": "第15手，黑方下一步
+        最佳选择是？",
+        "createdAt": "2024-01-15T10:30:00.
+        000Z"
+      }
+    ],
+    "pagination": {
+      "currentPage": 1,
+      "totalPages": 5,
+      "totalItems": 95,
+      "itemsPerPage": 20,
+      "hasNextPage": true,
+      "hasPrevPage": false
+    }
+  }
+}
+``` GET /api/testQuestions/:id
+功能： 获取单个测试题详情
+
+成功响应 (200)：
+
+```
+{
+  "success": true,
+  "data": {
+    "_id": "507f1f77bcf86cd799439011",
+    "id": "abc123_15",
+    "sgfHash": "abc123",
+    "sgfFilename": "game1.sgf",
+    "moveNumber": 15,
+    "boardState": [[null, 
+    null, ...], ...],
+    "currentPlayer": "black",
+    "candidatePoints": [...],
+    "correctAnswer": {...},
+    "winRateLoss": 7.6,
+    "difficulty": "easy",
+    "questionText": "第15手，黑方下一步最佳选
+    择是？",
+    "createdAt": "2024-01-15T10:30:00.
+    000Z",
+    "updatedAt": "2024-01-15T10:30:00.
+    000Z"
+  }
+}
+```
+错误响应 (404)：
+
+```
+{
+  "success": false,
+  "message": "测试题不存在"
+}
+``` DELETE /api/testQuestions/:sgfHash
+功能： 删除指定SGF的所有测试题
+
+成功响应 (200)：
+
+```
+{
+  "success": true,
+  "message": "删除成功",
+  "data": {
+    "deletedCount": 15
+  }
+}
+``` GET /api/testQuestions/stats
+功能： 获取测试题统计信息
+
+成功响应 (200)：
+
+```
+{
+  "success": true,
+  "data": {
+    "totalQuestions": 150,
+    "difficultyStats": {
+      "easy": 60,
+      "medium": 70,
+      "hard": 20
+    },
+    "sgfStats": {
+      "totalSgfFiles": 25,
+      "avgQuestionsPerSgf": 6
+    },
+    "recentActivity": {
+      "questionsCreatedToday": 12,
+      "questionsCreatedThisWeek": 45
+    }
+  }
+}
+```
+### 4.3 后端实现要点
+1. 1.
+   数据验证：
+   
+   - 验证棋盘状态数组格式（19x19）
+   - 验证候选点坐标范围（0-18）
+   - 验证胜率范围（0-100）
+   - 验证难度枚举值
+2. 2.
+   去重处理：
+   
+   - 使用唯一索引防止重复插入
+   - 提供upsert选项更新已存在的测试题
+3. 3.
+   性能优化：
+   
+   - 使用批量插入操作
+   - 合理的分页大小限制
+   - 数据库索引优化
+4. 4.
+   错误处理：
+   
+   - 统一的错误响应格式
+   - 详细的错误日志记录
+   - 数据库连接异常处理
+5. 5.
+   安全考虑：
+   
+   - 输入参数验证和清理
+   - 防止NoSQL注入
+   - 请求频率限制
