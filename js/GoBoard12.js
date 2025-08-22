@@ -1180,20 +1180,10 @@ class SmallBoard {
 
         //console.log("originalMoves is:", this.originalMoves);
         // 渲染原始步骤
-        //let currentColor = 'black';
         this.originalMoves.forEach((move, index) => {
             if (!move.pass) {
-                //console.log("this 原始 move is:", move);
-                //const [row, col] = move.split(',').map(Number);
-                //this.placeStone(row, col, currentColor);
-                //this.placeStone2(move.row, move.col, move.color, smStoneSize);  //8/13
-                //console.log("Current context 'this' 是:", this);
-                //this.placeStone3(move.row, move.col, move.color, smStoneSize);
-                //this.placeStone2(move.row, move.col, move.color, smStoneSize);  //try call placeStone3 directly
-                //this.placeStone3(move.row, move.col, move.color, smStoneSize);  //try call placeStone3 directly //2还在用吗？改成3，2025.8.7
-                //console.log("原始步数：", move.row, move.col, move.color);
-                //console.log("0777 原始步数：", row, col);
-                //currentColor = (currentColor === 'black') ? 'white' : 'black';
+                // 使用 placeStone2 方法渲染原始步骤
+                this.placeStone2(move.row, move.col, move.color, smStoneSize);
             }
         });
 

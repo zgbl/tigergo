@@ -50,6 +50,7 @@ function loadNavbar() {
         home: `${baseUrl}/index.html`,
         play: `${baseUrl}/WeiqiPlay10.html`,
         sgfAnalysis: `${baseUrl}/SGFAnalysis.html`,  // 更新为棋谱分析页面
+        quiz: `${baseUrl}/Quiz.html`,  // 新增测试链接
         tournament: `${baseUrl}/Tournament2.html`,
         news: `${baseUrl}/News.html`,
         forum: `${baseUrl}/Forum11.html`,
@@ -70,6 +71,9 @@ function loadNavbar() {
           </a>
           <a href="${links.sgfAnalysis}">
             <img src="${baseUrl}/images/GameRecords.png" class="icon" alt="棋谱分析" /> 棋谱分析
+          </a>
+          <a href="${links.quiz}">
+            <img src="${baseUrl}/images/exam.png" class="icon" alt="测试" /> 测试
           </a>
           <a href="${links.tournament}">
             <img src="${baseUrl}/images/Match.png" class="icon" alt="比赛" /> 比赛

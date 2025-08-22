@@ -168,6 +168,14 @@
             分析设置
           </h3>
           <div class="settings-panel">
+            <!-- 新增：引擎选择 -->
+            <div class="setting-group">
+              <label class="setting-label">分析引擎</label>
+              <select class="setting-select" id="engineSelect">
+                <option value="local">本地引擎 (192.168.0.249:8080)</option>
+                <option value="cloudrun">Google Cloud Run (CPU版本)</option>
+              </select>
+            </div>
             <div class="setting-group">
               <label class="setting-label">分析深度</label>
               <select class="setting-select" id="analysisDepth">

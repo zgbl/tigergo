@@ -182,6 +182,10 @@ class AnalysisEngine {
                 
                 // 🔥 无论成功还是失败，都要执行延迟（移到这里确保总是执行）
                 const delays = { fast: 2000, normal: 5000, deep: 8000, ultra: 10000 };
+                console.log('🔧 延迟配置对象:', delays);
+                console.log('🔧 当前分析深度参数:', analysisDepth);
+                console.log('🔧 delays[analysisDepth]:', delays[analysisDepth]);
+                console.log('🔧 最终使用的延迟时间:', delays[analysisDepth] || 5000);
                 console.log(`第${moveIndex}手分析完成，等待 ${delays[analysisDepth] || 5000}ms 后继续...`);
                 await this.sleep(delays[analysisDepth] || 5000);
             }
@@ -504,7 +508,18 @@ class AnalysisEngine {
             analysisResults: analysisResults.map(result => ({
                 moveNumber: result.moveNumber,
                 move: result.move,
-                analysis: result.analysis
+                analysis: {
+                    recommendedMove: result.analysis.recommendedMove,
+                    winRate: result.analysis.winRate,
+                    score: result.analysis.score,
+                    visits: result.analysis.visits,
+                    time: result.analysis.time,
+                    // 只保留前3个变化，减少数据量
+                    variations: result.analysis.variations?.slice(0, 3) || [],
+                    // 只保留前10个策略，减少数据量  
+                    policy: result.analysis.policy?.slice(0, 10) || []
+                    // 🔥 完全移除 rawData！这是数据量大的罪魁祸首
+                }
             })),
             metadata: {
                 createdAt: new Date().toISOString(),

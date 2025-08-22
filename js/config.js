@@ -27,6 +27,21 @@ function detectEnvironment() {
     return 'production';
 }
 
+// 🔥 新增：KataGo 引擎配置选项
+const KATAGO_ENGINES = {
+    local: {
+        name: "Local Server",
+        url: "http://192.168.0.249:8080",
+        description: "本地 KataGo 服务器"
+    },
+    cloud: {
+        name: "BlackRice KataGo Cloud",
+        //url: "https://kataengine.blackrice.top",
+        url: "https://katago-analysis-939624114433.us-central1.run.app",
+        description: "Google Cloud Run 部署的 KataGo 服务 CPU 版本"
+    }
+};
+
 // 根据环境设置配置
 function getConfig() {
     const env = detectEnvironment();
@@ -37,11 +52,12 @@ function getConfig() {
             API_VERCEL_NEXTJS_BASE_URL: "http://localhost:3000",
             GITHUB_PAGE_FORUM_URL: "http://localhost:8090/Forum11.html",
             FORUM_POST_ENDPOINT: "/forum/Posts",
-            // 保持原有的 KataGo 直连地址
-            KATAGO_BASE_URL: "http://192.168.0.249:8080",
+            // 🔥 修改：使用默认的本地引擎
+            KATAGO_BASE_URL: KATAGO_ENGINES.local.url,
             KATAGO_BOT_NAME: "katago_gtp_bot",
-            // 新增：Next.js 代理 API 地址（可选使用）
             KATAGO_PROXY_URL: "http://localhost:3000/api/katago",
+            // 🔥 新增：引擎选项
+            KATAGO_ENGINES: KATAGO_ENGINES,
             ENV: "local"
         },
         github: {
@@ -49,11 +65,12 @@ function getConfig() {
             API_VERCEL_NEXTJS_BASE_URL: "https://blackricegobackend2-nextjs.vercel.app",
             GITHUB_PAGE_FORUM_URL: "https://zgbl.github.io/tigergo/Forum11.html",
             FORUM_POST_ENDPOINT: "/forum/Posts",
-            // 保持原有的 KataGo 直连地址
-            KATAGO_BASE_URL: "http://192.168.0.249:8080",
+            // 🔥 修改：使用默认的本地引擎
+            KATAGO_BASE_URL: KATAGO_ENGINES.local.url,
             KATAGO_BOT_NAME: "katago_gtp_bot",
-            // 新增：Next.js 代理 API 地址（可选使用）
             KATAGO_PROXY_URL: "https://blackricegobackend2-nextjs.vercel.app/api/katago",
+            // 🔥 新增：引擎选项
+            KATAGO_ENGINES: KATAGO_ENGINES,
             ENV: "github"
         },
         production: {
@@ -61,11 +78,12 @@ function getConfig() {
             API_VERCEL_NEXTJS_BASE_URL: "https://blackricegobackend2-nextjs.vercel.app",
             GITHUB_PAGE_FORUM_URL: "https://zgbl.github.io/tigergo/Forum11.html",
             FORUM_POST_ENDPOINT: "/forum/Posts",
-            // 保持原有的 KataGo 直连地址
-            KATAGO_BASE_URL: "http://192.168.0.249:8080",
+            // 🔥 修改：使用默认的本地引擎
+            KATAGO_BASE_URL: KATAGO_ENGINES.local.url,
             KATAGO_BOT_NAME: "katago_gtp_bot",
-            // 新增：Next.js 代理 API 地址（可选使用）
             KATAGO_PROXY_URL: "https://blackricegobackend2-nextjs.vercel.app/api/katago",
+            // 🔥 新增：引擎选项
+            KATAGO_ENGINES: KATAGO_ENGINES,
             ENV: "production"
         }
     };
@@ -74,6 +92,16 @@ function getConfig() {
     console.log(`📋 配置详情:`, configs[env]);
     
     return configs[env];
+}
+
+// 🔥 新增：获取可用的 KataGo 引擎列表
+function getAvailableEngines() {
+    return KATAGO_ENGINES;
+}
+
+// 🔥 新增：根据引擎 ID 获取引擎配置
+function getEngineConfig(engineId) {
+    return KATAGO_ENGINES[engineId] || KATAGO_ENGINES.local;
 }
 
 // 导出配置
@@ -100,3 +128,7 @@ window.CONFIG = CONFIG;
 
 // 最终验证
 console.log(`🔧 window.CONFIG 设置完成:`, window.CONFIG);
+
+// 🔥 新增：导出引擎相关函数
+window.getAvailableEngines = getAvailableEngines;
+window.getEngineConfig = getEngineConfig;

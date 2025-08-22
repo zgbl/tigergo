@@ -169,23 +169,37 @@ class SGFAnalyzer {
         const selectFileBtn = document.getElementById('selectFileBtn');
         const analyzeFileBtn = document.getElementById('analyzeFileBtn');
         const uploadArea = document.getElementById('uploadArea');
-
+    
         console.log('  - analyzeFileBtn:', analyzeFileBtn);
-
+    
         if (fileInput) {
             fileInput.addEventListener('change', (e) => handleFileUpload(e));
         }   
-
+    
         if (selectFileBtn) {
             selectFileBtn.addEventListener('click', () => fileInput?.click());
         }
-
+    
         if (uploadArea) {
             uploadArea.addEventListener('click', () => fileInput?.click());
             uploadArea.addEventListener('dragover', (e) => this.handleDragOver(e));
             uploadArea.addEventListener('drop', (e) => this.handleDrop(e));
         }
-
+    
+        // 🔥 新增：监听分析深度选择变化
+        const analysisDepthSelect = document.getElementById('analysisDepth');
+        if (analysisDepthSelect) {
+            analysisDepthSelect.addEventListener('change', (e) => {
+                const selectedValue = e.target.value;
+                const selectedText = e.target.options[e.target.selectedIndex].text;
+                console.log('🎯 分析深度选择变化:', {
+                    value: selectedValue,
+                    text: selectedText,
+                    timestamp: new Date().toLocaleTimeString()
+                });
+            });
+        }
+    
         // 棋盘控制按钮
         this.boardController.setupEventListeners();
         
@@ -210,37 +224,100 @@ class SGFAnalyzer {
     }
 
     testKataGoConnection = async () => {
-        console.log('开始测试KataGo连接');
-
-        // 1. 立即更新UI，显示“正在连接...”
+        console.log('开始测试所有 KataGo 引擎连接');
+    
         this.updateConnectionStatus('connecting');
-
-        try {
-            // 2. 调用 KataGoAPI 的测试连接方法
-            const result = await this.katagoAPI.testConnection();
-
-            if (result.success) {
-                // 连接成功，获取服务器信息（这一步即使失败也不影响连接状态）
-                try {
-                    const serverInfo = await this.katagoAPI.getServerInfo();
-                    console.log('服务器信息:', serverInfo);
-                } catch (infoError) {
-                    console.warn('警告: 获取服务器信息失败，但连接是正常的。', infoError);
+        
+        // 添加这行：声明 hasSuccessfulConnection 变量
+        let hasSuccessfulConnection = false;
+    
+        const engines = [
+            { name: 'local', url: 'http://192.168.0.249:8080', displayName: '本地引擎' },
+            { name: 'cloudrun-original', url: 'https://katago-analysis-939624114433.us-central1.run.app', displayName: 'Google Cloud Run (原始)' },
+            //{ name: 'cloudrun-cname', url: 'https://kataengine.blackrice.top', displayName: 'Google Cloud Run (CNAME)' }
+            { name: 'cloudrun-cname', url: 'https://katago-analysis-939624114433.us-central1.run.app', displayName: 'Google Cloud Run (CNAME)' }
+        ];
+    
+        const testPromises = engines.map(async (engine) => {
+            try {
+                console.log(`🔍 测试 ${engine.displayName}: ${engine.url}`);
+                
+                const tempAPI = new KataGoAPI();
+                tempAPI.setBaseUrl(engine.url);
+                
+                const result = await tempAPI.testConnection();
+                
+                if (result.success) {
+                    console.log(`✅ ${engine.displayName} 连接成功`);
+                    this.analysisDisplay.addLogEntry(`${engine.displayName} 连接成功`, 'success');
+                    hasSuccessfulConnection = true;
+                    
+                    // 尝试获取服务器信息
+                    try {
+                        const serverInfo = await tempAPI.getServerInfo();
+                        if (serverInfo.success) {
+                            console.log(`📊 ${engine.displayName} 服务器信息:`, serverInfo.data);
+                        }
+                    } catch (infoError) {
+                        console.warn(`⚠️ ${engine.displayName} 获取服务器信息失败:`, infoError);
+                    }
+                    
+                    return { engine, success: true, result };
+                } else {
+                    console.log(`❌ ${engine.displayName} 连接失败:`, result.error);
+                    this.analysisDisplay.addLogEntry(`${engine.displayName} 连接失败: ${result.error}`, 'warning');
+                    return { engine, success: false, error: result.error };
                 }
-
-                // 3. 连接成功，更新UI
-                this.updateConnectionStatus('connected');
-
-            } else {
-                // 连接测试返回 false，更新UI为失败
-                console.error('KataGo 连接测试失败:', result.error);
-                this.updateConnectionStatus('error');
+            } catch (error) {
+                console.error(`❌ ${engine.displayName} 连接异常:`, error);
+                this.analysisDisplay.addLogEntry(`${engine.displayName} 连接异常: ${error.message}`, 'error');
+                return { engine, success: false, error: error.message };
             }
-
+        });
+    
+        // 3. 等待所有测试完成
+        try {
+            const testResults = await Promise.all(testPromises);
+            
+            // 4. 统计结果
+            const successfulEngines = testResults.filter(r => r.success);
+            const failedEngines = testResults.filter(r => !r.success);
+            
+            console.log(`🔍 连接测试完成: ${successfulEngines.length} 个成功, ${failedEngines.length} 个失败`);
+            
+            // 5. 更新UI状态
+            if (successfulEngines.length > 0) {
+                this.updateConnectionStatus('connected');
+                
+                // 如果当前引擎不可用，自动切换到第一个可用的引擎
+                const currentEngineSelect = document.getElementById('engineSelect');
+                if (currentEngineSelect) {
+                    const currentEngine = currentEngineSelect.value;
+                    const currentEngineResult = testResults.find(r => r.engine.name === currentEngine);
+                    
+                    if (!currentEngineResult || !currentEngineResult.success) {
+                        // 当前引擎不可用，切换到第一个可用的引擎
+                        const firstSuccessfulEngine = successfulEngines[0];
+                        currentEngineSelect.value = firstSuccessfulEngine.engine.name;
+                        this.katagoAPI.setBaseUrl(firstSuccessfulEngine.engine.url);
+                        this.analysisDisplay.addLogEntry(`已自动切换到 ${firstSuccessfulEngine.engine.displayName}`, 'info');
+                    }
+                }
+                
+                // 显示成功连接的引擎列表
+                const successNames = successfulEngines.map(r => r.engine.displayName).join(', ');
+                this.analysisDisplay.addLogEntry(`可用引擎: ${successNames}`, 'success');
+                
+            } else {
+                // 所有引擎都连接失败
+                this.updateConnectionStatus('error');
+                this.analysisDisplay.addLogEntry('所有 KataGo 引擎连接失败', 'error');
+            }
+            
         } catch (error) {
-            // 4. 如果发生任何异常（如网络错误），更新UI为失败
-            console.error('测试KataGo连接时发生异常:', error);
+            console.error('测试引擎连接时发生异常:', error);
             this.updateConnectionStatus('error');
+            this.analysisDisplay.addLogEntry(`引擎连接测试异常: ${error.message}`, 'error');
         }
     }
     
@@ -254,13 +331,13 @@ class SGFAnalyzer {
         
         switch (status) {
             case 'connecting':
-                statusElement.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 正在连接 KataGo 服务...';
+                statusElement.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 正在测试所有 KataGo 引擎...';
                 break;
             case 'connected':
-                statusElement.innerHTML = '<i class="fas fa-check-circle"></i> KataGo 服务连接正常';
+                statusElement.innerHTML = '<i class="fas fa-check-circle"></i> KataGo 引擎连接正常';
                 break;
             case 'error':
-                statusElement.innerHTML = '<i class="fas fa-exclamation-triangle"></i> KataGo 服务连接失败';
+                statusElement.innerHTML = '<i class="fas fa-exclamation-triangle"></i> 所有 KataGo 引擎连接失败';
                 break;
         }
     }
@@ -462,6 +539,7 @@ class SGFAnalyzer {
     updateFileInfo(filename, moveCount) {
         const fileNameElement = document.getElementById('fileName');
         const fileDetailsElement = document.getElementById('fileDetails');
+        const fileInfoElement = document.getElementById('fileInfo'); // 添加这行
         
         if (fileNameElement) {
             fileNameElement.textContent = filename;
@@ -469,6 +547,11 @@ class SGFAnalyzer {
         
         if (fileDetailsElement) {
             fileDetailsElement.textContent = `共 ${moveCount} 手棋`;
+        }
+        
+        // 添加这段代码来显示文件信息容器
+        if (fileInfoElement) {
+            fileInfoElement.classList.add('show');
         }
     }
 
@@ -494,8 +577,18 @@ class SGFAnalyzer {
             
             // 🔥 获取分析设置
             const analysisDepthSelect = document.getElementById('analysisDepth');
+            console.log('🔧 analysisDepthSelect 元素:', analysisDepthSelect);
+            if (analysisDepthSelect) {
+                console.log('🔧 analysisDepthSelect.value:', analysisDepthSelect.value);
+                console.log('🔧 analysisDepthSelect.selectedIndex:', analysisDepthSelect.selectedIndex);
+                console.log('🔧 analysisDepthSelect.options:', Array.from(analysisDepthSelect.options).map(opt => ({value: opt.value, text: opt.text, selected: opt.selected})));
+            }
             const analysisDepth = analysisDepthSelect ? analysisDepthSelect.value : 'normal';
             console.log(`🎯 使用分析深度: ${analysisDepth}`);
+            console.log('🔧 即将传递给 analysisEngine.startAnalysis 的参数:', {
+                gameData: this.gameData ? '已设置' : '未设置',
+                analysisDepth: analysisDepth
+            });
             
             console.log('🎯 开始调用 analysisEngine.startAnalysis');
             await this.analysisEngine.startAnalysis(
@@ -816,7 +909,30 @@ class SGFAnalyzer {
             throw error;
         }
     }
+
+    if (engineSelect) {
+        engineSelect.addEventListener('change', (e) => this.handleEngineChange(e));
+    }
+
+    // 新增：处理引擎切换
+    handleEngineChange(event) {
+        const selectedEngine = event.target.value;
+        
+        if (selectedEngine === 'local') {
+            this.katagoAPI.setBaseUrl('http://192.168.0.249:8080');
+            this.analysisDisplay.addLogEntry('已切换到本地引擎 (192.168.0.249:8080)', 'info');
+        } else if (selectedEngine === 'cloudrun') {
+            //this.katagoAPI.setBaseUrl('https://kataengine.blackrice.top');
+            this.katagoAPI.setBaseUrl('https://katago-analysis-939624114433.us-central1.run.app');
+
+            this.analysisDisplay.addLogEntry('已切换到 Google Cloud Run 引擎 (kataengine.blackrice.top)', 'info');
+        }
+        
+        // 重新测试连接
+        this.testKataGoConnection();
+    }
 }
+
 
 // 页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', () => {
@@ -824,3 +940,6 @@ document.addEventListener('DOMContentLoaded', () => {
         window.sgfAnalyzer = new SGFAnalyzer();
     }, 100);
 });
+
+// 新增：引擎选择事件监听
+const engineSelect = document.getElementById('engineSelect');

@@ -11,147 +11,13 @@ class QuizPage {
         this.initializeElements();
         this.bindEvents();
         
-        // 使用新的棋盘显示类
-        this.quizBoard = new QuizBoard('boardPlaceholder', {
+        // 修复：使用正确的容器ID 'board' 而不是 'boardPlaceholder'
+        this.quizBoard = new QuizBoard('board', {
             boardSize: 19,
             cellSize: 28,
             stoneSize: 26
         });
         
-        // 添加模拟数据用于测试
-        this.mockQuestions = this.createMockQuestions();
-        this.allAvailableQuestions = [...this.mockQuestions];
-    }
-    
-    // 添加创建模拟题目数据的方法
-    createMockQuestions() {
-        return [
-            {
-                id: "mock_question_1",
-                questionNumber: 1,
-                title: "请选择最佳下法",
-                difficulty: "中等",
-                source: "实战对局",
-                boardState: [
-                    {row: 3, col: 3, color: "black"},
-                    {row: 3, col: 4, color: "white"},
-                    {row: 4, col: 3, color: "white"},
-                    {row: 4, col: 4, color: "black"},
-                    {row: 5, col: 5, color: "black"},
-                    {row: 6, col: 6, color: "white"},
-                    {row: 7, col: 7, color: "black"},
-                    {row: 8, col: 8, color: "white"},
-                    {row: 9, col: 9, color: "black"},
-                    {row: 10, col: 10, color: "white"},
-                    {row: 11, col: 11, color: "black"},
-                    {row: 12, col: 12, color: "white"}
-                ],
-                candidates: [
-                    {row: 5, col: 4, label: "A"},
-                    {row: 6, col: 5, label: "B"},
-                    {row: 7, col: 6, label: "C"},
-                    {row: 8, col: 7, label: "D"}
-                ],
-                correctAnswer: "A",
-                winrateChange: -5.2
-            },
-            {
-                id: "mock_question_2",
-                questionNumber: 2,
-                title: "选择最佳应对",
-                difficulty: "困难",
-                source: "职业对局",
-                boardState: [
-                    {row: 15, col: 15, color: "black"},
-                    {row: 15, col: 16, color: "white"},
-                    {row: 16, col: 15, color: "white"},
-                    {row: 16, col: 16, color: "black"},
-                    {row: 14, col: 14, color: "black"},
-                    {row: 13, col: 13, color: "white"},
-                    {row: 12, col: 12, color: "black"},
-                    {row: 11, col: 11, color: "white"},
-                    {row: 10, col: 10, color: "black"},
-                    {row: 9, col: 9, color: "white"}
-                ],
-                candidates: [
-                    {row: 14, col: 15, label: "A"},
-                    {row: 15, col: 14, label: "B"},
-                    {row: 17, col: 17, label: "C"},
-                    {row: 13, col: 14, label: "D"}
-                ],
-                correctAnswer: "B",
-                winrateChange: -8.7
-            },
-            {
-                id: "mock_question_3",
-                questionNumber: 3,
-                title: "寻找最强手段",
-                difficulty: "简单",
-                source: "定式练习",
-                boardState: [
-                    {row: 2, col: 2, color: "black"},
-                    {row: 2, col: 3, color: "white"},
-                    {row: 3, col: 2, color: "white"},
-                    {row: 3, col: 3, color: "black"},
-                    {row: 1, col: 1, color: "black"},
-                    {row: 1, col: 2, color: "white"},
-                    {row: 2, col: 1, color: "white"},
-                    {row: 4, col: 4, color: "black"},
-                    {row: 5, col: 5, color: "white"}
-                ],
-                candidates: [
-                    {row: 1, col: 3, label: "A"},
-                    {row: 3, col: 1, label: "B"},
-                    {row: 4, col: 2, label: "C"},
-                    {row: 2, col: 4, label: "D"}
-                ],
-                correctAnswer: "C",
-                winrateChange: -3.1
-            },
-            // 添加更多模拟题目以便测试下一组功能
-            {
-                id: "mock_question_4",
-                questionNumber: 4,
-                title: "攻击要点",
-                difficulty: "中等",
-                source: "实战对局",
-                boardState: [
-                    {row: 6, col: 6, color: "black"},
-                    {row: 6, col: 7, color: "white"},
-                    {row: 7, col: 6, color: "white"},
-                    {row: 7, col: 7, color: "black"}
-                ],
-                candidates: [
-                    {row: 5, col: 6, label: "A"},
-                    {row: 6, col: 5, label: "B"},
-                    {row: 8, col: 8, label: "C"},
-                    {row: 5, col: 8, label: "D"}
-                ],
-                correctAnswer: "A",
-                winrateChange: -4.5
-            },
-            {
-                id: "mock_question_5",
-                questionNumber: 5,
-                title: "防守要点",
-                difficulty: "困难",
-                source: "职业对局",
-                boardState: [
-                    {row: 8, col: 8, color: "white"},
-                    {row: 8, col: 9, color: "black"},
-                    {row: 9, col: 8, color: "black"},
-                    {row: 9, col: 9, color: "white"}
-                ],
-                candidates: [
-                    {row: 7, col: 8, label: "A"},
-                    {row: 8, col: 7, label: "B"},
-                    {row: 10, col: 10, label: "C"},
-                    {row: 7, col: 10, label: "D"}
-                ],
-                correctAnswer: "B",
-                winrateChange: -6.8
-            }
-        ];
     }
     
     initializeElements() {
@@ -302,84 +168,135 @@ class QuizPage {
     
     async loadQuestions(count = 10, random = true, source = 'all') {
         try {
-            this.loadQuestionsBtn.disabled = true;
             this.loadQuestionsBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 加载中...';
-            
+
             const apiUrl = `${CONFIG.API_VERCEL_NEXTJS_BASE_URL}/api/testQuestions`;
             const params = new URLSearchParams({
                 limit: count.toString(),
                 sortBy: 'createdAt',
-                sortOrder: 'desc'
+                sortOrder: 'desc',
+                includeDetails: 'true'
             });
-            
+
             if (source && source !== 'all') {
                 if (source.startsWith('difficulty-')) {
                     params.append('difficulty', source.replace('difficulty-', ''));
                 }
             }
-            
+
             console.log('正在从MongoDB加载题目:', `${apiUrl}?${params}`);
-            
+
             const response = await fetch(`${apiUrl}?${params}`, {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json'
                 }
             });
-            
+
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status} - ${response.statusText}`);
             }
-            
+
             const data = await response.json();
-            
+
             if (!data.success) {
                 throw new Error(data.message || '加载题目失败');
             }
-            
+
             const rawQuestions = data.data?.questions || [];
-            
+
             if (rawQuestions.length === 0) {
                 throw new Error('MongoDB中没有找到测试题目，请先生成题目');
             }
-            
-            // 调试信息
-            console.log('原始题目数据示例:', rawQuestions[0]);
-            console.log('原始boardState:', rawQuestions[0]?.boardState);
-            console.log('原始candidatePoints:', rawQuestions[0]?.candidatePoints);
-            
-            // 转换数据格式以匹配前端需求
+
+            // Fisher-Yates 洗牌函数
+            const shuffleArray = (array) => {
+                const shuffled = [...array]; // 创建副本
+                for (let i = shuffled.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+                }
+                return shuffled;
+            };
+
+            // 转换数据格式
             this.allAvailableQuestions = rawQuestions.map((q, index) => {
-                console.log(`处理题目 ${index + 1}:`, {
-                    id: q.id || q._id,
-                    boardState: q.boardState,
-                    candidatePoints: q.candidatePoints
-                });
-                
-                // 处理棋盘状态 - 如果数据库中没有，创建空棋盘
+                // 棋盘状态
                 let boardState = [];
                 if (q.boardState && Array.isArray(q.boardState)) {
                     boardState = this.convertBoardState(q.boardState);
                 } else {
                     console.warn(`题目 ${q.id} 缺少棋盘状态数据`);
-                    boardState = []; // 空棋盘
+                    boardState = [];
                 }
-                
-                // 处理候选点 - 如果数据库中没有，创建默认选项
+
+                // 候选点处理
+                // 候选点处理
                 let candidates = [];
+                let correctAnswer = 'C'; // 默认正确答案
+
                 if (q.candidatePoints && Array.isArray(q.candidatePoints)) {
+                    // 先转换候选点格式，添加label字段
                     candidates = this.convertCandidatePoints(q.candidatePoints);
+                    
+                    // 如果需要随机顺序，打乱候选点
+                    if (random) {
+                        candidates = shuffleArray(candidates);
+                        console.log(`题目 ${q.id || q._id} 打乱后的候选点:`, candidates.map(c => `${c.label}:(${c.row},${c.col})`));
+                    }
+                    
+                    // 重新分配 A/B/C/D 标签
+                    const labels = ['A', 'B', 'C', 'D'];
+                    candidates = candidates.map((c, idx) => ({
+                        ...c,
+                        label: labels[idx]
+                    }));
+                    
+                    // 根据correctAnswer.position找到正确答案
+                    if (q.correctAnswer && q.correctAnswer.position) {
+                        const correctPosition = q.correctAnswer.position;
+                        console.log(`题目 ${q.id || q._id} 正确答案位置:`, correctPosition);
+                        
+                        // 通过position字段匹配正确答案
+                        const correctCandidate = candidates.find(c => c.position === correctPosition);
+                        
+                        if (correctCandidate) {
+                            correctAnswer = correctCandidate.label;
+                            console.log(`题目 ${q.id || q._id} 找到正确答案:`, correctAnswer, correctCandidate);
+                        } else {
+                            console.error(`题目 ${q.id || q._id} 无法找到位置为 ${correctPosition} 的候选点`);
+                            // 备用方案：查找type为'best'的候选点
+                            const bestCandidate = candidates.find(c => c.type === 'best');
+                            if (bestCandidate) {
+                                correctAnswer = bestCandidate.label;
+                                console.log(`题目 ${q.id || q._id} 使用最佳选点作为正确答案:`, correctAnswer);
+                            }
+                        }
+                    } else {
+                        console.error(`题目 ${q.id || q._id} 缺少correctAnswer.position字段`);
+                        // 备用方案：查找type为'best'的候选点
+                        const bestCandidate = candidates.find(c => c.type === 'best');
+                        if (bestCandidate) {
+                            correctAnswer = bestCandidate.label;
+                            console.log(`题目 ${q.id || q._id} 使用最佳选点作为正确答案:`, correctAnswer);
+                        }
+                    }
                 } else {
-                    console.warn(`题目 ${q.id} 缺少候选点数据，创建默认选项`);
-                    // 创建默认的A、B、C、D选项
+                    console.warn(`题目 ${q.id || q._id} 缺少候选点数据，创建默认选项`);
                     candidates = [
-                        { row: 3, col: 3, label: 'A' },
-                        { row: 3, col: 15, label: 'B' },
-                        { row: 15, col: 3, label: 'C' },
-                        { row: 15, col: 15, label: 'D' }
+                        { row: 3, col: 3, label: 'A', type: 'default', description: '默认选项' },
+                        { row: 3, col: 15, label: 'B', type: 'default', description: '默认选项' },
+                        { row: 15, col: 3, label: 'C', type: 'default', description: '默认选项' },
+                        { row: 15, col: 15, label: 'D', type: 'default', description: '默认选项' }
                     ];
+                    correctAnswer = 'B';
                 }
-                
+
+                console.log(`题目 ${q.id || q._id} 最终数据:`, {
+                    correctAnswer,
+                    candidates: candidates.map(c => ({ label: c.label, row: c.row, col: c.col, type: c.type, position: c.position }))
+                });
+
                 return {
                     id: q.id || q._id,
                     questionNumber: index + 1,
@@ -388,43 +305,43 @@ class QuizPage {
                     source: q.sgfFilename || '实战对局',
                     boardState: boardState,
                     candidates: candidates,
-                    correctAnswer: q.correctAnswer?.label || candidates[0]?.label || 'A',
+                    correctAnswer: correctAnswer,
                     winrateChange: q.winRateLoss || 0
                 };
             });
-            
+
             console.log('成功加载题目数量:', this.allAvailableQuestions.length);
             console.log('题目数据示例:', this.allAvailableQuestions[0]);
-            
+
             // 获取未使用的题目
             const availableQuestions = this.allAvailableQuestions.filter(
                 question => !this.usedQuestionIds.has(question.id)
             );
-            
+
             if (availableQuestions.length === 0) {
                 throw new Error('没有更多可用题目，请重置后重新开始');
             }
-            
+
             let selectedQuestions = [...availableQuestions];
-            
+
             if (random) {
-                selectedQuestions = this.shuffleArray(selectedQuestions);
+                selectedQuestions = shuffleArray(selectedQuestions);
             }
-            
+
             const requestedCount = Math.min(count, selectedQuestions.length);
             this.questions = selectedQuestions.slice(0, requestedCount);
-            
+
             // 记录已使用的题目ID
             this.questions.forEach(question => {
                 this.usedQuestionIds.add(question.id);
             });
-            
+
             if (this.questions.length === 0) {
                 throw new Error('没有找到符合条件的题目');
             }
-            
+
             this.startQuiz();
-            
+
         } catch (error) {
             console.error('加载题目失败:', error);
             alert(`加载题目失败: ${error.message}`);
@@ -497,7 +414,8 @@ class QuizPage {
         const params = new URLSearchParams({
             limit: '50',
             sortBy: 'createdAt',
-            sortOrder: 'desc'
+            sortOrder: 'desc',
+            includeDetails: 'true' 
         });
         
         const response = await fetch(`${apiUrl}?${params}`, {
@@ -638,22 +556,36 @@ class QuizPage {
         this.generateAnswerOptions(question.candidates);
         
         // 重置按钮状态
-        this.submitAnswerBtn.disabled = true;
+        //this.submitAnswerBtn.disabled = true;
         this.nextQuestionBtn.style.display = 'none';
         this.resultPanel.style.display = 'none';
     }
     
     generateAnswerOptions(candidates) {
-        this.answerOptions.innerHTML = '';
+        console.log('=== 生成答题选项 ===');
+        console.log('candidates:', candidates);
+        console.log('candidates长度:', candidates ? candidates.length : 'undefined');
         
-        candidates.forEach(candidate => {
-            const option = document.createElement('div');
-            option.className = 'answer-option';
-            option.innerHTML = `
-                <input type="radio" id="option${candidate.label}" name="answer" value="${candidate.label}">
-                <label for="option${candidate.label}">${candidate.label}</label>
-            `;
-            this.answerOptions.appendChild(option);
+        if (!candidates || !Array.isArray(candidates) || candidates.length === 0) {
+            console.error('无效的候选点数据，无法生成答题选项:', candidates);
+            this.answerOptions.innerHTML = '<p style="color: red;">无法加载答题选项，候选点数据缺失</p>';
+            return;
+        }
+        
+        // 不再动态生成选项，只更新静态选项的文本内容
+        const optionTexts = this.answerOptions.querySelectorAll('.option-text');
+        candidates.forEach((candidate, index) => {
+            if (optionTexts[index]) {
+                // 计算胜率损失
+                let winRateLoss = '未知';
+                if (candidate.winRate !== undefined && candidate.winRate !== null) {
+                    // 数据库中的winRate已经是百分比形式（如35表示35%）
+                    const winRatePercent = candidate.winRate;
+                    winRateLoss = (100 - winRatePercent).toFixed(1);
+                }
+                
+                optionTexts[index].textContent = `${candidate.label}: ${candidate.description || '候选点'} (胜率损失: ${winRateLoss}%)`;
+            }
         });
         
         // 添加事件监听器，当选择答案时启用提交按钮
@@ -696,7 +628,7 @@ class QuizPage {
         this.updateScoreDisplay();
         
         // 禁用提交按钮，显示下一题按钮
-        this.submitAnswerBtn.disabled = true;
+        //this.submitAnswerBtn.disabled = true;
         this.nextQuestionBtn.style.display = 'inline-block';
     }
     
@@ -707,10 +639,29 @@ class QuizPage {
             `<span class="correct">✓ 回答正确！</span>` : 
             `<span class="incorrect">✗ 回答错误</span>`;
         
+        // 生成所有选点的胜率损失信息
+        let candidateInfo = '';
+        if (question.candidates && Array.isArray(question.candidates)) {
+            candidateInfo = question.candidates.map(candidate => {
+                // 计算胜率损失
+                let winRateLoss = '未知';
+                if (candidate.winRate !== undefined && candidate.winRate !== null) {
+                    // 数据库中的winRate已经是百分比形式
+                    const winRatePercent = candidate.winRate;
+                    winRateLoss = (100 - winRatePercent).toFixed(1);
+                }
+                
+                const isCorrectChoice = candidate.label === question.correctAnswer;
+                const style = isCorrectChoice ? 'color: green; font-weight: bold;' : '';
+                return `<div style="${style}">选项${candidate.label}: ${candidate.description || '候选点'} (胜率损失: ${winRateLoss}%)</div>`;
+            }).join('');
+        }
+        
         this.resultContent.innerHTML = `
             ${resultText}<br>
-            正确答案：${question.correctAnswer}<br>
-            胜率损失：${Math.abs(question.winrateChange).toFixed(1)}%
+            正确答案：${question.correctAnswer}<br><br>
+            <strong>各选点分析：</strong><br>
+            ${candidateInfo}
         `;
         
         // 播放音效
@@ -735,6 +686,7 @@ class QuizPage {
         this.accuracyRateSpan.textContent = `${accuracy}%`;
     }
     
+    // 在endQuiz方法中添加（第638行后）
     endQuiz() {
         this.isQuizActive = false;
         
@@ -755,6 +707,9 @@ class QuizPage {
         `;
         
         this.finalScore.style.display = 'block';
+        
+        // 启用重新开始按钮
+        this.resetQuizBtn.disabled = false;
     }
     
     resetQuiz() {
@@ -798,9 +753,17 @@ class QuizPage {
         return candidatePoints.map((point, index) => {
             const labels = ['A', 'B', 'C', 'D'];
             return {
+                // 保留所有原始字段
+                ...point,
+                // 确保基本字段存在
                 row: point.row || point.y,
                 col: point.col || point.x,
-                label: point.label || labels[index]
+                label: point.label || labels[index],
+                // 保留数据库字段
+                type: point.type,
+                position: point.position,
+                winRate: point.winRate,
+                description: point.description
             };
         });
     }
@@ -811,9 +774,17 @@ class QuizPage {
         return Object.keys(candidatePoints).map((key, index) => {
             const point = candidatePoints[key];
             return {
+                // 保留所有原始字段
+                ...point,
+                // 确保基本字段存在
                 row: point.row || point.y,
                 col: point.col || point.x,
-                label: point.label || labels[index]
+                label: point.label || labels[index],
+                // 保留数据库字段
+                type: point.type,
+                position: point.position,
+                winRate: point.winRate,
+                description: point.description
             };
         });
     }

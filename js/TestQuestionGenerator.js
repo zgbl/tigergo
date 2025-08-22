@@ -149,8 +149,16 @@ class TestQuestionGenerator {
             const currentResult = analysisResults[i];
             const nextResult = analysisResults[i + 1];
             
-            // 检查是否是目标颜色的步数
-            const currentMove = this.sgfAnalyzer.gameData.moves[i];
+            // 🔥 修复：使用 moveNumber 作为索引，并添加边界检查
+            const moveIndex = currentResult.moveNumber - 1; // moveNumber 从1开始，数组从0开始
+            const currentMove = this.sgfAnalyzer.gameData.moves[moveIndex];
+            
+            // 🔥 添加边界检查，防止访问undefined
+            if (!currentMove) {
+                console.warn(`警告：第${currentResult.moveNumber}手的着法数据不存在，跳过`);
+                continue;
+            }
+            
             if (settings.playerColor !== 'mixed') {
                 const isBlackMove = currentMove.color === 'black';
                 if ((settings.playerColor === 'black' && !isBlackMove) || 
@@ -175,10 +183,7 @@ class TestQuestionGenerator {
             }
         }
         
-        // 按胜率损失排序，取前N名
-        return criticalMoves
-            .sort((a, b) => b.winRateLoss - a.winRateLoss)
-            .slice(0, settings.topMovesCount);
+        return criticalMoves.sort((a, b) => b.winRateLoss - a.winRateLoss);
     }
 
     // 为关键步数创建测试题
@@ -191,9 +196,7 @@ class TestQuestionGenerator {
             
             // 生成候选点
             const candidatePoints = this.generateCandidatePoints(criticalMove, settings);
-            
-            // 找出正确答案
-            const correctAnswer = this.findCorrectAnswer(criticalMove.analysis);
+            const correctAnswerObj = this.findCorrectAnswer(criticalMove.analysis, candidatePoints);
             
             // 计算题目难度
             const difficulty = this.calculateDifficulty(criticalMove.winRateLoss);
@@ -205,11 +208,19 @@ class TestQuestionGenerator {
                 moveNumber: criticalMove.moveNumber,
                 boardState: boardState,
                 currentPlayer: criticalMove.actualMove.color,
-                candidatePoints: candidatePoints,
-                correctAnswer: correctAnswer,
-                winRateLoss: criticalMove.winRateLoss,
+                candidates: candidatePoints,
+                correctAnswer: {
+                    label: correctAnswerObj?.label || 'C',
+                    position: correctAnswerObj?.position || '',
+                    winRate: correctAnswerObj?.winRate || 0,
+                    explanation: correctAnswerObj?.explanation || `最佳选点，胜率: ${(correctAnswerObj?.winRate || 0).toFixed(1)}%`
+                },
+                winrateChange: criticalMove.winRateLoss,
                 difficulty: difficulty,
-                questionText: `第${criticalMove.moveNumber}手，${criticalMove.actualMove.color === 'black' ? '黑' : '白'}方下一步最佳选择是？`,
+                questionText: `第${criticalMove.moveNumber}手，${criticalMove.actualMove.color === 'black' ? '黑' : '白'}方下一步最佳选择是？`, // 修改字段名
+                title: `第${criticalMove.moveNumber}手，${criticalMove.actualMove.color === 'black' ? '黑' : '白'}方下一步最佳选择是？`, // 保留兼容性
+                questionNumber: criticalMove.moveNumber,
+                source: this.sgfAnalyzer.gameData.filename || '未知',
                 createdAt: new Date().toISOString()
             };
             
@@ -235,9 +246,11 @@ class TestQuestionGenerator {
     }
 
     // 生成候选点
+    // 在generateCandidatePoints方法中，需要正确标记哪个是最佳选点
     generateCandidatePoints(criticalMove, settings) {
         const candidates = [];
-        const targetCount = settings.candidateCount || 4; // 目标候选点数量
+        const targetCount = settings.candidateCount || 4;
+        let bestMoveIndex = -1; // 记录最佳选点的索引
         
         // 添加实战选点
         if (settings.actualMoveCount > 0 && criticalMove.actualMove) {
@@ -253,22 +266,21 @@ class TestQuestionGenerator {
         
         // 添加最佳选点和次选点
         if (criticalMove.analysis?.variations) {
-            // 计算还需要多少个候选点
             const remainingCount = targetCount - candidates.length;
-            
-            // 从分析结果中取足够的变招
             const variations = criticalMove.analysis.variations.slice(0, remainingCount);
             
             variations.forEach((variation, index) => {
                 if (variation.moves && variation.moves.length > 0) {
                     const move = this.parseSGFPosition(variation.moves[0]);
                     if (move) {
-                        // 检查是否与已有候选点重复
                         const isDuplicate = candidates.some(candidate => 
                             candidate.row === move.row && candidate.col === move.col
                         );
                         
                         if (!isDuplicate) {
+                            if (index === 0) {
+                                bestMoveIndex = candidates.length; // 记录最佳选点的索引
+                            }
                             candidates.push({
                                 type: index === 0 ? 'best' : 'alternate',
                                 position: variation.moves[0],
@@ -283,29 +295,69 @@ class TestQuestionGenerator {
             });
         }
         
-        // 如果候选点不够，可以添加一些随机的合理选点
-        if (candidates.length < targetCount) {
-            console.warn(`候选点数量不足，目标: ${targetCount}, 实际: ${candidates.length}`);
-        }
+        // 随机打乱候选点顺序
+        const shuffledCandidates = this.shuffleArray(candidates);
         
-        return candidates;
+        // 重新分配标签并找到最佳选点的新标签
+        const labels = ['A', 'B', 'C', 'D'];
+        let correctLabel = 'D'; // 默认值
+        
+        shuffledCandidates.forEach((candidate, index) => {
+            candidate.label = labels[index];
+            if (candidate.type === 'best') {
+                correctLabel = labels[index]; // 记录最佳选点的标签
+            }
+        });
+        
+        // 将正确答案标签存储到候选点数据中
+        shuffledCandidates.correctLabel = correctLabel;
+        
+        return shuffledCandidates;
     }
 
     // 找出正确答案
-    findCorrectAnswer(analysis) {
-        if (analysis?.variations && analysis.variations.length > 0) {
-            const bestVariation = analysis.variations[0];
-            if (bestVariation.moves && bestVariation.moves.length > 0) {
-                // 确保 winRate 是数字类型
-                const winRate = parseFloat(bestVariation.winRate) || 0;
+    findCorrectAnswer(analysis, candidates) {
+        // 从候选点中找到最佳选点的标签
+        const bestCandidate = candidates.find(c => c.type === 'best');
+        if (bestCandidate) {
+            return {
+                position: bestCandidate.position,
+                label: bestCandidate.label, // 使用正确的标签
+                winRate: bestCandidate.winRate,
+                explanation: `最佳选点，胜率: ${(bestCandidate.winRate * 100).toFixed(1)}%`
+            };
+        }
+        
+        // 备用方案：如果没找到type为'best'的候选点，使用correctLabel
+        if (candidates.correctLabel) {
+            const correctCandidate = candidates.find(c => c.label === candidates.correctLabel);
+            if (correctCandidate) {
                 return {
-                    position: bestVariation.moves[0],
-                    winRate: winRate,
-                    explanation: `最佳选点，胜率: ${winRate.toFixed(1)}%`
+                    position: correctCandidate.position,
+                    label: correctCandidate.label,
+                    winRate: correctCandidate.winRate,
+                    explanation: `最佳选点，胜率: ${(correctCandidate.winRate * 100).toFixed(1)}%`
                 };
             }
         }
-        return null;
+        
+        // 最后的备用方案：返回第一个候选点
+        if (candidates && candidates.length > 0) {
+            const firstCandidate = candidates[0];
+            return {
+                position: firstCandidate.position,
+                label: firstCandidate.label,
+                winRate: firstCandidate.winRate,
+                explanation: `候选选点，胜率: ${(firstCandidate.winRate * 100).toFixed(1)}%`
+            };
+        }
+        
+        return {
+            position: '',
+            label: 'D',
+            winRate: 0,
+            explanation: '默认选点'
+        };
     }
 
     // 计算题目难度
@@ -317,22 +369,34 @@ class TestQuestionGenerator {
 
     // 保存测试题到后端
     async saveTestQuestions(testQuestions) {
-        // 添加数据验证和调试日志
-        console.log('准备发送的测试题数据:', testQuestions);
+        console.log('=== 开始保存测试题 ===');
+        console.log('原始测试题数据:', testQuestions);
         
         // 验证数据格式
-        const validatedQuestions = testQuestions.map(q => ({
-            ...q,
-            winRateLoss: parseFloat(q.winRateLoss) || 0,
-            candidatePoints: q.candidatePoints.map(cp => ({
-                ...cp,
-                winRate: parseFloat(cp.winRate) || 0
-            })),
-            correctAnswer: q.correctAnswer ? {
-                ...q.correctAnswer,
-                winRate: parseFloat(q.correctAnswer.winRate) || 0
-            } : null
-        }));
+        const validatedQuestions = testQuestions.map((q, index) => {
+            console.log(`验证测试题 ${index + 1}...`);
+            
+            const validated = {
+                ...q,
+                winRateLoss: parseFloat(q.winrateChange) || 0,
+                candidatePoints: q.candidates ? q.candidates.map(cp => ({
+                    ...cp,
+                    winRate: parseFloat(cp.winRate) || 0
+                })) : [],
+                // 确保 correctAnswer 是对象格式且包含 explanation
+                correctAnswer: {
+                    label: q.correctAnswer?.label || 'C',
+                    position: q.correctAnswer?.position || '',
+                    winRate: parseFloat(q.correctAnswer?.winRate) || 0,
+                    explanation: q.correctAnswer?.explanation || `最佳选点，胜率: ${parseFloat(q.correctAnswer?.winRate || 0).toFixed(1)}%`
+                },
+                // 确保有 questionText 字段
+                questionText: q.questionText || q.title || `第${q.moveNumber}手测试题`
+            };
+            
+            console.log(`验证后的测试题 ${index + 1}:`, validated);
+            return validated;
+        });
         
         const payload = {
             questions: validatedQuestions,
@@ -344,72 +408,39 @@ class TestQuestionGenerator {
             }
         };
         
-        console.log('发送到后端的数据:', JSON.stringify(payload, null, 2));
+        console.log('最终发送的payload:', JSON.stringify(payload, null, 2));
         
-        const response = await fetch('/api/testQuestions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(payload)
-        });
-        
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
+        try {
+            const response = await fetch('/api/testQuestions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
             
-            // 特殊处理 409 冲突 - 测试题已存在
-            if (response.status === 409) {
-                console.log('检测到测试题已存在:', errorData);
-                
-                // 显示友好的提示信息
-                const duplicateCount = errorData.data?.duplicateCount || 0;
-                const message = `检测到 ${duplicateCount} 道测试题已存在。是否要覆盖现有的测试题？`;
-                
-                // 询问用户是否覆盖
-                const shouldOverwrite = confirm(message);
-                
-                if (shouldOverwrite) {
-                    // 用户选择覆盖，添加覆盖参数重新发送
-                    const overwritePayload = {
-                        ...payload,
-                        overwrite: true
-                    };
-                    
-                    const overwriteResponse = await fetch('/api/testQuestions', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(overwritePayload)
-                    });
-                    
-                    if (!overwriteResponse.ok) {
-                        const overwriteErrorData = await overwriteResponse.json().catch(() => ({}));
-                        throw new Error(`覆盖失败: HTTP ${overwriteResponse.status} - ${overwriteErrorData.message || overwriteResponse.statusText}`);
-                    }
-                    
-                    return await overwriteResponse.json();
-                } else {
-                    // 用户选择不覆盖，返回成功状态但不实际保存
-                    this.showTestGenerationStatus(`已取消保存，${duplicateCount} 道测试题已存在`, 'info');
-                    return {
-                        success: true,
-                        message: '用户取消覆盖',
-                        data: {
-                            insertedCount: 0,
-                            duplicateCount: duplicateCount,
-                            skipped: true
-                        }
-                    };
+            console.log('响应状态:', response.status, response.statusText);
+            
+            if (!response.ok) {
+                let errorText = '';
+                try {
+                    errorText = await response.text();
+                    console.log('错误响应体:', errorText);
+                } catch (e) {
+                    console.log('无法读取错误响应体:', e);
                 }
+                
+                throw new Error(`保存测试题失败: ${response.status} ${response.statusText}. 响应: ${errorText}`);
             }
             
-            // 其他错误正常处理
-            console.error('后端错误详情:', errorData);
-            throw new Error(`保存失败: HTTP ${response.status} - ${errorData.message || response.statusText}`);
+            const result = await response.json();
+            console.log('保存测试题成功:', result);
+            return result;
+            
+        } catch (error) {
+            console.error('保存测试题时发生错误:', error);
+            throw error;
         }
-        
-        return await response.json();
     }
 
     // 预览测试题
@@ -481,6 +512,16 @@ class TestQuestionGenerator {
         const row = 19 - rowNum;
         
         return { row, col };
+    }
+
+        // 在TestQuestionGenerator类中添加
+    shuffleArray(array) {
+        const shuffled = [...array];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        return shuffled;
     }
 }
 

@@ -202,12 +202,12 @@ class KataGoAPI {
             // 只取到指定手数的着法
             const moveNumber = moveIndex + 1;
             const apiMoves = moves.slice(0, moveNumber);
-
+    
             this.debugPrint(`分析第 ${moveNumber} 手，使用着法`, apiMoves);
-
+    
             // 🔥 根据分析深度设置访问次数和其他参数
             const analysisConfig = this.getAnalysisConfig(analysisDepth);
-
+    
             // 🔥 增强的请求体格式，包含分析参数
             const payload = {
                 board_size: 19,
@@ -220,56 +220,74 @@ class KataGoAPI {
                 includePVVisits: true,
                 reportDuringSearchEvery: analysisConfig.reportInterval
             };
-
+    
             console.log(`🔍 分析配置 (${analysisDepth}):`, analysisConfig);
             console.log(`🔍 API 请求 payload:`, payload);
-
+    
             const requestOptions = {
                 method: 'POST',
                 headers: this.headers,  // 🔥 使用统一的 headers
-                body: JSON.stringify(payload)
+                body: JSON.stringify(payload),
+                // 🔥 添加超时机制 - 根据分析深度设置不同的超时时间
+                signal: signal || AbortSignal.timeout(analysisDepth === 'ultra' ? 60000 : analysisDepth === 'deep' ? 45000 : 30000)
             };
-
-            // 🔥 如果提供了 signal，添加到请求选项中（支持中断分析）
+    
+            // 🔥 如果提供了外部 signal，需要合并超时信号
             if (signal) {
-                requestOptions.signal = signal;
+                // 创建一个组合的AbortController来处理外部信号和超时
+                const timeoutController = new AbortController();
+                const timeoutId = setTimeout(() => {
+                    timeoutController.abort();
+                }, analysisDepth === 'ultra' ? 60000 : analysisDepth === 'deep' ? 45000 : 30000);
+                
+                // 监听外部信号
+                signal.addEventListener('abort', () => {
+                    clearTimeout(timeoutId);
+                    timeoutController.abort();
+                });
+                
+                requestOptions.signal = timeoutController.signal;
             }
-
+    
             // 🔥 修复：使用正确的 API 端点，和 selectMove 相同
             const apiUrl = `${this.baseUrl}/select-move/${this.botName}`;
             console.log(`🔍 API 请求地址: ${apiUrl}`);
-
+    
             const startTime = Date.now();
-
+    
             // 发请求到 KataGo API
             const response = await fetch(apiUrl, requestOptions);
-
+    
             this.debugPrint(`API响应状态: ${response.status}`);
-
+    
             if (!response.ok) {
                 const errorText = await response.text();
                 this.printStatus(`API错误: ${response.status}`, "ERROR");
                 this.printStatus(`错误内容: ${errorText}`, "ERROR");
                 throw new Error(`API 请求失败: ${response.status} ${response.statusText}`);
             }
-
+    
             const data = await response.json();
             const elapsedTime = (Date.now() - startTime) / 1000;
             data.analysis_time = elapsedTime;
-
+    
             this.debugPrint("API响应数据", data);
-
+    
             // 🔥 修复：直接返回数据，不需要检查 result.success
             return { success: true, data };
-
+    
         } catch (error) {
-            // 如果是中断请求，fetch 会抛 AbortError
+            // 🔥 改进错误处理 - 区分不同类型的错误
             if (error.name === 'AbortError') {
                 this.printStatus(`分析已中断 (手数: ${moveIndex + 1})`, "INFO");
+            } else if (error.name === 'TimeoutError' || error.message.includes('timeout')) {
+                this.printStatus(`分析超时 (手数: ${moveIndex + 1}) - 请检查KataGo服务状态`, "ERROR");
+            } else if (error.message.includes('500')) {
+                this.printStatus(`KataGo服务内部错误 (手数: ${moveIndex + 1}) - 服务可能过载`, "ERROR");
             } else {
                 this.printStatus(`分析异常: ${error.message}`, "ERROR");
             }
-            return { success: false, error: error.message };
+            return { success: false, error: error.message, errorType: error.name };
         }
     }
 
