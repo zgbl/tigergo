@@ -233,12 +233,65 @@ class AnalysisStorage {
     }
 
     // 🔥 新增：获取所有已分析的棋谱信息
+    // 🔥 修改：从MongoDB获取所有已分析的棋谱信息
     async getAllAnalyzedGames() {
+        try {
+            console.log('正在从MongoDB加载已分析的棋谱...');
+            
+            // 从MongoDB API获取已分析的棋谱
+            const response = await fetch(`${CONFIG.API_BASE_URL}/analyzed-games`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            if (!data.success) {
+                throw new Error(data.message || '获取已分析棋谱失败');
+            }
+            
+            const analyzedGames = data.data || [];
+            
+            // 转换数据格式以兼容现有的表格显示
+            const formattedGames = analyzedGames.map(game => ({
+                id: game.sgfHash || game._id,
+                filename: game.filename || game.sgfFilename || '未知文件',
+                blackPlayer: game.blackPlayer || '未知',
+                whitePlayer: game.whitePlayer || '未知',
+                analysisTime: game.analysisTime || game.createdAt || new Date(),
+                analysisCount: game.analysisCount || 1,
+                sgfContent: game.sgfContent || '',
+                uploadTime: game.uploadTime || game.createdAt || new Date()
+            }));
+            
+            // 按分析时间排序（最新的在前）
+            formattedGames.sort((a, b) => new Date(b.analysisTime) - new Date(a.analysisTime));
+            
+            console.log(`从MongoDB加载了 ${formattedGames.length} 个已分析的棋谱`);
+            return formattedGames;
+            
+        } catch (error) {
+            console.error('从MongoDB加载已分析棋谱失败:', error);
+            
+            // 如果MongoDB加载失败，回退到indexedDB
+            console.log('回退到indexedDB加载...');
+            return await this.getAllAnalyzedGamesFromIndexedDB();
+        }
+    }
+    
+    // 🔥 新增：保留原有的indexedDB加载方法作为备用
+    async getAllAnalyzedGamesFromIndexedDB() {
         if (!this.db) {
             console.warn('数据库未初始化');
             return [];
         }
-
+    
         const transaction = this.db.transaction(['sgfFiles', 'analysisResults'], 'readonly');
         const sgfStore = transaction.objectStore('sgfFiles');
         const analysisStore = transaction.objectStore('analysisResults');
@@ -248,7 +301,7 @@ class AnalysisStorage {
             sgfRequest.onsuccess = async () => {
                 const sgfFiles = sgfRequest.result;
                 const analyzedGames = [];
-
+    
                 // 为每个SGF文件检查是否有分析结果
                 for (const sgfFile of sgfFiles) {
                     const analysisRequest = analysisStore.index('sgfHash').getAll(sgfFile.hash);
@@ -274,12 +327,15 @@ class AnalysisStorage {
                         };
                     });
                 }
-
+    
                 // 按分析时间排序（最新的在前）
                 analyzedGames.sort((a, b) => new Date(b.analysisTime) - new Date(a.analysisTime));
                 resolve(analyzedGames);
             };
-            sgfRequest.onerror = () => reject(sgfRequest.error);
+            sgfRequest.onerror = () => {
+                console.error('从indexedDB加载失败:', sgfRequest.error);
+                resolve([]);
+            };
         });
     }
 
