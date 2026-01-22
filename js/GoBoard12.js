@@ -636,7 +636,7 @@ function handleStudyClick(row, col) {
     currentMoveIndex++;
 
     //placeStone(row, col, color);  // 8/13
-    placeStone3(row, col, color);
+    placeStone3(row, col, color, stoneSize);
     updateMoveInfo();
     updateMoveDisplay(); // 更新棋盘显示
 }
