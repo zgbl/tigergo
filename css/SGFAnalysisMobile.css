@@ -1,0 +1,50 @@
+/* Mobile SGF Analysis Styles */
+
+/* Stone Styles */
+.stone {
+    position: absolute;
+    border-radius: 50%;
+    box-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+    cursor: pointer;
+    z-index: 10;
+}
+
+.stone.black {
+    background: radial-gradient(circle at 30% 30%, #666, #000);
+}
+
+.stone.white {
+    background: radial-gradient(circle at 30% 30%, #fff, #ddd);
+    border: 1px solid #ccc;
+}
+
+/* Move Number Styles */
+.move-number {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: bold;
+    z-index: 11; /* Above stone */
+    pointer-events: none;
+    color: white; /* Default for black stones */
+}
+
+.stone.white .move-number {
+    color: black;
+}
+
+/* Star Point Styles */
+.star-point {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: var(--board-grid, #2a1a0a); 
+    border-radius: 50%;
+    z-index: 3;
+    pointer-events: none;
+}

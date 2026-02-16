@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>设置 - 黑米围棋</title>
+    <link rel="stylesheet" href="css/Styles5.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        .settings-container {
+            max-width: 600px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        }
+
+        .settings-header {
+            border-bottom: 2px solid #f0f4f8;
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .settings-header i {
+            color: #6366f1;
+            font-size: 24px;
+        }
+
+        .settings-header h1 {
+            margin: 0;
+            font-size: 22px;
+            color: #1a202c;
+        }
+
+        .setting-section {
+            margin-bottom: 30px;
+        }
+
+        .setting-section h2 {
+            font-size: 16px;
+            color: #4a5568;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2d3748;
+            font-size: 14px;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .form-group input:focus {
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+            outline: none;
+        }
+
+        .hint {
+            font-size: 12px;
+            color: #718096;
+            margin-top: 5px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 30px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background-color: #6366f1;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #4f46e5;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+        }
+
+        .btn-secondary {
+            background-color: #f7fafc;
+            color: #4a5568;
+            border: 1px solid #e2e8f0;
+        }
+
+        .btn-secondary:hover {
+            background-color: #edf2f7;
+        }
+
+        #message {
+            margin-top: 20px;
+            padding: 12px;
+            border-radius: 8px;
+            display: none;
+            font-size: 14px;
+        }
+
+        .message-success {
+            background-color: #f0fff4;
+            color: #2f855a;
+            border: 1px solid #c6f6d5;
+            display: block !important;
+        }
+
+        .message-error {
+            background-color: #fff5f5;
+            color: #c53030;
+            border: 1px solid #fed7d7;
+            display: block !important;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="navbar-placeholder"></div>
+
+    <div class="settings-container">
+        <div class="settings-header">
+            <i class="fas fa-cog"></i>
+            <h1>系统设置</h1>
+        </div>
+
+        <div class="setting-section">
+            <h2><i class="fas fa-robot"></i> KataGo 引擎配置</h2>
+
+            <div class="form-group">
+                <label for="preferredEngine">默认分析引擎</label>
+                <select id="preferredEngine">
+                    <option value="local">本地服务器 (192.168.0.249:8080)</option>
+                    <option value="cloud">云端引擎 (Google Cloud Run)</option>
+                    <option value="custom">自定义服务器</option>
+                </select>
+                <div class="hint">选择进入分析页面时默认使用的引擎。</div>
+            </div>
+
+            <div id="customUrlGroup" class="form-group" style="display: none;">
+                <label for="customUrl">自定义服务器地址</label>
+                <input type="text" id="customUrl" placeholder="例如: http://192.168.0.162:8080">
+                <div class="hint">请输入完整的 URL，包含协议 (http://) 和端口号。</div>
+            </div>
+        </div>
+
+        <div class="button-group">
+            <button id="saveBtn" class="btn btn-primary">
+                <i class="fas fa-save"></i> 保存设置
+            </button>
+            <button id="testBtn" class="btn btn-secondary">
+                <i class="fas fa-vial"></i> 测试连接
+            </button>
+            <a href="index.html" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> 返回主页
+            </a>
+        </div>
+
+        <div id="message"></div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script src="js/navbar.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const preferredEngineSelect = document.getElementById('preferredEngine');
+            const customUrlGroup = document.getElementById('customUrlGroup');
+            const customUrlInput = document.getElementById('customUrl');
+            const saveBtn = document.getElementById('saveBtn');
+            const testBtn = document.getElementById('testBtn');
+            const messageDiv = document.getElementById('message');
+
+            // 加载当前设置
+            const currentEngine = localStorage.getItem('katago_preferred_engine') || 'local';
+            const currentCustomUrl = localStorage.getItem('katago_custom_url') || 'http://192.168.0.162:8080';
+
+            preferredEngineSelect.value = currentEngine;
+            customUrlInput.value = currentCustomUrl;
+
+            // 根据选择切换显示
+            function toggleCustomUrl() {
+                if (preferredEngineSelect.value === 'custom') {
+                    customUrlGroup.style.display = 'block';
+                } else {
+                    customUrlGroup.style.display = 'none';
+                }
+            }
+
+            preferredEngineSelect.addEventListener('change', toggleCustomUrl);
+            toggleCustomUrl();
+
+            // 保存设置
+            saveBtn.addEventListener('click', function () {
+                localStorage.setItem('katago_preferred_engine', preferredEngineSelect.value);
+                localStorage.setItem('katago_custom_url', customUrlInput.value.trim());
+
+                showMessage('设置已成功保存！', 'success');
+
+                // 3秒后刷新，使 js/config.js 重新载入
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            });
+
+            // 测试连接
+            testBtn.addEventListener('click', async function () {
+                let testUrl = '';
+                if (preferredEngineSelect.value === 'custom') {
+                    testUrl = customUrlInput.value.trim();
+                } else {
+                    // 从 CONFIG 获取预定义的 URL
+                    const engines = window.getAvailableEngines();
+                    testUrl = engines[preferredEngineSelect.value].url;
+                }
+
+                if (!testUrl) {
+                    showMessage('请先输入有效的服务器地址。', 'error');
+                    return;
+                }
+
+                showMessage('正在测试连接...', 'info');
+                testBtn.disabled = true;
+
+                try {
+                    // 这里模拟一个简单的健康检查请求，KataGo API 通常有相应的接口
+                    // 如果没有专门的健康检查，可以尝试请求一个简单的分析（可能需要具体的协议）
+                    // 暂时只做基本的 fetch 尝试
+                    const response = await fetch(testUrl, {
+                        method: 'GET',
+                        mode: 'cors',
+                        // 设置一个短超时
+                        signal: AbortSignal.timeout(5000)
+                    }).catch(err => {
+                        // 即使是 404 或其他错误，只要能通也算 OK (因为我们没发协议包)
+                        if (err.name === 'AbortError') throw new Error('连接超时');
+                        return { ok: false, status: 0 };
+                    });
+
+                    if (response.status !== 0) {
+                        showMessage(`连接成功！服务器响应状态: ${response.status}`, 'success');
+                    } else {
+                        showMessage('连接失败，请检查地址是否正确或服务器是否启动。', 'error');
+                    }
+                } catch (error) {
+                    showMessage(`连接失败: ${error.message}`, 'error');
+                } finally {
+                    testBtn.disabled = false;
+                }
+            });
+
+            function showMessage(text, type) {
+                messageDiv.textContent = text;
+                messageDiv.className = '';
+                if (type === 'success') {
+                    messageDiv.classList.add('message-success');
+                } else if (type === 'error') {
+                    messageDiv.classList.add('message-error');
+                } else {
+                    messageDiv.style.display = 'block';
+                    messageDiv.style.backgroundColor = '#ebf8ff';
+                    messageDiv.style.color = '#2b6cb0';
+                    messageDiv.style.border = '1px solid #bee3f8';
+                }
+            }
+
+            // 初始化导航栏
+            if (typeof loadNavbar === 'function') {
+                loadNavbar();
+            }
+        });
+    </script>
+</body>
+
+</html>

@@ -22,7 +22,7 @@ class AnalyzedGamesTable {
 
         // 绑定事件
         this.bindEvents();
-        
+
         // 加载数据
         await this.loadAnalyzedGames();
     }
@@ -82,6 +82,9 @@ class AnalyzedGamesTable {
                     <button class="action-btn load-btn" data-game-id="${game.id}" title="加载棋谱">
                         <i class="fas fa-play"></i>
                     </button>
+                    <button class="action-btn problem-btn" data-game-id="${game.id}" title="制作死活题" style="background: linear-gradient(135deg, #f39c12, #e67e22);">
+                        <i class="fas fa-pencil-alt"></i>
+                    </button>
                     <button class="action-btn delete-btn" data-game-id="${game.id}" title="删除">
                         <i class="fas fa-trash"></i>
                     </button>
@@ -101,7 +104,7 @@ class AnalyzedGamesTable {
             row.addEventListener('click', (e) => {
                 // 如果点击的是按钮，不触发行点击事件
                 if (e.target.closest('.action-btn')) return;
-                
+
                 const gameId = row.dataset.gameId;
                 this.loadGame(gameId);
             });
@@ -114,6 +117,16 @@ class AnalyzedGamesTable {
                 e.stopPropagation();
                 const gameId = btn.dataset.gameId;
                 this.loadGame(gameId);
+            });
+        });
+
+        // Create Problem 按钮事件
+        const problemBtns = this.tableBody.querySelectorAll('.problem-btn');
+        problemBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const gameId = btn.dataset.gameId;
+                window.location.href = `ProblemEditor.html?gameId=${gameId}`;
             });
         });
 
@@ -138,16 +151,16 @@ class AnalyzedGamesTable {
             }
 
             console.log(`正在加载棋谱: ${game.filename}`);
-            
+
             // 使用全局的加载函数
             if (typeof window.loadSGFGame === 'function') {
                 const success = await window.loadSGFGame(game.sgfContent, game.filename, gameId);
                 if (success) {
                     // 更新文件信息显示
                     this.updateFileInfo(game);
-                    
+
                     console.log(`已加载棋谱: ${game.filename}`);
-                    
+
                     // 显示成功消息
                     this.showSuccess(`已加载棋谱: ${game.filename}`);
                 } else {
@@ -169,7 +182,7 @@ class AnalyzedGamesTable {
         const fileInfo = document.getElementById('fileInfo');
         const fileName = document.getElementById('fileName');
         const fileDetails = document.getElementById('fileDetails');
-        
+
         if (fileInfo && fileName && fileDetails) {
             fileName.textContent = game.filename;
             fileDetails.innerHTML = `
@@ -268,7 +281,7 @@ class AnalyzedGamesTable {
     showMessage(message, type) {
         // 可以在这里实现消息提示功能
         console.log(`[${type.toUpperCase()}] ${message}`);
-        
+
         // 简单的alert实现，后续可以改为更好的UI
         if (type === 'error') {
             alert(`错误: ${message}`);

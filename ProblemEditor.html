@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>题目制作 - 黑米围棋</title>
+    <link rel="stylesheet" href="css/GoBoard4C.css" />
+    <link rel="stylesheet" href="css/Styles5.css" />
+    <link rel="stylesheet" href="css/SGFAnalysis.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+    <link rel="icon" href="https://zgbl.github.io/tigergo/favicon.ico" type="image/x-icon" />
+    <style>
+        /* 题目制作页面专用样式 overrides */
+        .analysis-container {
+            grid-template-columns: 280px 1fr 340px;
+            /* 调整布局比例 */
+        }
+
+        .editor-section {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            height: 100%;
+            overflow-y: auto;
+        }
+
+        .candidate-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .candidate-item {
+            background: white;
+            border: 1px solid #eee;
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s;
+        }
+
+        .candidate-item:hover {
+            border-color: #3498db;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
+
+        .candidate-label {
+            font-weight: bold;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #3498db;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            margin-right: 10px;
+        }
+
+        .candidate-info {
+            flex: 1;
+            font-size: 12px;
+        }
+
+        .candidate-actions {
+            display: flex;
+            gap: 5px;
+        }
+
+        .mode-toggle {
+            display: flex;
+            background: #f1f3f4;
+            border-radius: 20px;
+            padding: 4px;
+            margin-bottom: 15px;
+        }
+
+        .mode-btn {
+            flex: 1;
+            border: none;
+            background: transparent;
+            padding: 6px 12px;
+            border-radius: 16px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .mode-btn.active {
+            background: white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        /* 胜率损失排行面板 */
+        .loss-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            max-height: 480px;
+            overflow-y: auto;
+        }
+
+        .loss-item {
+            display: flex;
+            align-items: center;
+            padding: 7px 8px;
+            margin-bottom: 4px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s;
+            border: 1px solid transparent;
+            font-size: 12px;
+            gap: 6px;
+        }
+
+        .loss-item:hover {
+            background: #eef6ff;
+            border-color: #3498db;
+        }
+
+        .loss-item.active {
+            background: #d6eaff;
+            border-color: #2980b9;
+            font-weight: bold;
+        }
+
+        .loss-rank {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: bold;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .loss-rank.top3 {
+            background: #e74c3c;
+        }
+
+        .loss-rank.top10 {
+            background: #e67e22;
+        }
+
+        .loss-rank.normal {
+            background: #95a5a6;
+        }
+
+        .loss-move-num {
+            font-weight: 600;
+            min-width: 28px;
+            color: #2c3e50;
+        }
+
+        .loss-color {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            border: 1px solid #bbb;
+            flex-shrink: 0;
+        }
+
+        .loss-color.black {
+            background: #222;
+        }
+
+        .loss-color.white {
+            background: #fff;
+        }
+
+        .loss-coord {
+            color: #666;
+            min-width: 28px;
+        }
+
+        .loss-bar-container {
+            flex: 1;
+            height: 16px;
+            background: #f0f0f0;
+            border-radius: 8px;
+            overflow: hidden;
+            min-width: 50px;
+        }
+
+        .loss-bar {
+            height: 100%;
+            border-radius: 8px;
+            transition: width 0.3s;
+        }
+
+        .loss-bar.severe {
+            background: linear-gradient(90deg, #e74c3c, #c0392b);
+        }
+
+        .loss-bar.moderate {
+            background: linear-gradient(90deg, #e67e22, #d35400);
+        }
+
+        .loss-bar.minor {
+            background: linear-gradient(90deg, #f39c12, #e08e0b);
+        }
+
+        .loss-bar.tiny {
+            background: linear-gradient(90deg, #95a5a6, #7f8c8d);
+        }
+
+        .loss-value {
+            font-weight: 700;
+            min-width: 42px;
+            text-align: right;
+            font-size: 11px;
+        }
+
+        .loss-value.severe {
+            color: #e74c3c;
+        }
+
+        .loss-value.moderate {
+            color: #e67e22;
+        }
+
+        .loss-value.minor {
+            color: #f39c12;
+        }
+
+        .loss-value.tiny {
+            color: #95a5a6;
+        }
+
+        .loss-empty {
+            text-align: center;
+            color: #999;
+            font-size: 12px;
+            padding: 20px 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="navbar-placeholder"></div>
+
+    <div class="analysis-container">
+        <!-- 左侧：发现与导航 -->
+        <div class="sidebar">
+            <div class="analysis-panel">
+                <h3 class="panel-title">
+                    <i class="fas fa-file-alt"></i>
+                    棋谱信息
+                </h3>
+                <div id="gameInfoDisplay" style="font-size: 12px; line-height: 1.5; color: #555;">
+                    加载中...
+                </div>
+                <button id="switchGameBtn" class="control-btn"
+                    style="width: 100%; justify-content: center; margin-top: 10px; background-color: #95a5a6;">
+                    <i class="fas fa-exchange-alt"></i> 切换棋谱
+                </button>
+            </div>
+
+            <div class="analysis-panel">
+                <h3 class="panel-title">
+                    <i class="fas fa-search"></i>
+                    寻找题目素材
+                </h3>
+                <div class="setting-group">
+                    <label class="setting-label">最小胜率损失 (%)</label>
+                    <input type="number" id="minWinrateLoss" class="setting-input" value="5" min="1" max="50">
+                </div>
+                <div class="setting-group">
+                    <label class="setting-label">最小目数损失 (目)</label>
+                    <input type="number" id="minScoreLoss" class="setting-input" value="2.0" step="0.5" min="0.5">
+                </div>
+                <button id="findNextBtn" class="control-btn" style="width: 100%; justify-content: center;">
+                    <i class="fas fa-chevron-right"></i> 寻找下一个失误点
+                </button>
+            </div>
+
+            <div class="analysis-panel">
+                <h3 class="panel-title"><i class="fas fa-chart-bar"></i> 胜率损失排行</h3>
+                
+                <div class="filter-group" style="display: flex; gap: 5px; margin-bottom: 12px;">
+                    <button class="filter-btn active" id="filterAll" style="flex: 1; padding: 4px 8px; font-size: 12px; border-radius: 6px; border: 1px solid #ddd; background: white; cursor: pointer;">全部</button>
+                    <button class="filter-btn" id="filterBlack" style="flex: 1; padding: 4px 8px; font-size: 12px; border-radius: 6px; border: 1px solid #ddd; background: white; cursor: pointer;">黑棋</button>
+                    <button class="filter-btn" id="filterWhite" style="flex: 1; padding: 4px 8px; font-size: 12px; border-radius: 6px; border: 1px solid #ddd; background: white; cursor: pointer;">白棋</button>
+                </div>
+
+                <ul class="loss-list" id="winrateLossList">
+                    <li class="loss-empty">加载分析数据后自动显示...</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- 中间：棋盘 -->
+        <div class="main-content">
+            <div class="page-header" style="padding: 10px 20px;">
+                <h1 class="page-title" style="font-size: 18px;">
+                    <i class="fas fa-pencil-alt"></i>
+                    题目制作编辑器
+                </h1>
+            </div>
+
+            <div class="board-container">
+                <div class="board-placeholder" id="boardPlaceholder">
+                    <div id="board"></div>
+                </div>
+
+                <div id="moveInfo" style="text-align: center; margin-top: 5px; font-weight: bold;">第 0 手</div>
+
+                <div id="controls2" style="justify-content: center; margin-top: 10px; gap: 5px; display: flex;">
+                    <button id="logostartBtn" class="control-btn" title="回到开始"><i
+                            class="fas fa-fast-backward"></i></button>
+                    <button id="logofastBackwardBtn" class="control-btn" title="快退"><i
+                            class="fas fa-step-backward"></i></button>
+                    <button id="logobackwardBtn" class="control-btn" title="上一步"><i
+                            class="fa-solid fa-square-caret-left"></i></button>
+                    <button id="logoforwardBtn" class="control-btn" title="下一步"><i
+                            class="fa-solid fa-square-caret-right"></i></button>
+                    <button id="logofastForwardBtn" class="control-btn" title="快进"><i
+                            class="fas fa-step-forward"></i></button>
+                    <button id="logoendBtn" class="control-btn" title="前进到底"><i
+                            class="fas fa-fast-forward"></i></button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧：编辑面板 -->
+        <div class="editor-section">
+            <h3 class="panel-title">
+                <i class="fas fa-edit"></i>
+                题目设置
+            </h3>
+
+            <div class="setting-group">
+                <label class="setting-label">题目描述</label>
+                <textarea id="questionText" class="setting-input" rows="3" placeholder="例如：黑先，如何做活？"></textarea>
+            </div>
+
+            <div class="setting-group">
+                <label class="setting-label">难度</label>
+                <select id="difficultySelect" class="setting-select">
+                    <option value="1">⭐ 入门</option>
+                    <option value="2">⭐⭐ 初级</option>
+                    <option value="3" selected>⭐⭐⭐ 中级</option>
+                    <option value="4">⭐⭐⭐⭐ 高级</option>
+                    <option value="5">⭐⭐⭐⭐⭐ 职业</option>
+                </select>
+            </div>
+
+            <!-- 🔥 局面信息面板 (点击胜率损失排行时显示) -->
+            <div id="moveContextPanel"
+                style="display:none; margin-top:15px; padding:12px; background:linear-gradient(135deg, #f8f9fa, #e9ecef); border-radius:10px; border-left:4px solid #8e44ad;">
+                <div style="font-weight:bold; margin-bottom:8px; color:#2c3e50;">
+                    <i class="fas fa-info-circle"></i> 局面信息
+                </div>
+                <div id="moveContextInfo" style="font-size:13px; line-height:1.8; color:#555;">
+                </div>
+            </div>
+
+            <h3 class="panel-title" style="margin-top: 20px;">
+                <i class="fas fa-list-ul"></i>
+                候选点管理
+            </h3>
+
+            <div class="mode-toggle">
+                <button class="mode-btn active" id="modeView">浏览模式</button>
+                <button class="mode-btn" id="modeEdit">选点模式 (点击棋盘)</button>
+            </div>
+
+            <ul class="candidate-list" id="candidateList">
+                <!-- 动态生成 -->
+                <li style="text-align: center; color: #999; font-size: 12px; padding: 10px;">
+                    点击棋盘或使用AI推荐添加候选点
+                </li>
+            </ul>
+
+            <div style="margin-top: 15px; display: flex; gap: 10px;">
+                <button id="analyzeCandidatesBtn" class="control-btn"
+                    style="flex: 1; justify-content: center; background: linear-gradient(135deg, #8e44ad, #9b59b6);">
+                    <i class="fas fa-microchip"></i> AI 验证
+                </button>
+            </div>
+
+            <div style="margin-top: 30px; border-top: 1px solid #eee; padding-top: 15px;">
+                <button id="saveProblemBtn" class="control-btn"
+                    style="width: 100%; justify-content: center; background: linear-gradient(135deg, #27ae60, #2ecc71);">
+                    <i class="fas fa-save"></i> 保存题目
+                </button>
+            </div>
+        </div>
+        <!-- 游戏选择模态框 (当没有gameId时显示) -->
+        <div id="gameSelectorModal"
+            style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 9999; justify-content: center; align-items: center;">
+            <div
+                style="background: white; padding: 20px; border-radius: 12px; width: 80%; max-width: 800px; max-height: 80vh; overflow-y: auto;">
+                <h2 style="margin-top: 0; color: #333;"><i class="fas fa-list"></i> 选择一个已分析的棋谱</h2>
+
+                <div class="analyzed-games-container">
+                    <div class="analyzed-games-controls">
+                        <button class="refresh-btn" id="refreshAnalyzedGames"><i class="fas fa-sync-alt"></i>
+                            刷新</button>
+                    </div>
+                    <div class="analyzed-games-table-container">
+                        <table class="analyzed-games-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>文件名</th>
+                                    <th>黑棋</th>
+                                    <th>白棋</th>
+                                    <th>分析时间</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="analyzedGamesTableBody">
+                                <!-- Content filled by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div style="margin-top: 20px; text-align: center;">
+                    <a href="SGFAnalysis.html" class="control-btn"
+                        style="display: inline-block; text-decoration: none;">
+                        <i class="fas fa-arrow-left"></i> 返回分析页上传新棋谱
+                    </a>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="js/config.js"></script>
+    <script src="js/KataGoAPI.js"></script>
+    <script src="js/SGFParser.js"></script>
+    <script src="js/GoBoard12.js"></script>
+    <script src="js/FileHandler.js"></script>
+    <script src="js/BoardController.js"></script>
+    <script src="js/CandidatePointsDisplay.js"></script>
+    <script src="js/AnalysisStorage.js"></script>
+    <script src="js/AnalyzedGamesTable.js"></script> <!-- Included for selection -->
+    <script src="js/navbar.js"></script>
+
+    <!-- 🔥 核心逻辑 -->
+    <script src="js/ProblemEditor.js"></script>
+
+    <!-- 复用 SGFAnalysis.html 中的棋盘初始化代码 -->
+    <script>
+        // 简化的棋盘初始化逻辑
+        const maxWinSize = 3000;
+        const minWinSize = 300;
+
+        function calculateBoardSize() {
+            // 获取中间内容区域的宽度，而不是整个窗口宽度
+            const container = document.querySelector('.board-container');
+            const winWidth = container ? container.clientWidth : window.innerWidth * 0.6;
+            const winHeight = window.innerHeight;
+
+            let cellSizeFromWidth = Math.floor((winWidth - 40) / 20); // 留出padding
+            let cellSizeFromHeight = Math.floor((winHeight - 100) / 20);
+
+            let cellSize = Math.min(cellSizeFromWidth, cellSizeFromHeight);
+
+            // 限制最小/最大值
+            cellSize = Math.max(20, Math.min(cellSize, 60));
+
+            const boardSize = 19;
+            const stoneSize = Math.floor(cellSize * 0.95);
+            let maxFrameWidth = cellSize * (boardSize + 3);
+            return { cellSize, stoneSize, maxFrameWidth };
+        }
+
+        function updateStoneSizeCSS(cellSize) {
+            document.documentElement.style.setProperty("--stone-size", `${cellSize}px`);
+            document.documentElement.style.setProperty("--cell-size", `${cellSize}px`);
+            document.documentElement.style.setProperty("--font-size", `${cellSize * 0.4}px`);
+        }
+
+        // Must define this here as copy-pasted inline script in SGFAnalysis.html
+        function createBoard3(options) {
+            let { domElement, boardSize = 19, cellSize, lineColor = '#000', backgroundColor = '#DEB887' } = options;
+
+            console.log(`Creating board: Size=${boardSize}, Cell=${cellSize}`);
+            domElement.innerHTML = '';
+            domElement.style.width = `${boardSize * cellSize}px`;
+            domElement.style.height = `${boardSize * cellSize}px`;
+            domElement.style.position = 'relative';
+            domElement.style.backgroundColor = backgroundColor;
+            domElement.style.margin = '0 auto'; // Center it
+            domElement.style.boxShadow = '0 5px 15px rgba(0,0,0,0.3)';
+
+            for (let i = 0; i < boardSize; i++) {
+                const vertical = document.createElement('div');
+                vertical.style.position = 'absolute';
+                vertical.style.left = `${cellSize / 2 + i * cellSize}px`;
+                vertical.style.top = `${cellSize / 2}px`;
+                vertical.style.width = '1px';
+                vertical.style.height = `${(boardSize - 1) * cellSize}px`;
+                vertical.style.backgroundColor = lineColor;
+                vertical.style.zIndex = '1';
+                domElement.appendChild(vertical);
+
+                const horizontal = document.createElement('div');
+                horizontal.style.position = 'absolute';
+                horizontal.style.left = `${cellSize / 2}px`;
+                horizontal.style.top = `${cellSize / 2 + i * cellSize}px`;
+                horizontal.style.width = `${(boardSize - 1) * cellSize}px`;
+                horizontal.style.height = '1px';
+                horizontal.style.backgroundColor = lineColor;
+                horizontal.style.zIndex = '1';
+                domElement.appendChild(horizontal);
+            }
+
+            for (let i = 0; i < boardSize; i++) {
+                for (let j = 0; j < boardSize; j++) {
+                    const intersection = document.createElement('div');
+                    intersection.className = 'intersection';
+                    intersection.dataset.row = i;
+                    intersection.dataset.col = j;
+                    intersection.style.position = 'absolute';
+                    intersection.style.left = `${j * cellSize}px`;
+                    intersection.style.top = `${i * cellSize}px`;
+                    intersection.style.width = `${cellSize}px`;
+                    intersection.style.height = `${cellSize}px`;
+                    intersection.style.zIndex = '2';
+                    domElement.appendChild(intersection);
+                }
+            }
+
+            const starPoints = [[3, 3], [3, 9], [3, 15], [9, 3], [9, 9], [9, 15], [15, 3], [15, 9], [15, 15]];
+            starPoints.forEach(([row, col]) => {
+                const intersection = domElement.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+                if (intersection) {
+                    const starPoint = document.createElement('div');
+                    starPoint.style.position = 'absolute';
+                    starPoint.style.top = '50%';
+                    starPoint.style.left = '50%';
+                    starPoint.style.transform = 'translate(-50%, -50%)';
+                    starPoint.style.width = `${cellSize * 0.2}px`;
+                    starPoint.style.height = `${cellSize * 0.2}px`;
+                    starPoint.style.backgroundColor = lineColor;
+                    starPoint.style.borderRadius = '50%';
+                    starPoint.style.zIndex = '3';
+                    intersection.appendChild(starPoint);
+                }
+            });
+        }
+    </script>
+    <!--  增加落子音效 -->
+    <audio id="stoneSound" src="Sounds/PlayStone2.mp3" preload="auto"></audio>
+</body>
+
+</html>

@@ -54,40 +54,40 @@ function handleClick(event) {
 
 function handleClick(event) {  //新版加上了error handle, 点到星位的时候棋谱不乱。8/7/2024
     try {
-      const row = parseInt(event.target.dataset.row, 10);
-      const col = parseInt(event.target.dataset.col, 10);
-  
-      // 检查是否点击了有效的交叉点
-      if (isNaN(row) || isNaN(col)) {
-        console.error("Invalid intersection clicked");
-        return; // 直接返回，不做任何操作
-      }
-  
-      //console.log(`Clicked on intersection: (${row}, ${col})`);
-      
-      if (isStudyMode) {
-        handleStudyClick(row, col);
-      } else {
-        // 原有的处理逻辑
-        if (!currentGame) {
-          console.log("Game not initialized");
-          return; // Game not initialized
+        const row = parseInt(event.target.dataset.row, 10);
+        const col = parseInt(event.target.dataset.col, 10);
+
+        // 检查是否点击了有效的交叉点
+        if (isNaN(row) || isNaN(col)) {
+            console.error("Invalid intersection clicked");
+            return; // 直接返回，不做任何操作
         }
-        if (currentGame.players[currentGame.currentPlayer].id !== currentPlayer.id) {
-          console.log("Not your turn");
-          return; // Not your turn
-        }
-        if (!boardState[row][col]) {
-          console.log(`Attempting to place stone at (${row}, ${col})`);
-          socket.emit("move", { gameId: currentGame.id, row, col });
-          console.log(`Emitting move for gameId: ${currentGame.id}, row: ${row}, col: ${col}`);
+
+        //console.log(`Clicked on intersection: (${row}, ${col})`);
+
+        if (isStudyMode) {
+            handleStudyClick(row, col);
         } else {
-          console.log(`Position (${row}, ${col}) is already occupied`);
+            // 原有的处理逻辑
+            if (!currentGame) {
+                console.log("Game not initialized");
+                return; // Game not initialized
+            }
+            if (currentGame.players[currentGame.currentPlayer].id !== currentPlayer.id) {
+                console.log("Not your turn");
+                return; // Not your turn
+            }
+            if (!boardState[row][col]) {
+                console.log(`Attempting to place stone at (${row}, ${col})`);
+                socket.emit("move", { gameId: currentGame.id, row, col });
+                console.log(`Emitting move for gameId: ${currentGame.id}, row: ${row}, col: ${col}`);
+            } else {
+                console.log(`Position (${row}, ${col}) is already occupied`);
+            }
         }
-      }
     } catch (error) {
-      console.error("Error in handleClick:", error.message);
-      // 出错时不执行任何操作，保持游戏状态不变
+        console.error("Error in handleClick:", error.message);
+        // 出错时不执行任何操作，保持游戏状态不变
     }
 }
 
@@ -134,20 +134,24 @@ function placeStone3(row, col, color, stoneSize) {
     boardState[row][col] = color;
     playStoneSound();
     checkCaptures(row, col, color, boardState);
-} 
+}
 
 function playStoneSound() {
-const audio = document.getElementById("stoneSound");
-audio.volume = 0.2; // 设置音量为50%
-audio.currentTime = 0; // 重置音频到开始
-audio.play();
+    const audio = document.getElementById("stoneSound");
+    if (audio) {
+        audio.volume = 0.5;
+        audio.currentTime = 0;
+        audio.play().catch(e => console.log("Audio play prevented:", e));
+    } else {
+        console.warn("Audio element 'stoneSound' not found.");
+    }
 }
 
 function removeStone(row, col) {
     const intersection = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
     const stone = intersection.querySelector('.stone');
     if (stone) {
-      intersection.removeChild(stone);
+        intersection.removeChild(stone);
     }
     boardState[row][col] = null;
 }
@@ -270,37 +274,37 @@ function updateMoveInfo() {
 
 function addMoveNumber(row, col, number) {
     //console.log(`Adding move number ${number} at row ${row}, col ${col}`);
-    
+
     const intersection = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
     //console.log('Intersection found:', intersection);
-    
+
     const stone = intersection.querySelector('.stone');
     //console.log('Stone found:', stone);
-    
+
     if (stone) {
         let numberLabel = stone.querySelector('.move-number');
         //console.log('Existing number label:', numberLabel);
-        
+
         if (!numberLabel) {
             numberLabel = document.createElement('div');
             numberLabel.className = 'move-number';
             stone.appendChild(numberLabel);
             //console.log('New number label created');
         }
-        
+
         numberLabel.textContent = number;
         numberLabel.style.color = stone.classList.contains('black') ? 'white' : 'black';
         numberLabel.style.display = 'block';
-        
+
         //console.log('Number label updated:', numberLabel);
-        
+
         // 添加这行来记录应用的样式
     } else {
         //console.log('No stone found at this intersection');
     }
 }
 
-function showRecentMoves(count) { 
+function showRecentMoves(count) {
     const startIndex = Math.max(0, currentMoveIndex - count + 1);
     for (let i = startIndex; i <= currentMoveIndex; i++) {
         const move = currentMoves[i];
@@ -314,16 +318,16 @@ function showRecentMoves(count) {
 function clearBoard() {
     const intersections = document.querySelectorAll('.intersection');
     intersections.forEach(intersection => {
-      const stone = intersection.querySelector('.stone');
-      if (stone) {
-        intersection.removeChild(stone);
-      }
+        const stone = intersection.querySelector('.stone');
+        if (stone) {
+            intersection.removeChild(stone);
+        }
     });
-    
+
     for (let i = 0; i < 19; i++) {
-      for (let j = 0; j < 19; j++) {
-        boardState[i][j] = null;
-      }
+        for (let j = 0; j < 19; j++) {
+            boardState[i][j] = null;
+        }
     }
 }
 
@@ -341,16 +345,16 @@ function moveForward() {
             }
         }
         if (!move.pass) {
-           console.log("在GoBoard12.js中， 339行，move.color is:", move.color)
+            console.log("在GoBoard12.js中， 339行，move.color is:", move.color)
             placeStone3(move.row, move.col, move.color, stoneSize);
         }
         updateMoveInfo();
         updateMoveDisplay();
-        
+
         // 更新候选点显示 - 修复：传入正确的参数
         console.log("GoBoard12.js moveForward: 准备调用 displayCandidatePoints");
         console.log("GoBoard12.js moveForward: currentMoveIndex =", currentMoveIndex);
-        
+
         if (typeof displayCandidatePoints === 'function') {
             console.log("GoBoard12.js moveForward: 正在调用 displayCandidatePoints(" + currentMoveIndex + ")");
             displayCandidatePoints(currentMoveIndex);
@@ -371,11 +375,11 @@ function moveBackward() {
         updateMoveInfo();
         //renderMovesToIndex(currentMoveIndex);  //2025.8.7 被提掉的子要恢复显示，看是不是要用这个。
         updateMoveDisplay();
-        
+
         // 更新候选点显示 - 修复：传入正确的参数
         console.log("GoBoard12.js moveBackward: 准备调用 displayCandidatePoints");
         console.log("GoBoard12.js moveBackward: currentMoveIndex =", currentMoveIndex);
-        
+
         if (typeof displayCandidatePoints === 'function') {
             console.log("GoBoard12.js moveBackward: 正在调用 displayCandidatePoints(" + currentMoveIndex + ")");
             displayCandidatePoints(currentMoveIndex);
@@ -384,29 +388,29 @@ function moveBackward() {
         }
     }
 }
-  
+
 function fastForward() {
     for (let i = 0; i < 5; i++) {
-      moveForward();
-      //console.log("向前",i+1,"步");
+        moveForward();
+        //console.log("向前",i+1,"步");
     }
 }
-  
+
 function fastBackward() {
     for (let i = 0; i < 5; i++) {
-      moveBackward();
+        moveBackward();
     }
 }
-  
+
 function moveToStart() {
     while (currentMoveIndex >= 0) {
-      moveBackward();
+        moveBackward();
     }
 }
-  
+
 function moveToEnd() {
     while (currentMoveIndex < currentMoves.length - 1) {
-      moveForward();
+        moveForward();
     }
 }
 
@@ -438,7 +442,7 @@ function updateButtonText() {
         console.warn('未找到显示步数按钮元素');
         return;
     }
-    
+
     switch (displayMode) {
         case 0:
             button.textContent = '显示最后1步';
@@ -516,23 +520,23 @@ function saveQipu() {
         },
         body: JSON.stringify(qipuData),
     })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return response.json();
-    })
-    .then(data => {
-        if (data.success) {
-            alert('棋谱已成功保存到 MongoDB!');
-        } else {
-            alert('保存棋谱到 MongoDB 时出错: ' + (data.error || '未知错误'));
-        }
-    })
-    .catch((error) => {
-        console.error('Error:', error);
-        alert('保存棋谱到 MongoDB 时出错: ' + error.message);
-    });
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                alert('棋谱已成功保存到 MongoDB!');
+            } else {
+                alert('保存棋谱到 MongoDB 时出错: ' + (data.error || '未知错误'));
+            }
+        })
+        .catch((error) => {
+            console.error('Error:', error);
+            alert('保存棋谱到 MongoDB 时出错: ' + error.message);
+        });
 }
 
 //Add by TXY 7/11/2024, 增加研究功能
@@ -627,7 +631,7 @@ function handleStudyClick(row, col) {
 
     // 移除当前移动之后的所有移动
     currentMoves = currentMoves.slice(0, currentMoveIndex + 1);
-    
+
     // 添加新的移动
     currentMoves.push(newMove);
     //console.log("line491, handleStudyClick, newMove is:", newMove);
@@ -649,7 +653,7 @@ function showStudyMoves() {
             addMoveNumber(move.row, move.col, moveNumber);
         }
     }
-}  
+}
 
 //增添变化图小棋盘 2024.7.17
 let smallBoards = []; // 存储所有小棋盘的数组
@@ -682,7 +686,7 @@ async function publishVariation(event) {   //改用submit的时evemt
 
     const originalMoves = currentMoves.slice(0, studyStartMoveIndex + 1);
     const variationMoves = currentMoves.slice(studyStartMoveIndex + 1);
-    
+
     console.log("6. 准备创建评论容器");
     // 创建评论容器
     const commentContainer = document.createElement('div');
@@ -694,20 +698,20 @@ async function publishVariation(event) {   //改用submit的时evemt
     commentElement.textContent = comment;
     commentElement.className = 'variation-comment';
     commentContainer.appendChild(commentElement);
-    console.log("8. 评论元素已创建，内容为:", commentElement.textContent); 
+    console.log("8. 评论元素已创建，内容为:", commentElement.textContent);
 
-        // 🔥 修复 postId 获取问题
+    // 🔥 修复 postId 获取问题
     const currentPostId = window.globalPostId || window.postId;
-    
+
     if (!currentPostId) {
         console.error("无法获取 postId");
         alert('无法获取帖子ID，请刷新页面重试');
         return;
     }
-    
+
     console.log("当前 postId:", currentPostId);
 
-// 重写结构，保留object形式，保留颜色信息 2024/7/25
+    // 重写结构，保留object形式，保留颜色信息 2024/7/25
     const commentData = {
         //postId: postId,
         postId: currentPostId,
@@ -731,7 +735,7 @@ async function publishVariation(event) {   //改用submit的时evemt
         const savedComment = await saveCommentToDB(commentData);
         console.log("Saved comment:", savedComment);
         //displayComment(comment, originalMoves, variationMoves);   // error 07/25：displayComment is not defined. 改用 displayVariationComment 
-        displayVariationComment(comment, originalMoves, variationMoves);  
+        displayVariationComment(comment, originalMoves, variationMoves);
         commentTextarea.value = '';
         console.log("line 642, publishVariation 执行完毕，这个不能comment。");
     } catch (error) {
@@ -749,7 +753,7 @@ async function publishVariation(event) {   //改用submit的时evemt
         alert(`保存评论失败，请稍后重试。错误: ${error.message}`);
     }
 
-    console.log("8C, 保存comment到DB已完成"); 
+    console.log("8C, 保存comment到DB已完成");
     alert("变化图发布成功！");
 
     console.log("publishVariation执行完毕");
@@ -788,7 +792,7 @@ function initializeSmallBoard(boardElement, moves) {
     // 添加控制按钮事件监听器
     const prevButton = boardElement.parentNode.querySelector('.small-board-prev');
     const nextButton = boardElement.parentNode.querySelector('.small-board-next');
-    
+
     prevButton.addEventListener('click', () => {
         if (currentMoveIndex > 0) {
             currentMoveIndex--;
@@ -872,7 +876,7 @@ function parseSGF(sgfContent) {
 
     console.log("Extracted moves:", moves.length > 0 ? moves.slice(0, 5) : "No moves found"); // 打印前5个移动或无移动信息
     console.log("blackRank is:", info.BR);
-    console.log("暂时用时只显示TM:",info.TM);    
+    console.log("暂时用时只显示TM:", info.TM);
     return {
         gameInfo: {
             blackPlayer: info.PB,
@@ -890,7 +894,7 @@ function parseSGF(sgfContent) {
         },
         moves: moves
     };
-    
+
 }
 
 
@@ -947,18 +951,20 @@ function renderMovesToIndex(targetIndex) {
     clearBoard();
     for (let i = 0; i <= targetIndex; i++) {
         const move = currentMoves[i];
-        console.log("currentMoves is", currentMoves)
+        // console.log("currentMoves is", currentMoves)
+        if (!move) continue; // 🔥 修复：防止 move 为 undefined 时报错
+
         if (!move.pass) {
             //placeStone(move.row, move.col, move.color);  // 8/13
-            console.log('row=', move.row, 'col=', move.col, 'color=', move.color);
-            placeStone3(move.row, move.col, move.color);
+            // console.log('row=', move.row, 'col=', move.col, 'color=', move.color);
+            placeStone3(move.row, move.col, move.color, window.stoneSize);
         }
     }
     currentMoveIndex = targetIndex;
     console.log("renderMovesToIndex, line 944, currentMoveIndex:", currentMoveIndex);
     updateMoveInfo();
     updateMoveDisplay();
-    
+
     // 更新候选点显示
     if (typeof displayCandidatePoints === 'function') {
         displayCandidatePoints();
@@ -1027,24 +1033,24 @@ function createBoard3(options) {
         // 创建垂直线
         const vertical = document.createElement('div');
         vertical.className = 'line vertical';
-        vertical.style.left = `${cellSize/2 + i * cellSize}px`;
+        vertical.style.left = `${cellSize / 2 + i * cellSize}px`;
         //console.log("画垂直线：", cellSize/2 + i * cellSize);
-        vertical.style.height = `${(boardSize - 1) * cellSize}px`; 
+        vertical.style.height = `${(boardSize - 1) * cellSize}px`;
         vertical.style.width = '1px';
         vertical.style.backgroundColor = lineColor;
         vertical.style.position = 'absolute';
-        vertical.style.top = `${cellSize/2}px`; 
+        vertical.style.top = `${cellSize / 2}px`;
         fragment.appendChild(vertical);
 
         // 创建水平线
         const horizontal = document.createElement('div');
         horizontal.className = 'line horizontal';
-        horizontal.style.top = `${cellSize/2 + i * cellSize}px`;
+        horizontal.style.top = `${cellSize / 2 + i * cellSize}px`;
         horizontal.style.width = `${(boardSize - 1) * cellSize}px`; // 修改这里
         horizontal.style.height = '1px';
         horizontal.style.backgroundColor = lineColor;
         horizontal.style.position = 'absolute';
-        horizontal.style.left = `${cellSize/2}px`; // 添加这行
+        horizontal.style.left = `${cellSize / 2}px`; // 添加这行
         fragment.appendChild(horizontal);
     }
 
@@ -1085,7 +1091,7 @@ function createBoard3(options) {
 
     // 将所有元素一次性添加到 DOM
     domElement.appendChild(fragment);
-} 
+}
 
 
 function addStarPoints2(board, boardSize, cellSize) {
@@ -1169,7 +1175,7 @@ class SmallBoard {
         }
 
         //console.log("开始画小棋盘之前, 在renderBoard()中，cellSize is:", cellSize);
-        let smStoneSize = cellSize /1.5 * 0.95;
+        let smStoneSize = cellSize / 1.5 * 0.95;
         //console.log("开始渲染小棋盘");
         //console.log("原始步骤数:", this.originalMoves.length);
         //console.log("变化步骤数:", this.variationMoves.length);
@@ -1195,10 +1201,10 @@ class SmallBoard {
 
             if ((this.originalMoves.length - 1 + index) < this.currentIndex && !move.pass) {
                 //this.placeStone2(move.row, move.col, move.color, smStoneSize, index + 1); //8/13
-                this.placeStone2(move.row, move.col, move.color, smStoneSize, index + 1); 
+                this.placeStone2(move.row, move.col, move.color, smStoneSize, index + 1);
                 //看看能不能用同一个函数也画变化图棋子
-            }    
-            
+            }
+
         });
 
         //console.log("小棋盘渲染完成");
@@ -1243,7 +1249,7 @@ class SmallBoard {
             console.error('No board element to place stone on');
             return;
         }
-    
+
         const intersection = this.boardElement.querySelector(`[data-row="${row}"][data-col="${col}"]`);
         if (intersection) {
             const stone = document.createElement('div');
@@ -1251,21 +1257,21 @@ class SmallBoard {
             stone.style.width = `${smStoneSize}px`;
             stone.style.height = `${smStoneSize}px`;
             stone.style.borderRadius = '50%';
-            stone.style.position = 'absolute'; 
+            stone.style.position = 'absolute';
             // 移除固定的left和top值
             stone.style.left = '50%';
-            stone.style.top = '50%'; 
+            stone.style.top = '50%';
             stone.style.transform = 'translate(-50%, -50%)'; // 居中棋子
-            
+
             if (number !== null) {
                 stone.textContent = number;
                 stone.style.display = 'flex';
                 stone.style.justifyContent = 'center';
                 stone.style.alignItems = 'center';
-                stone.style.fontSize = `${smStoneSize*0.8}px`;
+                stone.style.fontSize = `${smStoneSize * 0.8}px`;
                 stone.style.color = color === 'black' ? 'white' : 'black';
             }
-            
+
             intersection.appendChild(stone);
             this.smallBoardState[row][col] = color;
             checkCaptures(row, col, color, this.smallBoardState);
@@ -1296,7 +1302,7 @@ class SmallBoard {
 function submitCommentAndVariation(e) {
     e.preventDefault();
     const commentContent = document.getElementById("comment-content").value.trim();
-    
+
     if (commentContent === '') {
         alert('请输入评论');
         return;
@@ -1335,25 +1341,25 @@ function submitCommentAndVariation(e) {
         body: JSON.stringify(commentData),   //2025.8.3
         //body: JSON.stringify(formattedCommentData),
     })
-    .then((response) => response.json())
-    .then((result) => {
-        if (result.success) {
-            document.getElementById("comment-content").value = "";
-            if (variationData) {
-                //displayVariationComment(commentContent, variationData);
-                //console.log("评论发布成功，这里comment掉了可能是重复的displayVariationComment()");
-                displayVariationComment(comment, {
-                    originalMoves: originalMoves,
-                    variationMoves: variationMoves
-                });
+        .then((response) => response.json())
+        .then((result) => {
+            if (result.success) {
+                document.getElementById("comment-content").value = "";
+                if (variationData) {
+                    //displayVariationComment(commentContent, variationData);
+                    //console.log("评论发布成功，这里comment掉了可能是重复的displayVariationComment()");
+                    displayVariationComment(comment, {
+                        originalMoves: originalMoves,
+                        variationMoves: variationMoves
+                    });
+                }
+                fetchComments(postId);
             }
-            fetchComments(postId);
-        }
-    })
-    .catch((error) => console.error("Error submitting comment:", error));
+        })
+        .catch((error) => console.error("Error submitting comment:", error));
     console.log("submitCommentAndVariation, fetching /comments/");
 }
-    //改写displayVariationComment 成有三个参数  2024/7/25
+//改写displayVariationComment 成有三个参数  2024/7/25
 function displayVariationComment(comment, originalMoves, variationMoves) {
     //console.log("displayVariationComment", comment, originalMoves, variationMoves);
     const commentContainer = document.createElement('div');
@@ -1368,14 +1374,14 @@ function displayVariationComment(comment, originalMoves, variationMoves) {
     if (originalMoves && variationMoves) {
         const smallBoardContainer = document.createElement('div');
         smallBoardContainer.className = 'small-board-container';
-        
+
         const smallBoardElement = document.createElement('div');
         smallBoardElement.className = 'small-board';
         smallBoardContainer.appendChild(smallBoardElement);
 
         const smallBoard = new SmallBoard(originalMoves, variationMoves);
         smallBoard.boardElement = smallBoardElement;  // 设置 boardElement
-        
+
         //2024/7/25 今天实际是这里在push 评论小棋盘
         smallBoards.push(smallBoard);
         //console.log("GoBoard10.js, line 1321, 完成了smallBoard.push ");
@@ -1392,10 +1398,10 @@ function displayVariationComment(comment, originalMoves, variationMoves) {
 
         //这里创建评论的小棋盘
         //console.log("DisplayVariatino, line1331处创建小棋盘，cellSize 是", cellSize);
-        const smallBoardCellSize = cellSize/1.5; 
+        const smallBoardCellSize = cellSize / 1.5;
         //console.log("准备画小棋盘，cellSize is:", cellSize, "smallBoardCellSize is:", smallBoardCellSize);
-        
-        
+
+
         createBoard3({
             domElement: smallBoardElement,
             boardSize: 19,
@@ -1410,7 +1416,7 @@ function displayVariationComment(comment, originalMoves, variationMoves) {
 
         const prevButton = smallBoardContainer.querySelector('.small-board-prev');
         const nextButton = smallBoardContainer.querySelector('.small-board-next');
-        
+
         prevButton.addEventListener('click', () => smallBoard.moveBackward());  // 8/13， 目前是这个监听器，但是functin不存在。
         nextButton.addEventListener('click', () => smallBoard.moveForward());     //以前是用的Post里的 boardElement.parentNode.querySelector(".small-board-prev");
     }
@@ -1428,7 +1434,7 @@ function displayVariationComment(comment, originalMoves, variationMoves) {
 async function saveCommentToDB(commentData) {
     try {
         console.log("saveCommentToDB 接收到的 commentData:", commentData);
-        
+
         // 确保 originalMoves 和 variationMoves 是正确的格式
         const formattedCommentData = {
             ...commentData,
@@ -1448,28 +1454,28 @@ async function saveCommentToDB(commentData) {
         console.log("formattedCommentData 中的 postId:", formattedCommentData.postId);
 
         const response = await fetch(`${CONFIG.API_BASE_URL}/comments`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formattedCommentData),
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(formattedCommentData),
         });
-    
+
         console.log("saveCommentToDB(), response is:", response);
-        
+
         if (!response.ok) {
             const errorText = await response.text();
             throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
         }
-    
+
         const data = await response.json();
         console.log("saveCommentToDB, data is:", data);
-    
+
         if (data.success) {
-        console.log("评论成功保存到数据库");
-        return data;
+            console.log("评论成功保存到数据库");
+            return data;
         } else {
-        throw new Error(data.error || "保存评论失败");
+            throw new Error(data.error || "保存评论失败");
         }
     } catch (error) {
         console.error("发送评论时出错:", error);
@@ -1483,7 +1489,7 @@ function calculateBoardSize2() {    //Post9.html 有重名的函数。暂时把�
     const winWidth = window.innerWidth;
     console.log("Goboard9.js, Line 1406, winWidth is:", winWidth);
     //let cellSize = 20;
-    
+
     if (winWidth < 480) {
         cellSize = Math.floor(winWidth / 20); // 为边框留出一些空间
     } else if (winWidth > 768) {
@@ -1495,21 +1501,21 @@ function calculateBoardSize2() {    //Post9.html 有重名的函数。暂时把�
     } else {
         cellSize = 30; // 默认尺寸
     }
-    
+
     const boardSize = 19;
     const stoneDimension = Math.floor(cellSize * 0.95);
     console.log("cellSize is:", cellSize, "boardSize is:", boardSize, "stoneSize is:", stoneSize);
 
     return { cellSize, boardSize, stoneDimension };
-}  
+}
 
 function toggleIndicator(indicatorId) {
     const indicator = document.getElementById(indicatorId);
     if (indicator) {
-      indicator.classList.toggle('active');
-      console.log(`Indicator ${indicatorId} is now ${indicator.classList.contains('active') ? 'active' : 'inactive'}`);
-      console.log('Current classes:', indicator.className);
+        indicator.classList.toggle('active');
+        console.log(`Indicator ${indicatorId} is now ${indicator.classList.contains('active') ? 'active' : 'inactive'}`);
+        console.log('Current classes:', indicator.className);
     } else {
-      console.error(`Indicator with id ${indicatorId} not found`);
+        console.error(`Indicator with id ${indicatorId} not found`);
     }
-  }
+}

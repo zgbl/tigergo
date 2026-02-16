@@ -10,33 +10,33 @@ class AnalysisStorage {
     async initDB() {
         return new Promise((resolve, reject) => {
             const request = indexedDB.open(this.dbName, this.dbVersion);
-            
+
             request.onerror = () => reject(request.error);
             request.onsuccess = () => {
                 this.db = request.result;
                 resolve(this.db);
             };
-            
+
             request.onupgradeneeded = (event) => {
                 const db = event.target.result;
-                
+
                 // 创建分析结果存储表
                 if (!db.objectStoreNames.contains('analysisResults')) {
-                    const store = db.createObjectStore('analysisResults', { 
-                        keyPath: 'id', 
-                        autoIncrement: true 
+                    const store = db.createObjectStore('analysisResults', {
+                        keyPath: 'id',
+                        autoIncrement: true
                     });
-                    
+
                     // 创建索引
                     store.createIndex('sgfHash', 'sgfHash', { unique: false });
                     store.createIndex('moveNumber', 'moveNumber', { unique: false });
                     store.createIndex('timestamp', 'timestamp', { unique: false });
                 }
-                
+
                 // 创建 SGF 文件存储表
                 if (!db.objectStoreNames.contains('sgfFiles')) {
-                    const sgfStore = db.createObjectStore('sgfFiles', { 
-                        keyPath: 'hash' 
+                    const sgfStore = db.createObjectStore('sgfFiles', {
+                        keyPath: 'hash'
                     });
                     sgfStore.createIndex('filename', 'filename', { unique: false });
                     sgfStore.createIndex('uploadTime', 'uploadTime', { unique: false });
@@ -69,7 +69,7 @@ class AnalysisStorage {
 
         const transaction = this.db.transaction(['sgfFiles'], 'readwrite');
         const store = transaction.objectStore('sgfFiles');
-        
+
         return new Promise((resolve, reject) => {
             const request = store.put(sgfData);
             request.onsuccess = () => resolve(hash);
@@ -89,7 +89,7 @@ class AnalysisStorage {
                 normalizedColor = 'white';
             }
         }
-        
+
         const result = {
             sgfHash: sgfHash,
             moveNumber: moveNumber,
@@ -126,7 +126,7 @@ class AnalysisStorage {
 
         const transaction = this.db.transaction(['analysisResults'], 'readwrite');
         const store = transaction.objectStore('analysisResults');
-        
+
         const promises = this.analysisCache.map(result => {
             return new Promise((resolve, reject) => {
                 const request = store.add(result);
@@ -150,7 +150,7 @@ class AnalysisStorage {
         const transaction = this.db.transaction(['analysisResults'], 'readonly');
         const store = transaction.objectStore('analysisResults');
         const index = store.index('sgfHash');
-        
+
         return new Promise((resolve, reject) => {
             const request = index.getAll(sgfHash);
             request.onsuccess = () => {
@@ -183,7 +183,7 @@ class AnalysisStorage {
         const transaction = this.db.transaction(['analysisResults'], 'readwrite');
         const store = transaction.objectStore('analysisResults');
         const index = store.index('sgfHash');
-        
+
         return new Promise((resolve, reject) => {
             const request = index.getAll(sgfHash);
             request.onsuccess = () => {
@@ -217,7 +217,7 @@ class AnalysisStorage {
     // 辅助方法：将 row/col 转换为 SGF 位置格式
     convertToSGFPosition(row, col) {
         if (row === undefined || col === undefined) return '';
-        
+
         // 列转换: 0-18 -> A-T (跳过I)
         let colChar;
         if (col <= 7) {
@@ -225,10 +225,10 @@ class AnalysisStorage {
         } else {
             colChar = String.fromCharCode(66 + col); // J-T
         }
-        
+
         // 行转换: 0-18 -> 19-1
         const rowNum = 19 - row;
-        
+
         return colChar + rowNum;
     }
 
@@ -237,71 +237,164 @@ class AnalysisStorage {
     async getAllAnalyzedGames() {
         try {
             console.log('正在从MongoDB加载已分析的棋谱...');
-            
+
             // 从MongoDB API获取已分析的棋谱
-            const response = await fetch(`${CONFIG.API_BASE_URL}/analyzed-games`, {
+            const response = await fetch(`${CONFIG.API_BASE_URL}/sgf-analysis-results`, {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json'
                 }
             });
-            
+
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
-            
+
             const data = await response.json();
-            
+
             if (!data.success) {
                 throw new Error(data.message || '获取已分析棋谱失败');
             }
-            
+
             const analyzedGames = data.data || [];
-            
+
             // 转换数据格式以兼容现有的表格显示
             const formattedGames = analyzedGames.map(game => ({
-                id: game.sgfHash || game._id,
-                filename: game.filename || game.sgfFilename || '未知文件',
-                blackPlayer: game.blackPlayer || '未知',
-                whitePlayer: game.whitePlayer || '未知',
-                analysisTime: game.analysisTime || game.createdAt || new Date(),
-                analysisCount: game.analysisCount || 1,
-                sgfContent: game.sgfContent || '',
-                uploadTime: game.uploadTime || game.createdAt || new Date()
+                id: game.sgf.hash, // 使用 sgf.hash 作为 ID
+                filename: game.sgf.filename || '未知文件',
+                blackPlayer: game.sgf.gameInfo?.black || '未知',
+                whitePlayer: game.sgf.gameInfo?.white || '未知',
+                analysisTime: game.metadata?.updatedAt || game.metadata?.createdAt || new Date(),
+                analysisCount: game.analysisConfig?.totalMoves || 0,
+                sgfContent: game.sgf.content || '', // 列表可能没有 content，但如果有了就用
+                uploadTime: game.sgf.uploadTime || new Date()
             }));
-            
+
             // 按分析时间排序（最新的在前）
             formattedGames.sort((a, b) => new Date(b.analysisTime) - new Date(a.analysisTime));
-            
+
             console.log(`从MongoDB加载了 ${formattedGames.length} 个已分析的棋谱`);
             return formattedGames;
-            
+
         } catch (error) {
             console.error('从MongoDB加载已分析棋谱失败:', error);
-            
+
             // 如果MongoDB加载失败，回退到indexedDB
             console.log('回退到indexedDB加载...');
             return await this.getAllAnalyzedGamesFromIndexedDB();
         }
     }
-    
+
+    // 🔥 新增：保存分析结果到后端
+    async saveAnalysisToBackend(analysisData) {
+        try {
+            console.log('正在保存分析结果到后端...');
+            const response = await fetch(`${CONFIG.API_BASE_URL}/saveAnalysis`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(analysisData)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+            }
+
+            const result = await response.json();
+            console.log('分析结果保存成功:', result);
+            return result;
+        } catch (error) {
+            console.error('保存分析结果失败:', error);
+            throw error;
+        }
+    }
+
+    // 🔥 新增：获取单个棋谱的详细分析结果
+    async getAnalysisResult(sgfHash) {
+        try {
+            console.log(`正在获取棋谱 ${sgfHash} 的详细分析结果...`);
+            const response = await fetch(`${CONFIG.API_BASE_URL}/sgf-analysis-results?hash=${sgfHash}&includeDetails=true`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            if (!data.success || !data.data || data.data.length === 0) {
+                throw new Error('未找到分析结果');
+            }
+
+            return data.data[0]; // 返回第一个匹配的结果
+
+        } catch (error) {
+            console.error('获取详细分析结果失败:', error);
+            throw error;
+        }
+    }
+
+    // 🔥 新增：将后端返回的分析数据恢复到本地存储
+    async restoreAnalysisResults(sgfHash, backendResults) {
+        try {
+            console.log(`正在恢复 ${backendResults.length} 条分析结果到本地存储...`);
+
+            // 先清空本地已有的同名SGF分析结果，防止重复
+            await this.clearAnalysisResults(sgfHash);
+
+            // 更新内存缓存
+            this.analysisCache = backendResults.map(r => ({
+                sgfHash: sgfHash,
+                moveNumber: r.moveNumber,
+                move: r.move,
+                analysis: r.analysis,
+                timestamp: r.analysis.time ? new Date().toISOString() : new Date().toISOString()
+            }));
+
+            // 批量写入IndexedDB
+            const transaction = this.db.transaction(['analysisResults'], 'readwrite');
+            const store = transaction.objectStore('analysisResults');
+
+            const promises = this.analysisCache.map(result => {
+                return new Promise((resolve, reject) => {
+                    const request = store.add(result);
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject(request.error);
+                });
+            });
+
+            await Promise.all(promises);
+            console.log('分析结果恢复完成');
+            return true;
+
+        } catch (error) {
+            console.error('恢复分析结果失败:', error);
+            return false;
+        }
+    }
+
     // 🔥 新增：保留原有的indexedDB加载方法作为备用
     async getAllAnalyzedGamesFromIndexedDB() {
         if (!this.db) {
             console.warn('数据库未初始化');
             return [];
         }
-    
+
         const transaction = this.db.transaction(['sgfFiles', 'analysisResults'], 'readonly');
         const sgfStore = transaction.objectStore('sgfFiles');
         const analysisStore = transaction.objectStore('analysisResults');
-        
+
         return new Promise((resolve, reject) => {
             const sgfRequest = sgfStore.getAll();
             sgfRequest.onsuccess = async () => {
                 const sgfFiles = sgfRequest.result;
                 const analyzedGames = [];
-    
+
                 // 为每个SGF文件检查是否有分析结果
                 for (const sgfFile of sgfFiles) {
                     const analysisRequest = analysisStore.index('sgfHash').getAll(sgfFile.hash);
@@ -311,7 +404,7 @@ class AnalysisStorage {
                             if (analysisResults.length > 0) {
                                 // 解析SGF内容获取棋手信息
                                 const gameInfo = this.parseSGFGameInfo(sgfFile.content);
-                                
+
                                 analyzedGames.push({
                                     id: sgfFile.hash,
                                     filename: sgfFile.filename,
@@ -327,7 +420,7 @@ class AnalysisStorage {
                         };
                     });
                 }
-    
+
                 // 按分析时间排序（最新的在前）
                 analyzedGames.sort((a, b) => new Date(b.analysisTime) - new Date(a.analysisTime));
                 resolve(analyzedGames);
@@ -389,7 +482,7 @@ class AnalysisStorage {
         const transaction = this.db.transaction(['sgfFiles', 'analysisResults'], 'readwrite');
         const sgfStore = transaction.objectStore('sgfFiles');
         const analysisStore = transaction.objectStore('analysisResults');
-        
+
         try {
             // 删除SGF文件
             await new Promise((resolve, reject) => {
@@ -400,7 +493,7 @@ class AnalysisStorage {
 
             // 删除相关的分析结果
             await this.clearAnalysisResults(sgfHash);
-            
+
             console.log(`已删除棋谱 ${sgfHash} 及其分析结果`);
             return true;
         } catch (error) {
@@ -419,7 +512,7 @@ class AnalysisStorage {
         const transaction = this.db.transaction(['sgfFiles', 'analysisResults'], 'readwrite');
         const sgfStore = transaction.objectStore('sgfFiles');
         const analysisStore = transaction.objectStore('analysisResults');
-        
+
         try {
             // 清空SGF文件表
             await new Promise((resolve, reject) => {
@@ -434,7 +527,7 @@ class AnalysisStorage {
                 clearRequest.onsuccess = () => resolve();
                 clearRequest.onerror = () => reject(clearRequest.error);
             });
-            
+
             console.log('已清空所有已分析的棋谱');
             return true;
         } catch (error) {

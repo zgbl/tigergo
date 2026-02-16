@@ -5,6 +5,8 @@
 class TestQuestionGenerator {
     constructor(sgfAnalyzer) {
         this.sgfAnalyzer = sgfAnalyzer;
+        this.currentQuestions = []; // 🔥 新增：存储当前生成的测试题
+        this.currentQuestionIndex = -1; // 🔥 新增：当前选中的测试题索引
         this.setupEventListeners();
         // 🔥 立即检查按钮状态
         this.updateTestGenerationButtons();
@@ -14,24 +16,35 @@ class TestQuestionGenerator {
     setupEventListeners() {
         const generateBtn = document.getElementById('generateTestBtn');
         const previewBtn = document.getElementById('previewTestBtn');
-        
+
         if (generateBtn) {
             generateBtn.addEventListener('click', () => {
                 this.generateTestQuestions();
             });
         }
-        
+
         if (previewBtn) {
             previewBtn.addEventListener('click', () => {
                 this.previewTestQuestions();
             });
         }
 
+        // 🔥 新增：导航按钮事件监听
+        const prevBtn = document.getElementById('prevQuestionBtn');
+        const nextBtn = document.getElementById('nextQuestionBtn');
+
+        if (prevBtn) {
+            prevBtn.addEventListener('click', () => this.navigateQuestion(-1));
+        }
+        if (nextBtn) {
+            nextBtn.addEventListener('click', () => this.navigateQuestion(1));
+        }
+
         // 监听SGF加载完成事件
         document.addEventListener('sgfLoaded', () => {
             this.updateTestGenerationButtons();
         });
-        
+
         // 🔥 新增：监听游戏数据变化
         document.addEventListener('gameDataChanged', () => {
             this.updateTestGenerationButtons();
@@ -42,18 +55,18 @@ class TestQuestionGenerator {
     updateTestGenerationButtons() {
         const generateBtn = document.getElementById('generateTestBtn');
         const previewBtn = document.getElementById('previewTestBtn');
-        
+
         // 🔥 修复：更宽松的条件判断
-        const hasGameData = this.sgfAnalyzer && 
-                           this.sgfAnalyzer.gameData && 
-                           this.sgfAnalyzer.gameData.moves && 
-                           this.sgfAnalyzer.gameData.moves.length > 0;
-        
+        const hasGameData = this.sgfAnalyzer &&
+            this.sgfAnalyzer.gameData &&
+            this.sgfAnalyzer.gameData.moves &&
+            this.sgfAnalyzer.gameData.moves.length > 0;
+
         const hasSGFHash = this.sgfAnalyzer && this.sgfAnalyzer.currentSGFHash;
-        
+
         // 🔥 只要有棋谱数据就启用按钮，不需要等待分析完成
         const shouldEnable = hasGameData || hasSGFHash;
-        
+
         console.log('🔧 更新测试题按钮状态:', {
             hasGameData,
             hasSGFHash,
@@ -61,7 +74,7 @@ class TestQuestionGenerator {
             gameData: this.sgfAnalyzer?.gameData,
             currentSGFHash: this.sgfAnalyzer?.currentSGFHash
         });
-        
+
         if (generateBtn) {
             generateBtn.disabled = !shouldEnable;
             generateBtn.style.opacity = shouldEnable ? '1' : '0.5';
@@ -78,15 +91,15 @@ class TestQuestionGenerator {
     async generateTestQuestions() {
         try {
             this.showTestGenerationStatus('正在生成测试题...', 'info');
-            
+
             // 1. 检查是否有棋谱和分析结果
             if (!this.sgfAnalyzer.gameData || !this.sgfAnalyzer.currentSGFHash) {
                 throw new Error('请先加载棋谱');
             }
-            
+
             // 2. 获取用户设置
             const settings = this.getTestGenerationSettings();
-            
+
             // 3. 加载分析结果
             const analysisResults = await this.sgfAnalyzer.analysisStorage.loadAnalysisResults(
                 this.sgfAnalyzer.currentSGFHash
@@ -94,20 +107,26 @@ class TestQuestionGenerator {
             if (analysisResults.length === 0) {
                 throw new Error('请先完成棋谱分析');
             }
-            
+
             // 4. 筛选关键步数（胜率损失最大的步数）
             const criticalMoves = this.findCriticalMoves(analysisResults, settings);
-            
+
             if (criticalMoves.length === 0) {
                 throw new Error('未找到符合条件的关键步数');
             }
-            
+
             // 5. 为关键步数创建测试题
             const testQuestions = await this.createTestQuestions(criticalMoves, settings);
-            
+
             // 6. 保存到数据库
             const saveResult = await this.saveTestQuestions(testQuestions);
-            
+
+            // 🔥 更新当前生成的测试题并显示列表
+            this.currentQuestions = testQuestions;
+            this.currentQuestionIndex = 0;
+            this.renderQuestionList();
+            this.showTestPreviewControls(true);
+
             // 根据保存结果显示不同的状态信息
             if (saveResult.data?.skipped) {
                 // 用户选择不覆盖的情况
@@ -117,8 +136,13 @@ class TestQuestionGenerator {
                 const insertedCount = saveResult.data?.insertedCount || testQuestions.length;
                 this.showTestGenerationStatus(`成功生成 ${insertedCount} 道测试题`, 'success');
                 this.updateTestCount(insertedCount);
+
+                // 自动展示第一题
+                if (testQuestions.length > 0) {
+                    this.showQuestion(0);
+                }
             }
-            
+
         } catch (error) {
             console.error('生成测试题失败:', error);
             this.showTestGenerationStatus(`生成失败: ${error.message}`, 'error');
@@ -128,7 +152,7 @@ class TestQuestionGenerator {
     // 获取用户设置
     getTestGenerationSettings() {
         const candidateCount = parseInt(document.getElementById('testCandidateCount')?.value) || 4;
-        
+
         return {
             playerColor: document.getElementById('testPlayerSide')?.value || 'black',
             topMovesCount: parseInt(document.getElementById('testTopN')?.value) || 10,
@@ -144,34 +168,34 @@ class TestQuestionGenerator {
     // 找出关键步数（胜率损失最大的步数）
     findCriticalMoves(analysisResults, settings) {
         const criticalMoves = [];
-        
+
         for (let i = 0; i < analysisResults.length - 1; i++) {
             const currentResult = analysisResults[i];
             const nextResult = analysisResults[i + 1];
-            
+
             // 🔥 修复：使用 moveNumber 作为索引，并添加边界检查
             const moveIndex = currentResult.moveNumber - 1; // moveNumber 从1开始，数组从0开始
             const currentMove = this.sgfAnalyzer.gameData.moves[moveIndex];
-            
+
             // 🔥 添加边界检查，防止访问undefined
             if (!currentMove) {
                 console.warn(`警告：第${currentResult.moveNumber}手的着法数据不存在，跳过`);
                 continue;
             }
-            
+
             if (settings.playerColor !== 'mixed') {
                 const isBlackMove = currentMove.color === 'black';
-                if ((settings.playerColor === 'black' && !isBlackMove) || 
+                if ((settings.playerColor === 'black' && !isBlackMove) ||
                     (settings.playerColor === 'white' && isBlackMove)) {
                     continue;
                 }
             }
-            
+
             // 计算胜率损失
             const currentWinRate = currentResult.analysis?.winRate || 0;
             const nextWinRate = nextResult.analysis?.winRate || 0;
             const winRateLoss = Math.abs(currentWinRate - nextWinRate);
-            
+
             if (winRateLoss >= settings.minWinRateLoss) {
                 criticalMoves.push({
                     moveNumber: currentResult.moveNumber,
@@ -182,25 +206,25 @@ class TestQuestionGenerator {
                 });
             }
         }
-        
+
         return criticalMoves.sort((a, b) => b.winRateLoss - a.winRateLoss);
     }
 
     // 为关键步数创建测试题
     async createTestQuestions(criticalMoves, settings) {
         const testQuestions = [];
-        
+
         for (const criticalMove of criticalMoves) {
             // 获取该步数的棋盘状态
             const boardState = this.getBoardStateAtMove(criticalMove.moveNumber - 1);
-            
+
             // 生成候选点
             const candidatePoints = this.generateCandidatePoints(criticalMove, settings);
             const correctAnswerObj = this.findCorrectAnswer(criticalMove.analysis, candidatePoints);
-            
+
             // 计算题目难度
             const difficulty = this.calculateDifficulty(criticalMove.winRateLoss);
-            
+
             const testQuestion = {
                 id: `${this.sgfAnalyzer.currentSGFHash}_${criticalMove.moveNumber}`,
                 sgfHash: this.sgfAnalyzer.currentSGFHash,
@@ -223,17 +247,17 @@ class TestQuestionGenerator {
                 source: this.sgfAnalyzer.gameData.filename || '未知',
                 createdAt: new Date().toISOString()
             };
-            
+
             testQuestions.push(testQuestion);
         }
-        
+
         return testQuestions;
     }
 
     // 获取指定步数的棋盘状态
     getBoardStateAtMove(moveIndex) {
         const board = Array(19).fill(null).map(() => Array(19).fill(null));
-        
+
         // 重放到指定步数
         for (let i = 0; i <= moveIndex && i < this.sgfAnalyzer.gameData.moves.length; i++) {
             const move = this.sgfAnalyzer.gameData.moves[i];
@@ -241,7 +265,7 @@ class TestQuestionGenerator {
                 board[move.row][move.col] = move.color;
             }
         }
-        
+
         return board;
     }
 
@@ -251,7 +275,7 @@ class TestQuestionGenerator {
         const candidates = [];
         const targetCount = settings.candidateCount || 4;
         let bestMoveIndex = -1; // 记录最佳选点的索引
-        
+
         // 添加实战选点
         if (settings.actualMoveCount > 0 && criticalMove.actualMove) {
             candidates.push({
@@ -263,20 +287,20 @@ class TestQuestionGenerator {
                 description: '实战选点'
             });
         }
-        
+
         // 添加最佳选点和次选点
         if (criticalMove.analysis?.variations) {
             const remainingCount = targetCount - candidates.length;
             const variations = criticalMove.analysis.variations.slice(0, remainingCount);
-            
+
             variations.forEach((variation, index) => {
                 if (variation.moves && variation.moves.length > 0) {
                     const move = this.parseSGFPosition(variation.moves[0]);
                     if (move) {
-                        const isDuplicate = candidates.some(candidate => 
+                        const isDuplicate = candidates.some(candidate =>
                             candidate.row === move.row && candidate.col === move.col
                         );
-                        
+
                         if (!isDuplicate) {
                             if (index === 0) {
                                 bestMoveIndex = candidates.length; // 记录最佳选点的索引
@@ -294,24 +318,24 @@ class TestQuestionGenerator {
                 }
             });
         }
-        
+
         // 随机打乱候选点顺序
         const shuffledCandidates = this.shuffleArray(candidates);
-        
+
         // 重新分配标签并找到最佳选点的新标签
         const labels = ['A', 'B', 'C', 'D'];
         let correctLabel = 'D'; // 默认值
-        
+
         shuffledCandidates.forEach((candidate, index) => {
             candidate.label = labels[index];
             if (candidate.type === 'best') {
                 correctLabel = labels[index]; // 记录最佳选点的标签
             }
         });
-        
+
         // 将正确答案标签存储到候选点数据中
         shuffledCandidates.correctLabel = correctLabel;
-        
+
         return shuffledCandidates;
     }
 
@@ -327,7 +351,7 @@ class TestQuestionGenerator {
                 explanation: `最佳选点，胜率: ${(bestCandidate.winRate * 100).toFixed(1)}%`
             };
         }
-        
+
         // 备用方案：如果没找到type为'best'的候选点，使用correctLabel
         if (candidates.correctLabel) {
             const correctCandidate = candidates.find(c => c.label === candidates.correctLabel);
@@ -340,7 +364,7 @@ class TestQuestionGenerator {
                 };
             }
         }
-        
+
         // 最后的备用方案：返回第一个候选点
         if (candidates && candidates.length > 0) {
             const firstCandidate = candidates[0];
@@ -351,7 +375,7 @@ class TestQuestionGenerator {
                 explanation: `候选选点，胜率: ${(firstCandidate.winRate * 100).toFixed(1)}%`
             };
         }
-        
+
         return {
             position: '',
             label: 'D',
@@ -371,11 +395,11 @@ class TestQuestionGenerator {
     async saveTestQuestions(testQuestions) {
         console.log('=== 开始保存测试题 ===');
         console.log('原始测试题数据:', testQuestions);
-        
+
         // 验证数据格式
         const validatedQuestions = testQuestions.map((q, index) => {
             console.log(`验证测试题 ${index + 1}...`);
-            
+
             const validated = {
                 ...q,
                 winRateLoss: parseFloat(q.winrateChange) || 0,
@@ -393,11 +417,11 @@ class TestQuestionGenerator {
                 // 确保有 questionText 字段
                 questionText: q.questionText || q.title || `第${q.moveNumber}手测试题`
             };
-            
+
             console.log(`验证后的测试题 ${index + 1}:`, validated);
             return validated;
         });
-        
+
         const payload = {
             questions: validatedQuestions,
             metadata: {
@@ -407,9 +431,9 @@ class TestQuestionGenerator {
                 createdAt: new Date().toISOString()
             }
         };
-        
+
         console.log('最终发送的payload:', JSON.stringify(payload, null, 2));
-        
+
         try {
             const response = await fetch('/api/testQuestions', {
                 method: 'POST',
@@ -418,9 +442,9 @@ class TestQuestionGenerator {
                 },
                 body: JSON.stringify(payload)
             });
-            
+
             console.log('响应状态:', response.status, response.statusText);
-            
+
             if (!response.ok) {
                 let errorText = '';
                 try {
@@ -429,14 +453,14 @@ class TestQuestionGenerator {
                 } catch (e) {
                     console.log('无法读取错误响应体:', e);
                 }
-                
+
                 throw new Error(`保存测试题失败: ${response.status} ${response.statusText}. 响应: ${errorText}`);
             }
-            
+
             const result = await response.json();
             console.log('保存测试题成功:', result);
             return result;
-            
+
         } catch (error) {
             console.error('保存测试题时发生错误:', error);
             throw error;
@@ -446,26 +470,146 @@ class TestQuestionGenerator {
     // 预览测试题
     async previewTestQuestions() {
         try {
+            this.showTestGenerationStatus('正在生成预览...', 'info');
+
             const settings = this.getTestGenerationSettings();
+
+            // 确保已加载分析结果
+            if (!this.sgfAnalyzer.gameData || !this.sgfAnalyzer.currentSGFHash) {
+                throw new Error('请先加载棋谱');
+            }
+
             const analysisResults = await this.sgfAnalyzer.analysisStorage.loadAnalysisResults(
                 this.sgfAnalyzer.currentSGFHash
             );
+
+            if (analysisResults.length === 0) {
+                throw new Error('请先完成棋谱分析');
+            }
+
             const criticalMoves = this.findCriticalMoves(analysisResults, settings);
-            
-            console.log('预览测试题:', criticalMoves);
-            this.showTestGenerationStatus(`预览: 将生成 ${criticalMoves.length} 道测试题`, 'info');
-            
-            // 显示预览详情
-            const previewDetails = criticalMoves.map(move => 
-                `第${move.moveNumber}手 (胜率损失: ${move.winRateLoss.toFixed(1)}%)`
-            ).join(', ');
-            
-            this.sgfAnalyzer.analysisDisplay.addLogEntry(
-                `预览详情: ${previewDetails}`, 'info'
-            );
-            
+
+            if (criticalMoves.length === 0) {
+                throw new Error('未找到符合条件的关键步数');
+            }
+
+            this.showTestGenerationStatus(`预览: 找到 ${criticalMoves.length} 个关键步`, 'info');
+
+            // 生成测试题对象用于预览（但不保存）
+            const testQuestions = await this.createTestQuestions(criticalMoves, settings);
+
+            // 🔥 更新当前预览的测试题
+            this.currentQuestions = testQuestions;
+            this.currentQuestionIndex = 0;
+            this.renderQuestionList();
+            this.showTestPreviewControls(true);
+
+            // 显示第一题
+            this.showQuestion(0);
+
+            console.log('预览测试题:', testQuestions);
+
         } catch (error) {
             this.showTestGenerationStatus(`预览失败: ${error.message}`, 'error');
+        }
+    }
+
+    // 🔥 新增：渲染测试题列表
+    renderQuestionList() {
+        const listContainer = document.getElementById('generatedQuestionsList');
+        if (!listContainer) return;
+
+        if (this.currentQuestions.length === 0) {
+            listContainer.innerHTML = '<div style="text-align: center; color: #999; padding: 10px;">暂无测试题</div>';
+            return;
+        }
+
+        let html = '<div style="display: flex; flex-direction: column; gap: 5px;">';
+
+        this.currentQuestions.forEach((q, index) => {
+            const isSelected = index === this.currentQuestionIndex;
+            const style = isSelected ?
+                'background: #e6f7ff; border: 1px solid #1890ff; color: #1890ff;' :
+                'background: white; border: 1px solid #eee; color: #333;';
+
+            html += `
+                <div class="question-item" data-index="${index}" 
+                     style="${style} padding: 8px 12px; border-radius: 4px; cursor: pointer; transition: all 0.2s;"
+                     onclick="window.testQuestionGenerator.showQuestion(${index})">
+                    <div style="font-weight: bold; font-size: 14px;">第 ${q.moveNumber} 手</div>
+                    <div style="font-size: 12px; color: #666; display: flex; justify-content: space-between;">
+                        <span>${q.currentPlayer === 'black' ? '黑方' : '白方'}</span>
+                        <span>胜率损失: ${(q.winrateChange || 0).toFixed(1)}%</span>
+                    </div>
+                </div>
+            `;
+        });
+
+        html += '</div>';
+        listContainer.innerHTML = html;
+
+        // 更新导航按钮状态
+        const prevBtn = document.getElementById('prevQuestionBtn');
+        const nextBtn = document.getElementById('nextQuestionBtn');
+        const indicator = document.getElementById('currentQuestionIndicator');
+
+        if (prevBtn) prevBtn.disabled = this.currentQuestionIndex <= 0;
+        if (nextBtn) nextBtn.disabled = this.currentQuestionIndex >= this.currentQuestions.length - 1;
+        if (indicator) indicator.textContent = `${this.currentQuestionIndex + 1} / ${this.currentQuestions.length}`;
+
+        // 🔥 将实例绑定到window以便onclick调用
+        window.testQuestionGenerator = this;
+    }
+
+    // 🔥 新增：显示指定索引的题目
+    showQuestion(index) {
+        if (index < 0 || index >= this.currentQuestions.length) return;
+
+        this.currentQuestionIndex = index;
+        const question = this.currentQuestions[index];
+
+        console.log(`显示第 ${index + 1} 题 (Move ${question.moveNumber})`, question);
+
+        // 1. 在棋盘上显示该局面
+        // 使用BoardController的updateBoard方法
+        if (this.sgfAnalyzer.boardController) {
+            // 先通过goToMove跳转到该步数，确保存储了正确的历史记录
+            this.sgfAnalyzer.boardController.goToMove(question.moveNumber - 1);
+
+            // 获取并显示候选点
+            if (question.candidates && question.candidates.length > 0) {
+                // 转换候选点格式以适配CandidatePointsDisplay
+                // 需要将标签(A,B,C,D)显示出来
+                if (this.sgfAnalyzer.boardController.candidatePointsDisplay) {
+                    // 使用setCandidatePoints显示点
+                    this.sgfAnalyzer.boardController.candidatePointsDisplay.showTestCandidates(question.candidates);
+                }
+            }
+        }
+
+        // 2. 更新列表选中状态
+        this.renderQuestionList(); // 重新渲染以更新高亮
+
+        // 3. 显示题目信息
+        this.sgfAnalyzer.analysisDisplay.addLogEntry(
+            `预览题目 ${index + 1}: 第${question.moveNumber}手，${question.questionText}`,
+            'info'
+        );
+    }
+
+    // 🔥 新增：导航题目
+    navigateQuestion(direction) {
+        const newIndex = this.currentQuestionIndex + direction;
+        if (newIndex >= 0 && newIndex < this.currentQuestions.length) {
+            this.showQuestion(newIndex);
+        }
+    }
+
+    // 🔥 新增：显示/隐藏预览控件
+    showTestPreviewControls(show) {
+        const controls = document.getElementById('testPreviewControls');
+        if (controls) {
+            controls.style.display = show ? 'block' : 'none';
         }
     }
 
@@ -494,10 +638,10 @@ class TestQuestionGenerator {
     // 解析SGF位置格式（如 "Q16" -> {row: 3, col: 16}）
     parseSGFPosition(sgfPos) {
         if (!sgfPos || sgfPos.length < 2) return null;
-        
+
         const colChar = sgfPos[0].toUpperCase();
         const rowNum = parseInt(sgfPos.slice(1));
-        
+
         // 列转换: A-T -> 0-18 (跳过I)
         let col;
         if (colChar <= 'H') {
@@ -507,14 +651,14 @@ class TestQuestionGenerator {
         } else {
             return null; // I不存在
         }
-        
+
         // 行转换: 1-19 -> 18-0
         const row = 19 - rowNum;
-        
+
         return { row, col };
     }
 
-        // 在TestQuestionGenerator类中添加
+    // 在TestQuestionGenerator类中添加
     shuffleArray(array) {
         const shuffled = [...array];
         for (let i = shuffled.length - 1; i > 0; i--) {

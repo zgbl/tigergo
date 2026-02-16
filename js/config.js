@@ -4,24 +4,36 @@
 function detectEnvironment() {
     const hostname = window.location.hostname;
     const port = window.location.port;
-    
+
     console.log(`🔍 环境检测开始:`);
     console.log(`  - hostname: "${hostname}"`);
     console.log(`  - port: "${port}"`);
     console.log(`  - 完整URL: "${window.location.href}"`);
-    
-    // 本地开发环境检测
-    if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '0.0.0.0') {
+
+    // 🔥 新增：支持 URL 参数强制指定环境（方便调试）
+    const urlParams = new URLSearchParams(window.location.search);
+    const forceEnv = urlParams.get('env');
+    if (forceEnv === 'local' || forceEnv === 'github' || forceEnv === 'production') {
+        console.log(`🔧 通过 URL 参数强制使用环境: ${forceEnv.toUpperCase()}`);
+        console.log(`💡 提示: 移除 ?env=${forceEnv} 参数可恢复自动检测`);
+        return forceEnv;
+    }
+
+    // 本地开发环境检测 - 支持多种场景
+    if (hostname === 'localhost' ||
+        hostname === '127.0.0.1' ||
+        hostname === '0.0.0.0' ||
+        hostname === '') {  // file:// 协议
         console.log(`✅ 检测结果: LOCAL 环境`);
         return 'local';
     }
-    
+
     // GitHub Pages 环境检测
     if (hostname.includes('github.io')) {
         console.log(`✅ 检测结果: GITHUB 环境`);
         return 'github';
     }
-    
+
     // 其他情况默认为生产环境
     console.log(`✅ 检测结果: PRODUCTION 环境`);
     return 'production';
@@ -39,21 +51,30 @@ const KATAGO_ENGINES = {
         //url: "https://kataengine.blackrice.top",
         url: "https://katago-analysis-939624114433.us-central1.run.app",
         description: "Google Cloud Run 部署的 KataGo 服务 CPU 版本"
+    },
+    custom: {
+        name: "Custom Server",
+        url: localStorage.getItem('katago_custom_url') || "http://192.168.0.162:8080",
+        description: "用户自定义 KataGo 服务器"
     }
 };
 
 // 根据环境设置配置
 function getConfig() {
     const env = detectEnvironment();
-    
+
+    // 获取用户偏好的引擎 ID，默认为 local
+    const preferredEngine = localStorage.getItem('katago_preferred_engine') || 'local';
+    const katagoUrl = KATAGO_ENGINES[preferredEngine] ? KATAGO_ENGINES[preferredEngine].url : KATAGO_ENGINES.local.url;
+
     const configs = {
         local: {
             API_BASE_URL: "http://localhost:3000/api",
             API_VERCEL_NEXTJS_BASE_URL: "http://localhost:3000",
             GITHUB_PAGE_FORUM_URL: "http://localhost:8090/Forum11.html",
             FORUM_POST_ENDPOINT: "/forum/Posts",
-            // 🔥 修改：使用默认的本地引擎
-            KATAGO_BASE_URL: KATAGO_ENGINES.local.url,
+            // 🔥 修改：使用动态选择的引擎 URL
+            KATAGO_BASE_URL: katagoUrl,
             KATAGO_BOT_NAME: "katago_gtp_bot",
             KATAGO_PROXY_URL: "http://localhost:3000/api/katago",
             // 🔥 新增：引擎选项
@@ -65,8 +86,8 @@ function getConfig() {
             API_VERCEL_NEXTJS_BASE_URL: "https://blackricegobackend2-nextjs.vercel.app",
             GITHUB_PAGE_FORUM_URL: "https://zgbl.github.io/tigergo/Forum11.html",
             FORUM_POST_ENDPOINT: "/forum/Posts",
-            // 🔥 修改：使用默认的本地引擎
-            KATAGO_BASE_URL: KATAGO_ENGINES.local.url,
+            // 🔥 修改：使用动态选择的引擎 URL
+            KATAGO_BASE_URL: katagoUrl,
             KATAGO_BOT_NAME: "katago_gtp_bot",
             KATAGO_PROXY_URL: "https://blackricegobackend2-nextjs.vercel.app/api/katago",
             // 🔥 新增：引擎选项
@@ -78,8 +99,8 @@ function getConfig() {
             API_VERCEL_NEXTJS_BASE_URL: "https://blackricegobackend2-nextjs.vercel.app",
             GITHUB_PAGE_FORUM_URL: "https://zgbl.github.io/tigergo/Forum11.html",
             FORUM_POST_ENDPOINT: "/forum/Posts",
-            // 🔥 修改：使用默认的本地引擎
-            KATAGO_BASE_URL: KATAGO_ENGINES.local.url,
+            // 🔥 修改：使用动态选择的引擎 URL
+            KATAGO_BASE_URL: katagoUrl,
             KATAGO_BOT_NAME: "katago_gtp_bot",
             KATAGO_PROXY_URL: "https://blackricegobackend2-nextjs.vercel.app/api/katago",
             // 🔥 新增：引擎选项
@@ -87,10 +108,10 @@ function getConfig() {
             ENV: "production"
         }
     };
-    
+
     console.log(`📋 选择的环境配置: ${env}`);
     console.log(`📋 配置详情:`, configs[env]);
-    
+
     return configs[env];
 }
 
@@ -107,20 +128,24 @@ function getEngineConfig(engineId) {
 // 导出配置
 const CONFIG = getConfig();
 
-// 详细调试信息
-console.log(`🌍 最终配置:`);
-console.log(`  - 当前环境: ${CONFIG.ENV}`);
-console.log(`  - API地址: ${CONFIG.API_BASE_URL}`);
-console.log(`  - KataGo地址: ${CONFIG.KATAGO_BASE_URL}`);
-console.log(`  - KataGo代理地址: ${CONFIG.KATAGO_PROXY_URL}`);
-console.log(`  - 当前域名: ${window.location.hostname}:${window.location.port}`);
+// 🔥 改进：更清晰的日志输出
+console.log(`🌍 ========== 环境配置信息 ==========`);
+console.log(`📍 当前环境: ${CONFIG.ENV.toUpperCase()}`);
+console.log(`🔗 后端 API: ${CONFIG.API_BASE_URL}`);
+console.log(`🏠 前端地址: ${window.location.origin}`);
+console.log(`🤖 KataGo: ${CONFIG.KATAGO_PROXY_URL}`);
+console.log(`${CONFIG.ENV === 'local' ? '💻 开发模式 - 使用本地后端' : '🚀 生产模式 - 使用 Vercel 后端'}`);
+console.log(`=====================================`);
 
-// 验证配置
+// 验证配置一致性
 if (window.location.hostname === 'localhost' && !CONFIG.API_BASE_URL.includes('localhost')) {
-    console.error(`❌ 配置错误！在localhost环境但API_BASE_URL是: ${CONFIG.API_BASE_URL}`);
-    console.error(`❌ 应该是: http://localhost:3000`);
+    console.error(`❌ 配置错误！在 localhost 环境但 API_BASE_URL 指向: ${CONFIG.API_BASE_URL}`);
+    console.error(`❌ 应该是: http://localhost:3000/api`);
+    console.error(`💡 提示: 检查 detectEnvironment() 函数是否正确返回 'local'`);
 } else if (window.location.hostname === 'localhost' && CONFIG.API_BASE_URL.includes('localhost')) {
-    console.log(`✅ 配置正确！本地环境使用本地API: ${CONFIG.API_BASE_URL}`);
+    console.log(`✅ 配置正确！本地环境使用本地后端`);
+} else if (window.location.hostname.includes('github.io') && CONFIG.API_BASE_URL.includes('vercel')) {
+    console.log(`✅ 配置正确！GitHub Pages 使用 Vercel 后端`);
 }
 
 // 兼容旧版本的导出方式

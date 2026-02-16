@@ -23,7 +23,7 @@ class AnalysisDisplay {
         const logEntry = document.createElement('div');
         logEntry.className = `log-entry log-${type}`;
         logEntry.innerHTML = `<span class="timestamp">[${timestamp}]</span> ${message}`;
-        
+
         this.logContainer.appendChild(logEntry);
         this.logContainer.scrollTop = this.logContainer.scrollHeight;
 
@@ -45,16 +45,39 @@ class AnalysisDisplay {
         this.addLogEntry(`分析进度: ${current}/${total} (${Math.round((current / total) * 100)}%)`, 'info');
     }
 
+    // 显示成功信息
+    showSuccess(message) {
+        this.addLogEntry(message, 'success');
+        this.updateStatus(message);
+    }
+
+    // 显示错误信息
+    showError(message) {
+        this.addLogEntry(message, 'error');
+        this.updateStatus('发生错误');
+    }
+
+    // 显示提示信息
+    showInfo(message) {
+        this.addLogEntry(message, 'info');
+        this.updateStatus(message);
+    }
+
+    // 显示警示信息
+    showWarning(message) {
+        this.addLogEntry(message, 'warning');
+    }
+
     // 显示分析结果
     displayAnalysisResult(moveNumber, moveData, analysisData) {
         console.log('displayAnalysisResult 被调用:', { moveNumber, moveData, analysisData });
-        
+
         if (!analysisData) {
             console.error('analysisData 为空');
             this.addLogEntry(`第${moveNumber}手: 分析数据为空`, 'error');
             return;
         }
-        
+
         // 详细的调试信息
         console.log('胜率数据详情:', {
             winRate: analysisData.winRate,
@@ -62,26 +85,31 @@ class AnalysisDisplay {
             rawWinRate: analysisData.rawData?.winrate,
             analysisArray: analysisData.rawData?.analysis
         });
-        
-        const moveInfo = moveData ? 
-            `${this.convertToSGFPosition(moveData.row, moveData.col)} ${moveData.color}` : 
+
+        const moveInfo = moveData ?
+            `${this.convertToSGFPosition(moveData.row, moveData.col)} ${moveData.color}` :
             '未知着法';
-        
+
         const recommendedMove = analysisData.recommendedMove || '无';
         const winRate = analysisData.winRate || '0.0';
         const score = analysisData.score || '0.00';
         const visits = analysisData.visits || '0';
         const time = analysisData.time || '0.0';
-        
+
         const message = `第${moveNumber}手: ${moveInfo} | 推荐: ${recommendedMove} | ` +
-                       `胜率: ${winRate}% | 分数: ${score} | ` +
-                       `访问: ${visits} | 用时: ${time}s`;
-        
+            `胜率: ${winRate}% | 分数: ${score} | ` +
+            `访问: ${visits} | 用时: ${time}s`;
+
         console.log('添加分析结果到日志:', message);
         this.addLogEntry(message, 'analysis-result');
-        
+
+        this.addLogEntry(message, 'analysis-result');
+
         // 更新胜率条，传入手数和着法数据以确定颜色
         this.updateWinRateBar(winRate, moveNumber, moveData);
+
+        // 🔥 新增：实时更新分析结果列表
+        this.appendAnalysisResultToTable(moveNumber, moveData, analysisData);
     }
 
     // 显示错误信息
@@ -102,7 +130,7 @@ class AnalysisDisplay {
         const avgTime = totalTime / totalMoves;
         this.addLogEntry(`分析完成！共分析 ${totalMoves} 手，总用时 ${totalTime.toFixed(1)}s，平均 ${avgTime.toFixed(2)}s/手`, 'success');
         this.updateStatus('分析完成');
-        
+
         // 显示IndexedDB中的数据
         if (analysisStorage && sgfHash) {
             await this.displayIndexedDBResults(analysisStorage, sgfHash);
@@ -119,7 +147,7 @@ class AnalysisDisplay {
         try {
             // 从IndexedDB加载分析结果
             const results = await analysisStorage.loadAnalysisResults(sgfHash);
-            
+
             if (results.length === 0) {
                 this.addLogEntry('暂无分析结果', 'info');
                 return;
@@ -127,7 +155,7 @@ class AnalysisDisplay {
 
             // 显示原始数据（前10行和最后20行）
             this.displayRawAnalysisData(results);
-            
+
         } catch (error) {
             console.error('显示IndexedDB结果失败:', error);
             this.addLogEntry(`显示结果失败: ${error.message}`, 'error');
@@ -162,7 +190,7 @@ class AnalysisDisplay {
         // 确定要显示的数据
         const showFirst = Math.min(10, results.length);
         const showLast = Math.min(20, results.length);
-        
+
         // 显示前10条
         if (results.length > 0) {
             const firstSection = document.createElement('div');
@@ -197,6 +225,53 @@ class AnalysisDisplay {
         }
     }
 
+    // 🔥 新增：将单条分析结果添加到列表中
+    appendAnalysisResultToTable(moveNumber, moveData, analysisData) {
+        const analysisResultsDiv = document.getElementById('analysisResults');
+        if (!analysisResultsDiv) return;
+
+        // 如果是第一条结果，或者刚好是清空状态（包含提示文本），则清空容器
+        if (moveNumber === 1 || analysisResultsDiv.querySelector('.fa-info-circle')) {
+            analysisResultsDiv.innerHTML = '';
+
+            // 重新添加标题（如果需要的话，但我们在HTML中移动了标题）
+            // 这里我们只添加统计信息容器，如果还没有的话
+            let statsDiv = analysisResultsDiv.querySelector('.analysis-stats');
+            if (!statsDiv) {
+                statsDiv = document.createElement('div');
+                statsDiv.className = 'analysis-stats';
+                statsDiv.style.marginBottom = '10px';
+                analysisResultsDiv.appendChild(statsDiv);
+            }
+        }
+
+        // 更新统计信息
+        const statsDiv = analysisResultsDiv.querySelector('.analysis-stats');
+        if (statsDiv) {
+            statsDiv.innerHTML = `
+                <div style="background: #f8f9fa; padding: 10px; border-radius: 5px;">
+                    <strong>实时分析：</strong> 当前第 ${moveNumber} 步
+                </div>
+            `;
+        }
+
+        // 创建新的结果条目
+        const result = {
+            moveNumber: moveNumber,
+            move: moveData,
+            analysis: analysisData
+        };
+
+        const entry = this.createRawDataEntry(result, moveNumber);
+
+        // 将新条目插入到统计信息之后，或者列表的最前面（如果是倒序显示）
+        // 这里我们选择顺序显示，直接追加
+        analysisResultsDiv.appendChild(entry);
+
+        // 自动滚动到底部
+        analysisResultsDiv.scrollTop = analysisResultsDiv.scrollHeight;
+    }
+
     // 创建原始数据条目
     createRawDataEntry(result, index) {
         const entry = document.createElement('div');
@@ -210,13 +285,13 @@ class AnalysisDisplay {
             font-family: 'Courier New', monospace;
             font-size: 12px;
         `;
-    
+
         const analysis = result.analysis || {};
         const move = result.move || {};
-        
+
         // 🔥 修复：根据手数判断棋子颜色，而不是依赖存储的颜色
         const playerColor = result.moveNumber % 2 === 1 ? '黑' : '白';
-        
+
         entry.innerHTML = `
             <div style="font-weight: bold; color: #495057; margin-bottom: 5px;">
                 第 ${result.moveNumber} 手: ${playerColor}${move.position || '未知位置'}
@@ -228,7 +303,7 @@ class AnalysisDisplay {
                 访问: ${analysis.visits || '0'}
             </div>
         `;
-    
+
         return entry;
     }
 
@@ -250,7 +325,7 @@ class AnalysisDisplay {
     // 辅助方法：将 row/col 转换为 SGF 位置格式
     convertToSGFPosition(row, col) {
         if (row === undefined || col === undefined) return '';
-        
+
         // 列转换: 0-18 -> A-T (跳过I)
         let colChar;
         if (col <= 7) {
@@ -258,10 +333,10 @@ class AnalysisDisplay {
         } else {
             colChar = String.fromCharCode(66 + col); // J-T
         }
-        
+
         // 行转换: 0-18 -> 19-1
         const rowNum = 19 - row;
-        
+
         return colChar + rowNum;
     }
 
@@ -277,11 +352,11 @@ class AnalysisDisplay {
     loadExistingResults(results) {
         this.clearLog();
         this.addLogEntry(`正在加载已有的 ${results.length} 条分析结果...`, 'info');
-        
+
         results.forEach(result => {
             this.displayAnalysisResult(result.moveNumber, result.move, result.analysis);
         });
-        
+
         this.addLogEntry('已有分析结果加载完成', 'success');
         this.updateStatus('已加载历史分析');
     }
@@ -291,15 +366,15 @@ class AnalysisDisplay {
         const winrateBlack = document.getElementById('winrateBlack');
         const winrateWhite = document.getElementById('winrateWhite');
         const winratePercentage = document.getElementById('winratePercentage');
-        
+
         if (!winrateBlack || !winrateWhite || !winratePercentage) {
             console.log('胜率条元素未找到');
             return;
         }
-        
+
         const percentage = parseFloat(winRate) || 50.0;
         console.log('更新胜率条:', { winRate, percentage, moveNumber, moveData });
-        
+
         // 关键修正：分析第N手时，实际是分析下第N手之前的局面
         // 所以KataGo返回的胜率是即将下子方的胜率
         let nextPlayerColor;
@@ -312,12 +387,12 @@ class AnalysisDisplay {
             // 默认假设是黑棋
             nextPlayerColor = 'black';
         }
-        
+
         // KataGo 返回的胜率是即将下子方的胜率
         let blackWinRate, whiteWinRate;
 
         //console.log("nextPlayerColor", nextPlayerColor);
-        
+
         /*if (nextPlayerColor === 'black') {
             // 即将下子的是黑棋，胜率就是黑棋胜率
             blackWinRate = percentage;
@@ -333,24 +408,24 @@ class AnalysisDisplay {
         // 确保胜率在合理范围内
         blackWinRate = Math.max(0, Math.min(100, blackWinRate));
         whiteWinRate = Math.max(0, Math.min(100, whiteWinRate));
-  
-    
+
+
         // 更新胜率条的宽度
         winrateBlack.style.width = `${blackWinRate}%`;
         winrateWhite.style.width = `${whiteWinRate}%`;
-        
+
         // 更新百分比显示
         winratePercentage.textContent = `${blackWinRate.toFixed(1)}% - ${whiteWinRate.toFixed(1)}%`;
-        
+
         // 添加过渡动画效果
         winrateBlack.style.transition = 'width 0.5s ease-in-out';
         winrateWhite.style.transition = 'width 0.5s ease-in-out';
-        
-        console.log('胜率条更新完成:', { 
+
+        console.log('胜率条更新完成:', {
             nextPlayerColor,
             moveNumber,
-            blackWinRate: blackWinRate.toFixed(1), 
-            whiteWinRate: whiteWinRate.toFixed(1) 
+            blackWinRate: blackWinRate.toFixed(1),
+            whiteWinRate: whiteWinRate.toFixed(1)
         });
     }
 
@@ -359,7 +434,7 @@ class AnalysisDisplay {
         const winrateBlack = document.getElementById('winrateBlack');
         const winrateWhite = document.getElementById('winrateWhite');
         const winratePercentage = document.getElementById('winratePercentage');
-        
+
         if (winrateBlack && winrateWhite && winratePercentage) {
             winrateBlack.style.width = '50%';
             winrateWhite.style.width = '50%';

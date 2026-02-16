@@ -10,16 +10,16 @@ class KataGoAPI {
             this.baseUrl = (baseUrl || window.CONFIG?.KATAGO_BASE_URL || 'http://192.168.0.249:8080').replace(/\/$/, '');
             this.isProxyMode = false;
         }
-        
+
         this.botName = botName;
         this.debugMode = false;
-        
+
         // 创建专用的 fetch 会话
         this.headers = {
             'Content-Type': 'application/json',
             'User-Agent': 'SGF-Analysis-Frontend/1.0'
         };
-        
+
         console.log(`🔧 KataGoAPI 初始化:`);
         console.log(`  - 模式: ${this.isProxyMode ? '代理模式' : '直连模式'}`);
         console.log(`  - 地址: ${this.baseUrl}`);
@@ -40,9 +40,9 @@ class KataGoAPI {
         };
         const symbol = statusSymbols[status] || '🔵';
         const logMessage = `[${timestamp}] ${symbol} ${message}`;
-        
+
         console.log(logMessage);
-        
+
         // 触发自定义事件，让主应用可以监听
         window.dispatchEvent(new CustomEvent('katagoStatus', {
             detail: { message, status, timestamp }
@@ -64,7 +64,7 @@ class KataGoAPI {
         try {
             this.printStatus("测试 KataGo 服务器连接...", "INFO");
             console.log(`🔍 尝试连接: ${this.baseUrl}/health`);
-            
+
             // 先尝试简单的连接测试，避免CORS预检请求
             const response = await fetch(`${this.baseUrl}/health`, {
                 method: 'GET',
@@ -74,9 +74,9 @@ class KataGoAPI {
                 },
                 signal: AbortSignal.timeout(10000)
             });
-            
+
             console.log(`🔍 响应状态: ${response.status}`);
-            
+
             if (response.ok) {
                 const data = await response.json();
                 this.printStatus(`服务器连接成功: ${data.status || 'OK'}`, "SUCCESS");
@@ -86,11 +86,11 @@ class KataGoAPI {
                 const errorMsg = `HTTP ${response.status} - ${response.statusText}`;
                 this.printStatus(`服务器连接失败: ${errorMsg}`, "ERROR");
                 console.error('❌ KataGo 连接失败:', errorMsg);
-                
+
                 if (response.status === 404) {
-                    return { 
-                        success: false, 
-                        error: `服务器返回 404 错误，请检查 KataGo 服务是否正在运行在 ${this.baseUrl}` 
+                    return {
+                        success: false,
+                        error: `服务器返回 404 错误，请检查 KataGo 服务是否正在运行在 ${this.baseUrl}`
                     };
                 } else {
                     return { success: false, error: errorMsg };
@@ -98,7 +98,7 @@ class KataGoAPI {
             }
         } catch (error) {
             console.error('❌ KataGo 连接异常:', error);
-            
+
             // 处理CORS错误
             if (error.message.includes('CORS') || error.message.includes('Failed to fetch')) {
                 const corsError = `网络连接失败 - 可能是 CORS 配置问题或服务未启动`;
@@ -128,7 +128,7 @@ class KataGoAPI {
                 },
                 signal: AbortSignal.timeout(10000)
             });
-            
+
             if (response.ok) {
                 const data = await response.json();
                 this.printStatus(`服务器: ${data.name || 'Unknown'} v${data.version || 'Unknown'}`, "INFO");
@@ -160,38 +160,42 @@ class KataGoAPI {
             board_size: boardSize,
             moves: moves
         };
-        
+
         this.debugPrint("API请求payload", payload);
-        
+
         try {
             const startTime = Date.now();
-            
+
             const response = await fetch(`${this.baseUrl}/select-move/${this.botName}`, {
                 method: 'POST',
                 headers: this.headers,
                 body: JSON.stringify(payload),
                 signal: AbortSignal.timeout(30000)
             });
-            
+
             this.debugPrint(`API响应状态: ${response.status}`);
-            
+
             if (!response.ok) {
                 const errorText = await response.text();
                 this.printStatus(`API错误: ${response.status}`, "ERROR");
                 this.printStatus(`错误内容: ${errorText}`, "ERROR");
                 return { success: false, error: `HTTP ${response.status}: ${errorText}` };
             }
-            
+
             const data = await response.json();
             const elapsedTime = (Date.now() - startTime) / 1000;
             data.analysis_time = elapsedTime;
-            
+
             this.debugPrint("API响应数据", data);
-            
+
             return { success: true, data };
-            
+
         } catch (error) {
-            this.printStatus(`API调用异常: ${error.message}`, "ERROR");
+            const fullUrl = `${this.baseUrl}/select-move/${this.botName}`;
+            this.printStatus(`API调用异常 (${fullUrl}): ${error.message}`, "ERROR");
+            if (error.message.includes('fetch')) {
+                this.printStatus("💡 提示: 这通常是 CORS 跨域问题或服务器未启动。请检查后端连接。", "WARNING");
+            }
             return { success: false, error: error.message };
         }
     }
@@ -202,12 +206,12 @@ class KataGoAPI {
             // 只取到指定手数的着法
             const moveNumber = moveIndex + 1;
             const apiMoves = moves.slice(0, moveNumber);
-    
+
             this.debugPrint(`分析第 ${moveNumber} 手，使用着法`, apiMoves);
-    
+
             // 🔥 根据分析深度设置访问次数和其他参数
             const analysisConfig = this.getAnalysisConfig(analysisDepth);
-    
+
             // 🔥 增强的请求体格式，包含分析参数
             const payload = {
                 board_size: 19,
@@ -218,64 +222,75 @@ class KataGoAPI {
                 includeOwnership: true,
                 includeMovesOwnership: false,
                 includePVVisits: true,
+                // 🔥 显式请求更多候选变化（默认通常是5）
+                reportAnalysisWinratesAsRoot: true,
+                reportAnalysisWinrates: true,
+                // 某些版本的KataGo可能使用 overrideSettings
+                overrideSettings: {
+                    reportAnalysisWinratesAsRoot: true,
+                    // 确保返回足够多的变化
+                },
                 reportDuringSearchEvery: analysisConfig.reportInterval
             };
-    
+
             console.log(`🔍 分析配置 (${analysisDepth}):`, analysisConfig);
             console.log(`🔍 API 请求 payload:`, payload);
-    
-            const requestOptions = {
-                method: 'POST',
-                headers: this.headers,  // 🔥 使用统一的 headers
-                body: JSON.stringify(payload),
-                // 🔥 添加超时机制 - 根据分析深度设置不同的超时时间
-                signal: signal || AbortSignal.timeout(analysisDepth === 'ultra' ? 60000 : analysisDepth === 'deep' ? 45000 : 30000)
-            };
-    
-            // 🔥 如果提供了外部 signal，需要合并超时信号
-            if (signal) {
-                // 创建一个组合的AbortController来处理外部信号和超时
-                const timeoutController = new AbortController();
-                const timeoutId = setTimeout(() => {
-                    timeoutController.abort();
-                }, analysisDepth === 'ultra' ? 60000 : analysisDepth === 'deep' ? 45000 : 30000);
-                
-                // 监听外部信号
+
+            let finalSignal;
+            const timeoutMs = analysisDepth === 'ultra' ? 60000 : analysisDepth === 'deep' ? 45000 : 30000;
+
+            if (signal && signal.aborted) {
+                // 🔥 信号已中断，直接返回失败，不要 throw
+                console.warn('⚠️ 外部信号已中断，跳过本次分析');
+                return { success: false, error: '分析已被取消', errorType: 'AbortError' };
+            } else if (signal) {
+                // 有外部信号且未中断：创建组合信号（超时 + 手动中断）
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
                 signal.addEventListener('abort', () => {
                     clearTimeout(timeoutId);
-                    timeoutController.abort();
+                    controller.abort();
                 });
-                
-                requestOptions.signal = timeoutController.signal;
+                finalSignal = controller.signal;
+            } else {
+                // 无外部信号：只用超时
+                finalSignal = AbortSignal.timeout(timeoutMs);
             }
-    
-            // 🔥 修复：使用正确的 API 端点，和 selectMove 相同
+
+            const requestOptions = {
+                method: 'POST',
+                headers: this.headers,
+                body: JSON.stringify(payload),
+                signal: finalSignal
+            };
+
             const apiUrl = `${this.baseUrl}/select-move/${this.botName}`;
             console.log(`🔍 API 请求地址: ${apiUrl}`);
-    
+            console.log(`🔍 信号状态: aborted=${finalSignal.aborted}, timeout=${timeoutMs}ms`);
+
             const startTime = Date.now();
-    
+
             // 发请求到 KataGo API
             const response = await fetch(apiUrl, requestOptions);
-    
+
             this.debugPrint(`API响应状态: ${response.status}`);
-    
+
             if (!response.ok) {
                 const errorText = await response.text();
                 this.printStatus(`API错误: ${response.status}`, "ERROR");
                 this.printStatus(`错误内容: ${errorText}`, "ERROR");
                 throw new Error(`API 请求失败: ${response.status} ${response.statusText}`);
             }
-    
+
             const data = await response.json();
             const elapsedTime = (Date.now() - startTime) / 1000;
             data.analysis_time = elapsedTime;
-    
+
             this.debugPrint("API响应数据", data);
-    
+
             // 🔥 修复：直接返回数据，不需要检查 result.success
             return { success: true, data };
-    
+
         } catch (error) {
             // 🔥 改进错误处理 - 区分不同类型的错误
             if (error.name === 'AbortError') {
@@ -324,17 +339,17 @@ class KataGoAPI {
         if (!result || !result.success) {
             return "分析失败";
         }
-        
+
         const data = result.data;
         const analysisTime = data.analysis_time || 0;
-        
+
         // 提取关键信息
         let botMove = data.bot_move || 'N/A';
         let winrate = data.winrate;
         let score = data.score;
         let visits = data.visits || 'N/A';
         const analysis = data.analysis || [];
-        
+
         // 如果主要字段为空，尝试从analysis数组中获取
         if (analysis && analysis.length > 0) {
             const firstMove = analysis[0];
@@ -351,13 +366,13 @@ class KataGoAPI {
                 visits = firstMove.visits || 'N/A';
             }
         }
-        
+
         // 格式化胜率
         const winrateStr = (typeof winrate === 'number') ? `${(winrate * 100).toFixed(1)}%` : "N/A";
-        
+
         // 格式化分数
         const scoreStr = (typeof score === 'number') ? score.toFixed(2) : "N/A";
-        
+
         // 构建输出
         const output = [];
         output.push(`第${moveNumber}手: ${currentMove[0]} ${currentMove[1]}`);
@@ -366,7 +381,7 @@ class KataGoAPI {
         output.push(`分数: ${scoreStr}`);
         output.push(`访问: ${visits}`);
         output.push(`用时: ${analysisTime.toFixed(2)}s`);
-        
+
         return output.join(" | ");
     }
 
@@ -376,13 +391,13 @@ class KataGoAPI {
             this.printStatus("分析失败", "ERROR");
             return null;
         }
-        
+
         const data = result.data;
-        
+
         // 打印基本信息
         const basicInfo = this.formatAnalysisResult(result, moveNumber, currentMove);
         this.printStatus(basicInfo, "SUCCESS");
-        
+
         // 打印候选手信息
         const analysis = data.analysis || [];
         if (analysis && analysis.length > 0) {
@@ -393,11 +408,11 @@ class KataGoAPI {
                 const winrate = moveInfo.winrate || 0;
                 candidates.push(`${move}(${(winrate * 100).toFixed(1)}%)`);
             }
-            
+
             const candidatesStr = candidates.join(' ');
             this.printStatus(`候选手: ${candidatesStr}`, "INFO");
         }
-        
+
         return {
             basicInfo,
             candidates: analysis.slice(0, 5),

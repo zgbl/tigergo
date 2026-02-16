@@ -26,11 +26,22 @@ class AnalysisEngine {
     async startAnalysis(gameData, analysisDepth = 'normal', onProgress = null, onComplete = null, onMoveAnalyzed = null) {
         try {
             console.log('🚀 开始分析，深度:', analysisDepth);
-            
+
+            // 🔥 如果正在分析，强制停止旧任务（可能是上次卡住的）
+            if (this.isAnalyzing) {
+                console.warn('⚠️ 发现残留的分析状态，强制重置...');
+                this.stopAnalysis();
+            }
+
             // 设置分析状态
             this.isAnalyzing = true;
             this.isPaused = false;
-            
+            this.abortController = null; // 🔥 确保干净的起始状态
+
+            // 🔥 始终从头开始，清空旧结果
+            this.analysisResults = [];
+            this.analysisStorage.clearCache();
+
             // 保存分析状态以便恢复
             this.analysisState = {
                 gameData,
@@ -38,22 +49,16 @@ class AnalysisEngine {
                 onProgress,
                 onComplete,
                 onMoveAnalyzed,
-                currentMoveIndex: this.analysisState.currentMoveIndex || 0
+                currentMoveIndex: 0
             };
-            
-            // 清空之前的分析结果（如果是新开始的分析）
-            if (this.analysisState.currentMoveIndex === 0) {
-                this.analysisResults = [];
-                this.analysisStorage.clearCache();
-            }
-            
+
             console.log('🔍 测试 KataGo 连接...');
             const connectionTest = await this.katagoAPI.testConnection();
             console.log('🔍 连接测试结果:', connectionTest);
-            
+
             if (!connectionTest.success) {
                 let errorMessage = `KataGo 连接失败: ${connectionTest.error}`;
-                
+
                 if (connectionTest.error.includes('404')) {
                     errorMessage += '\n\n可能的解决方案:\n1. 检查 KataGo 服务是否正在运行\n2. 确认服务地址是否正确\n3. 检查防火墙设置';
                 } else if (connectionTest.error.includes('CORS')) {
@@ -61,12 +66,12 @@ class AnalysisEngine {
                 } else if (connectionTest.error.includes('Failed to fetch')) {
                     errorMessage += '\n\n网络连接失败，请检查:\n1. KataGo 服务是否启动\n2. 网络连接是否正常\n3. 服务地址是否可访问';
                 }
-                
+
                 throw new Error(errorMessage);
             }
-            
+
             console.log('✅ KataGo 连接成功，开始分析...');
-            
+
             // 开始分析循环
             await this.continueAnalysis();
 
@@ -82,7 +87,7 @@ class AnalysisEngine {
     pauseAnalysis() {
         console.log('AnalysisEngine: 暂停分析');
         this.isPaused = true;
-        
+
         // 🔥 中断当前的HTTP请求
         if (this.abortController) {
             this.abortController.abort();
@@ -97,16 +102,16 @@ class AnalysisEngine {
             console.log('没有正在进行的分析，无法恢复');
             return;
         }
-        
+
         if (!this.isPaused) {
             console.log('分析未暂停，无需恢复');
             return;
         }
-        
+
         // 取消暂停状态
         this.isPaused = false;
         console.log(`从第${this.analysisState.currentMoveIndex + 1}手继续分析`);
-        
+
         // 🔥 重新启动分析循环
         await this.continueAnalysis();
     }
@@ -115,27 +120,27 @@ class AnalysisEngine {
     async continueAnalysis() {
         try {
             const { gameData, analysisDepth, onProgress, onComplete, onMoveAnalyzed } = this.analysisState;
-            
+
             // 从当前位置继续分析
             const startIndex = this.analysisState.currentMoveIndex + 1;
-            
+
             for (let moveIndex = startIndex; moveIndex <= gameData.moves.length; moveIndex++) {
                 // 检查是否被停止或暂停
                 if (!this.isAnalyzing) {
                     console.log('分析被停止');
                     return;
                 }
-                
+
                 if (this.isPaused) {
                     console.log('分析被暂停');
                     // 🔥 暂停时保存当前位置
                     this.analysisState.currentMoveIndex = moveIndex - 1;
                     return;
                 }
-                
+
                 // 更新当前分析位置
                 this.analysisState.currentMoveIndex = moveIndex;
-                
+
                 // 更新进度
                 if (onProgress) {
                     onProgress(moveIndex, gameData.moves.length);
@@ -153,23 +158,23 @@ class AnalysisEngine {
                         console.log(this.isPaused ? '分析在分析单步前被暂停' : '分析在分析单步前被停止');
                         return;
                     }
-                    
+
                     // 分析当前局面
                     const analysisData = await this.analyzeMove(gameData, moveIndex);
-                    
+
                     // 🔥 分析完成后再次检查状态
                     if (!this.isAnalyzing || this.isPaused) {
                         console.log(this.isPaused ? '分析在分析单步后被暂停' : '分析在分析单步后被停止');
                         return;
                     }
-                    
+
                     // 调用分析结果回调，显示分析结果
                     if (onMoveAnalyzed && analysisData) {
                         const currentMove = gameData.moves[moveIndex - 1];
                         console.log('调用 onMoveAnalyzed 回调:', { moveIndex, currentMove, analysisData });
                         onMoveAnalyzed(moveIndex, currentMove, analysisData);
                     }
-                                
+
                 } catch (error) {
                     console.error(`分析第${moveIndex}手时出错:`, error);
                     // 分析出错时也要检查是否应该停止
@@ -179,7 +184,7 @@ class AnalysisEngine {
                     // 出错时也要记录，但不跳过延迟
                     console.log(`第${moveIndex}手分析失败，将在延迟后继续下一手`);
                 }
-                
+
                 // 🔥 无论成功还是失败，都要执行延迟（移到这里确保总是执行）
                 const delays = { fast: 2000, normal: 5000, deep: 8000, ultra: 10000 };
                 console.log('🔧 延迟配置对象:', delays);
@@ -193,11 +198,11 @@ class AnalysisEngine {
             // 分析完成后保存
             if (this.isAnalyzing && !this.isPaused) {
                 await this.saveResults();
-                
+
                 if (onComplete) {
                     onComplete(this.analysisResults);
                 }
-                
+
                 // 分析完成，重置状态
                 this.isAnalyzing = false;
                 this.isPaused = false;
@@ -216,7 +221,7 @@ class AnalysisEngine {
         console.log('AnalysisEngine: 停止分析');
         this.isAnalyzing = false;
         this.isPaused = false;
-        
+
         // 🔥 中断当前的HTTP请求
         if (this.abortController) {
             this.abortController.abort();
@@ -239,30 +244,31 @@ class AnalysisEngine {
     // 分析单步
     async analyzeMove(gameData, moveIndex) {
         const currentMove = gameData.moves[moveIndex - 1];
-        
+
         console.log(`分析第${moveIndex}手`);
-        
+
         try {
             // 🔥 检查是否应该停止
             if (!this.isAnalyzing || this.isPaused) {
                 throw new Error('分析已被中断');
             }
-            
-            // 🔥 创建新的 AbortController
+
+            // 🔥 为每次分析请求创建全新的 AbortController（不要 abort 旧的）
             this.abortController = new AbortController();
+            console.log(`🔍 创建新的 AbortController for move ${moveIndex}`);
 
             // 🔥 传递分析深度参数
             const result = await this.katagoAPI.analyzePosition(
-                gameData.rawMoves, 
-                moveIndex, 
+                gameData.rawMoves,
+                moveIndex,
                 this.abortController.signal,
                 this.analysisState.analysisDepth // 🔥 添加分析深度参数
             );
-            
+
             if (result.success) {
                 // 解析分析结果
                 const analysisData = this.parseAnalysisResult(result.data);
-                
+
                 // 立即保存到IndexedDB（单条记录）
                 const analysisResult = this.analysisStorage.addAnalysisResult(
                     this.currentSGFHash,
@@ -300,7 +306,7 @@ class AnalysisEngine {
         try {
             const transaction = this.analysisStorage.db.transaction(['analysisResults'], 'readwrite');
             const store = transaction.objectStore('analysisResults');
-            
+
             return new Promise((resolve, reject) => {
                 const request = store.add(analysisResult);
                 request.onsuccess = () => {
@@ -320,22 +326,30 @@ class AnalysisEngine {
 
     // 解析 KataGo 分析结果
     parseAnalysisResult(rawData) {
-        console.log('parseAnalysisResult 接收到的原始数据:', rawData);
-        
+
+        console.log('🔥 [DEBUG] KataGo原始返回数据(Full):', JSON.stringify(rawData, null, 2));
+        console.log(`🔥 [DEBUG] analysis 数组是否存在: ${!!rawData.analysis}`);
+        console.log(`🔥 [DEBUG] analysis 数组长度: ${rawData.analysis ? rawData.analysis.length : 'N/A'}`);
+
+        // 如果数量少于7个，打印警告
+        if (rawData.analysis && rawData.analysis.length < 7) {
+            console.warn('⚠️ KataGo返回的Variations数量少于7个！可能是引擎配置限制。');
+        }
+
         // 🔥 添加原始数据大小检查
         const rawDataSize = JSON.stringify(rawData).length;
         console.log(`🔍 原始 rawData 大小: ${(rawDataSize / 1024).toFixed(2)} KB`);
-        
+
         // 🔥 检查 rawData 的主要字段大小
         if (rawData.analysis) {
             const analysisSize = JSON.stringify(rawData.analysis).length;
             console.log(`🔍 rawData.analysis 大小: ${(analysisSize / 1024).toFixed(2)} KB, 包含 ${rawData.analysis.length} 个变化`);
-            
+
             // 检查每个 analysis 项的大小
             rawData.analysis.slice(0, 3).forEach((item, index) => {
                 const itemSize = JSON.stringify(item).length;
                 console.log(`🔍 analysis[${index}] 大小: ${(itemSize / 1024).toFixed(2)} KB`);
-                
+
                 // 检查具体字段
                 Object.keys(item).forEach(key => {
                     if (item[key] && typeof item[key] === 'object') {
@@ -347,52 +361,71 @@ class AnalysisEngine {
                 });
             });
         }
-        
+
         // 参考老版本的正确数据路径
         let winRate = 0;
         let recommendedMove = '';
         let score = 0;
         let visits = 0;
         let time = rawData.analysis_time || 0;
-        
+
         // 首先尝试从主要字段获取数据
         if (rawData.winrate !== null && rawData.winrate !== undefined) {
             winRate = (rawData.winrate * 100).toFixed(1);
         }
-        
+
         if (rawData.bot_move) {
             recommendedMove = rawData.bot_move;
         }
-        
+
         if (rawData.score !== null && rawData.score !== undefined) {
             score = rawData.score.toFixed(2);
         }
-        
+
         if (rawData.visits) {
             visits = rawData.visits;
         }
-        
+
         // 如果主要字段为空，尝试从 analysis 数组中获取
         if (rawData.analysis && rawData.analysis.length > 0) {
             const firstAnalysis = rawData.analysis[0];
-            
+
             if (!recommendedMove && firstAnalysis.move) {
                 recommendedMove = firstAnalysis.move;
             }
-            
+
             if (winRate === 0 && firstAnalysis.winrate !== null && firstAnalysis.winrate !== undefined) {
                 winRate = (firstAnalysis.winrate * 100).toFixed(1);
             }
-            
+
             if (score === 0 && (firstAnalysis.scoreLead !== null || firstAnalysis.scoreMean !== null)) {
                 score = (firstAnalysis.scoreLead || firstAnalysis.scoreMean || 0).toFixed(2);
             }
-            
+
             if (visits === 0 && firstAnalysis.visits) {
                 visits = firstAnalysis.visits;
             }
         }
-        
+
+        // 🔥 尝试从 full_analysis.moveInfos 获取更完整的变化数据
+        let variationsSource = [];
+
+        if (rawData.full_analysis && rawData.full_analysis.moveInfos) {
+            console.log(`🔥 [DEBUG] 使用 full_analysis.moveInfos (包含 ${rawData.full_analysis.moveInfos.length} 个候选手)`);
+            variationsSource = rawData.full_analysis.moveInfos.map(info => ({
+                move: info.move,
+                winrate: info.winrate,
+                scoreLead: info.scoreLead,
+                scoreMean: info.scoreMean,
+                visits: info.visits,
+                prior: info.prior,
+                order: info.order
+            })).sort((a, b) => a.order - b.order);
+        } else {
+            console.log(`⚠️ [DEBUG] full_analysis.moveInfos 不存在，使用 rawData.analysis`);
+            variationsSource = rawData.analysis || [];
+        }
+
         const result = {
             recommendedMove: recommendedMove || '',
             winRate: winRate,
@@ -403,20 +436,22 @@ class AnalysisEngine {
                 move: info.move,
                 probability: info.prior || info.probability
             })) || [],
-            variations: rawData.analysis?.slice(0, 5).map(info => ({
+            // 🔥 使用 variationsSource 并截取前10个
+            variations: variationsSource.slice(0, 10).map(info => ({
                 moves: [info.move],
-                winRate: info.winrate ? (info.winrate * 100).toFixed(1) : '0.0',
+                // 注意：moveInfos 中的 winrate 可能是小数 (0.55)，而 analysis 中可能是 null
+                winRate: (info.winrate !== undefined) ? (info.winrate * 100).toFixed(1) : '0.0',
                 score: (info.scoreLead || info.scoreMean || 0).toFixed(2),
                 visits: info.visits || 0
-            })) || [],
+            })),
             rawData: rawData
         };
-        
+
         // 🔥 检查解析后结果的大小
         const resultSize = JSON.stringify(result).length;
         console.log(`🔍 解析后结果大小: ${(resultSize / 1024).toFixed(2)} KB`);
         console.log(`🔍 其中 rawData 占用: ${(rawDataSize / 1024).toFixed(2)} KB (${((rawDataSize / resultSize) * 100).toFixed(1)}%)`);
-        
+
         console.log('parseAnalysisResult 解析后的结果:', result);
         return result;
     }
@@ -427,10 +462,10 @@ class AnalysisEngine {
             // 保存到 IndexedDB
             await this.analysisStorage.saveAnalysisToIndexedDB();
             console.log('分析结果已保存到本地缓存');
-            
+
             // 发送到后端数据库
             await this.saveToMongoDB();
-            
+
         } catch (error) {
             console.error('保存分析结果失败:', error);
             throw error;
@@ -444,23 +479,23 @@ class AnalysisEngine {
 
         // 🔥 详细分析 analysisResults 的数据大小
         console.log(`🔍 准备保存 ${analysisResults.length} 条分析结果`);
-        
+
         let totalSize = 0;
         let rawDataTotalSize = 0;
-        
+
         analysisResults.forEach((result, index) => {
             const resultSize = JSON.stringify(result).length;
             totalSize += resultSize;
-            
+
             if (result.analysis && result.analysis.rawData) {
                 const rawDataSize = JSON.stringify(result.analysis.rawData).length;
                 rawDataTotalSize += rawDataSize;
-                
+
                 if (index < 3) { // 只显示前3条的详细信息
                     console.log(`🔍 第${result.moveNumber}手分析结果:`);
                     console.log(`  - 总大小: ${(resultSize / 1024).toFixed(2)} KB`);
                     console.log(`  - rawData大小: ${(rawDataSize / 1024).toFixed(2)} KB (${((rawDataSize / resultSize) * 100).toFixed(1)}%)`);
-                    
+
                     // 检查 rawData 中的大字段
                     if (result.analysis.rawData.analysis) {
                         const analysisArraySize = JSON.stringify(result.analysis.rawData.analysis).length;
@@ -470,7 +505,7 @@ class AnalysisEngine {
                 }
             }
         });
-        
+
         console.log(`🔍 所有分析结果总大小: ${(totalSize / 1024 / 1024).toFixed(2)} MB`);
         console.log(`🔍 其中 rawData 总大小: ${(rawDataTotalSize / 1024 / 1024).toFixed(2)} MB (${((rawDataTotalSize / totalSize) * 100).toFixed(1)}%)`);
 
@@ -514,8 +549,8 @@ class AnalysisEngine {
                     score: result.analysis.score,
                     visits: result.analysis.visits,
                     time: result.analysis.time,
-                    // 只保留前3个变化，减少数据量
-                    variations: result.analysis.variations?.slice(0, 3) || [],
+                    // 只保留前7个变化，减少数据量
+                    variations: result.analysis.variations?.slice(0, 7) || [],
                     // 只保留前10个策略，减少数据量  
                     policy: result.analysis.policy?.slice(0, 10) || []
                     // 🔥 完全移除 rawData！这是数据量大的罪魁祸首
@@ -526,7 +561,7 @@ class AnalysisEngine {
                 updatedAt: new Date().toISOString(),
                 analysisStatus: 'completed',
                 totalAnalysisTime: analysisResults.reduce((sum, r) => sum + (r.analysis.time || 0), 0),
-                averageTime: analysisResults.length > 0 ? 
+                averageTime: analysisResults.length > 0 ?
                     (analysisResults.reduce((sum, r) => sum + (r.analysis.time || 0), 0) / analysisResults.length).toFixed(2) : 0,
                 version: '1.0'
             }
@@ -538,14 +573,14 @@ class AnalysisEngine {
         const resultsSize = JSON.stringify(payload.analysisResults).length;
         const metadataSize = JSON.stringify(payload.metadata).length;
         const totalPayloadSize = JSON.stringify(payload).length;
-        
+
         console.log(`🔍 Payload 各部分大小分析:`);
         console.log(`  - SGF部分: ${(sgfSize / 1024).toFixed(2)} KB (${((sgfSize / totalPayloadSize) * 100).toFixed(1)}%)`);
         console.log(`  - 配置部分: ${(configSize / 1024).toFixed(2)} KB (${((configSize / totalPayloadSize) * 100).toFixed(1)}%)`);
         console.log(`  - 分析结果部分: ${(resultsSize / 1024 / 1024).toFixed(2)} MB (${((resultsSize / totalPayloadSize) * 100).toFixed(1)}%)`);
         console.log(`  - 元数据部分: ${(metadataSize / 1024).toFixed(2)} KB (${((metadataSize / totalPayloadSize) * 100).toFixed(1)}%)`);
         console.log(`  - 总大小: ${(totalPayloadSize / 1024 / 1024).toFixed(2)} MB`);
-        
+
         // 🔥 如果超过一定大小，给出警告
         if (totalPayloadSize > 16 * 1024 * 1024) { // 16MB
             console.error(`❌ 数据量过大 (${(totalPayloadSize / 1024 / 1024).toFixed(2)} MB)，可能会导致 HTTP 413 错误`);

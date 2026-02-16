@@ -25,7 +25,8 @@ body {
     justify-content: flex-end;
 }
 
-.refresh-btn, .clear-btn {
+.refresh-btn,
+.clear-btn {
     background: linear-gradient(135deg, #3498db, #2980b9);
     color: white;
     border: none;
@@ -46,7 +47,8 @@ body {
     box-shadow: 0 2px 6px rgba(231, 76, 60, 0.3);
 }
 
-.refresh-btn:hover, .clear-btn:hover {
+.refresh-btn:hover,
+.clear-btn:hover {
     transform: translateY(-1px);
     box-shadow: 0 4px 10px rgba(52, 152, 219, 0.4);
 }
@@ -262,8 +264,15 @@ body {
 }
 
 @keyframes pulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.05); }
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.05);
+    }
 }
 
 .upload-text {
@@ -285,15 +294,21 @@ body {
 
 .upload-buttons {
     display: flex;
-    flex-direction: row; /* 改为水平排列 */
+    flex-direction: row;
+    /* 改为水平排列 */
     align-items: center;
-    justify-content: center; /* 水平居中 */
+    justify-content: center;
+    /* 水平居中 */
     gap: 8px;
-    margin: 12px auto; /* 添加 auto 确保容器本身也居中 */
-    width: 100%; /* 占满父容器宽度 */
+    margin: 12px auto;
+    /* 添加 auto 确保容器本身也居中 */
+    width: 100%;
+    /* 占满父容器宽度 */
 }
 
-.upload-btn, .analyze-file-btn, .stop-analysis-btn {
+.upload-btn,
+.analyze-file-btn,
+.stop-analysis-btn {
     background: linear-gradient(135deg, #3498db, #2980b9);
     border: none;
     color: white;
@@ -310,26 +325,29 @@ body {
     box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
 }
 
-.upload-btn:hover, .analyze-file-btn:hover, .stop-analysis-btn:hover {
+.upload-btn:hover,
+.analyze-file-btn:hover,
+.stop-analysis-btn:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
 }
 
-.analyze-file-btn:disabled, .stop-analysis-btn:disabled {
+.analyze-file-btn:disabled,
+.stop-analysis-btn:disabled {
     background: linear-gradient(135deg, #bdc3c7, #95a5a6);
     cursor: not-allowed;
     transform: none;
     box-shadow: none;
 }
 
-/* 结束分析按钮特殊样式 */
+/* 结束分析按钮特殊样式 - 改为更高级的琥珀橙 */
 .stop-analysis-btn {
-    background: linear-gradient(135deg, #e74c3c, #c0392b);
-    box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
 }
 
 .stop-analysis-btn:hover {
-    box-shadow: 0 6px 20px rgba(231, 76, 60, 0.4);
+    box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
 }
 
 .analyze-file-btn:disabled {
@@ -355,8 +373,15 @@ body {
 }
 
 @keyframes slideIn {
-    from { opacity: 0; transform: translateY(-10px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .file-name {
@@ -552,7 +577,8 @@ body {
     justify-content: flex-end;
 }
 
-.refresh-btn, .clear-btn {
+.refresh-btn,
+.clear-btn {
     background: linear-gradient(135deg, #3498db, #2980b9);
     color: white;
     border: none;
@@ -573,7 +599,8 @@ body {
     box-shadow: 0 2px 6px rgba(231, 76, 60, 0.3);
 }
 
-.refresh-btn:hover, .clear-btn:hover {
+.refresh-btn:hover,
+.clear-btn:hover {
     transform: translateY(-1px);
     box-shadow: 0 4px 10px rgba(52, 152, 219, 0.4);
 }
@@ -759,7 +786,8 @@ body {
     font-weight: 600;
 }
 
-.setting-select, .setting-input {
+.setting-select,
+.setting-input {
     width: 100%;
     padding: 6px 8px;
     border: 1px solid #ced4da;
@@ -769,7 +797,8 @@ body {
     transition: border-color 0.3s ease;
 }
 
-.setting-select:focus, .setting-input:focus {
+.setting-select:focus,
+.setting-input:focus {
     outline: none;
     border-color: #3498db;
     box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
@@ -910,7 +939,7 @@ body {
 /* 确保所有控制按钮始终可见 */
 #controls2,
 .analysis-controls,
-.board-controls, 
+.board-controls,
 .board-controls-text {
     display: flex !important;
     visibility: visible !important;
@@ -928,18 +957,18 @@ body {
     margin: 5px;
     padding: 10px 15px;
     transition: all 0.3s ease;
-    box-shadow: 3px 3px 8px rgba(0,0,0,0.2);
+    box-shadow: 3px 3px 8px rgba(0, 0, 0, 0.2);
 }
 
 .control-btn:hover {
     background: linear-gradient(145deg, #e0e0e0, #c1c1c1);
-    box-shadow: 2px 2px 6px rgba(0,0,0,0.3);
+    box-shadow: 2px 2px 6px rgba(0, 0, 0, 0.3);
     transform: translateY(-1px);
 }
 
 .control-btn:active {
     background: linear-gradient(145deg, #d0d0d0, #b1b1b1);
-    box-shadow: 1px 1px 3px rgba(0,0,0,0.2);
+    box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2);
     transform: translateY(0px);
 }
 
@@ -971,16 +1000,20 @@ body {
 /* 宽屏时（使用网格布局），upload-section 在左侧，按钮需要纵向排列 */
 @media (min-width: 1201px) {
     .upload-buttons {
-        flex-direction: column; /* 纵向排列 */
+        flex-direction: column;
+        /* 纵向排列 */
         gap: 8px;
         width: 100%;
     }
-    
-    .upload-btn, .analyze-file-btn, .stop-analysis-btn {
-        width: 100%; /* 按钮占满容器宽度 */
+
+    .upload-btn,
+    .analyze-file-btn,
+    .stop-analysis-btn {
+        width: 100%;
+        /* 按钮占满容器宽度 */
         justify-content: center;
     }
-    
+
     /* 在大屏幕时也保持所有元素可见 */
     #controls2,
     .analysis-controls,
@@ -989,11 +1022,11 @@ body {
         display: flex !important;
         visibility: visible !important;
     }
-    
+
     .analysis-results-section {
         display: block !important;
     }
-    
+
     #controls2 {
         display: flex !important;
         visibility: visible !important;
@@ -1009,29 +1042,30 @@ body {
         max-width: 1400px;
         margin: 0 auto;
     }
-    
+
     .upload-section {
         order: 1;
         display: flex;
         flex-direction: column;
-        align-items: center; /* 让子元素水平居中 */
+        align-items: center;
+        /* 让子元素水平居中 */
         justify-content: center;
     }
-    
+
     /* 中等屏幕时，按钮横向排列 */
     .upload-buttons {
         flex-direction: row;
         justify-content: center;
         width: 100%;
     }
-    
+
     .sidebar {
         order: 2;
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
         gap: 12px;
     }
-    
+
     .main-content {
         order: 3;
         min-height: 50vh;
@@ -1039,13 +1073,13 @@ body {
         display: flex;
         flex-direction: column;
     }
-    
+
     .board-container {
         flex: 1;
         display: flex;
         flex-direction: column;
     }
-    
+
     /* 在小屏幕时保持所有元素可见 */
     #controls2,
     .analysis-controls,
@@ -1054,7 +1088,7 @@ body {
         display: flex !important;
         visibility: visible !important;
     }
-    
+
     .analysis-results-section {
         display: block !important;
     }
@@ -1065,41 +1099,43 @@ body {
         padding: 4px;
         gap: 4px;
     }
-    
+
     .sidebar {
         grid-template-columns: 1fr;
     }
-    
+
     .upload-buttons {
         flex-direction: column;
         align-items: center;
         justify-content: center;
         gap: 6px;
     }
-    
+
     /* 让所有按钮在窄屏时都有一致的宽度 */
-    .upload-btn, .analyze-file-btn, .stop-analysis-btn {
+    .upload-btn,
+    .analyze-file-btn,
+    .stop-analysis-btn {
         width: 80%;
         max-width: 200px;
         justify-content: center;
     }
-    
+
     .analysis-controls {
         justify-content: center;
     }
-    
+
     .control-btn {
         font-size: 11px;
         padding: 6px 10px;
     }
-    
+
     .board-placeholder {
         min-height: 300px;
     }
 }
 
 /* 🔥 新增：添加控制按钮样式（从Post11.html复制） */
-    #controls2 {
+#controls2 {
     display: flex;
     justify-content: center;
     align-items: center;
@@ -1107,9 +1143,9 @@ body {
     text-align: center;
     flex-wrap: wrap;
     gap: 5px;
-    }
-    
-    .control-btn {
+}
+
+.control-btn {
     background: linear-gradient(145deg, #f0f0f0, #d1d1d1);
     border: 2px solid #bbb;
     border-radius: 8px;
@@ -1119,32 +1155,32 @@ body {
     margin: 5px;
     padding: 10px 15px;
     transition: all 0.3s ease;
-    box-shadow: 3px 3px 8px rgba(0,0,0,0.2);
-    }
+    box-shadow: 3px 3px 8px rgba(0, 0, 0, 0.2);
+}
 
-    .control-btn:hover {
+.control-btn:hover {
     background: linear-gradient(145deg, #e0e0e0, #c1c1c1);
-    box-shadow: 2px 2px 6px rgba(0,0,0,0.3);
+    box-shadow: 2px 2px 6px rgba(0, 0, 0, 0.3);
     transform: translateY(-1px);
-    }
+}
 
-    .control-btn:active {
+.control-btn:active {
     background: linear-gradient(145deg, #d0d0d0, #b1b1b1);
-    box-shadow: 1px 1px 3px rgba(0,0,0,0.2);
+    box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2);
     transform: translateY(0px);
-    }
+}
 
-    .control-btn:disabled {
+.control-btn:disabled {
     background: #f5f5f5;
     border-color: #ddd;
     color: #aaa;
     cursor: not-allowed;
     box-shadow: none;
     transform: none;
-    }
+}
 
-    /* 移动信息显示样式 */
-    #moveInfo {
+/* 移动信息显示样式 */
+#moveInfo {
     text-align: center;
     margin: 10px 0;
     font-size: 16px;
@@ -1154,102 +1190,103 @@ body {
     padding: 8px 16px;
     border-radius: 4px;
     border: 1px solid #dee2e6;
-    }
+}
 
 /* 响应式调整 */
 @media (max-width: 1200px) {
-  /* 胜率显示条样式 */
-  .winrate-container {
-    margin: 10px 0;
-    width: 100%;
-    max-width: 400px;
-  }
-  
-  .winrate-bar {
-    width: 100%;
-    height: 20px;
-    border: 2px solid #333;
-    border-radius: 0px;
-    overflow: hidden;
-    display: flex;
-    background-color: #fff;
-    position: relative;
-  }
-  
-  .winrate-black {
-    height: 100%;
-    background: linear-gradient(90deg, #2c2c2c 0%, #1a1a1a 100%);
-    transition: width 0.3s ease;
-    width: 50%;
-  }
-  
-  .winrate-white {
-    height: 100%;
-    background: linear-gradient(90deg, #f8f8f8 0%, #e0e0e0 100%);
-    transition: width 0.3s ease;
-    width: 50%;
-  }
-  
-  .winrate-labels {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 5px;
-    font-size: 12px;
-    color: #666;
-  }
-  
-  .winrate-label-black {
-    color: #2c2c2c;
-    font-weight: bold;
-  }
-  
-  .winrate-label-white {
-    color: #666;
-    font-weight: bold;
-  }
-  
-  .winrate-percentage {
-    font-family: 'Courier New', monospace;
-    font-weight: bold;
-    color: #333;
-    font-size: 11px;
-  }
-  
-  /* 响应式调整 */
-  @media (max-width: 1200px) {
+
+    /* 胜率显示条样式 */
     .winrate-container {
-      max-width: 300px;
+        margin: 10px 0;
+        width: 100%;
+        max-width: 400px;
     }
-    
+
     .winrate-bar {
-      height: 16px;
+        width: 100%;
+        height: 20px;
+        border: 2px solid #333;
+        border-radius: 0px;
+        overflow: hidden;
+        display: flex;
+        background-color: #fff;
+        position: relative;
     }
-    
+
+    .winrate-black {
+        height: 100%;
+        background: linear-gradient(90deg, #2c2c2c 0%, #1a1a1a 100%);
+        transition: width 0.3s ease;
+        width: 50%;
+    }
+
+    .winrate-white {
+        height: 100%;
+        background: linear-gradient(90deg, #f8f8f8 0%, #e0e0e0 100%);
+        transition: width 0.3s ease;
+        width: 50%;
+    }
+
     .winrate-labels {
-      font-size: 11px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 5px;
+        font-size: 12px;
+        color: #666;
     }
-    
+
+    .winrate-label-black {
+        color: #2c2c2c;
+        font-weight: bold;
+    }
+
+    .winrate-label-white {
+        color: #666;
+        font-weight: bold;
+    }
+
     .winrate-percentage {
-      font-size: 10px;
+        font-family: 'Courier New', monospace;
+        font-weight: bold;
+        color: #333;
+        font-size: 11px;
     }
-  }
-  
-  @media (max-width: 768px) {
-    .winrate-container {
-      max-width: 250px;
+
+    /* 响应式调整 */
+    @media (max-width: 1200px) {
+        .winrate-container {
+            max-width: 300px;
+        }
+
+        .winrate-bar {
+            height: 16px;
+        }
+
+        .winrate-labels {
+            font-size: 11px;
+        }
+
+        .winrate-percentage {
+            font-size: 10px;
+        }
     }
-    
-    .winrate-bar {
-      height: 14px;
+
+    @media (max-width: 768px) {
+        .winrate-container {
+            max-width: 250px;
+        }
+
+        .winrate-bar {
+            height: 14px;
+        }
+
+        .winrate-labels {
+            font-size: 10px;
+        }
+
+        .winrate-percentage {
+            font-size: 9px;
+        }
     }
-    
-    .winrate-labels {
-      font-size: 10px;
-    }
-    
-    .winrate-percentage {
-      font-size: 9px;
-    }
-  }
 }

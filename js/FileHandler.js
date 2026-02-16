@@ -7,9 +7,9 @@ async function handleFileUpload(event) {
         const sgfContent = await readFile(file);
         await window.sgfAnalyzer.parseSGF(sgfContent, file.name);
         window.sgfAnalyzer.analysisDisplay.addLogEntry(`文件 ${file.name} 上传成功`, 'success');
-        
+
         // 启用分析按钮，确保停止按钮隐藏
-        window.sgfAnalyzer.updateAnalysisButtons(false);
+        window.sgfAnalyzer.updateAnalysisButtons('idle');
     } catch (error) {
         console.error('文件上传失败:', error);
         window.sgfAnalyzer.analysisDisplay.addLogEntry(`文件上传失败: ${error.message}`, 'error');
@@ -24,7 +24,7 @@ function handleDragOver(event) {
 async function handleDrop(event) {
     event.preventDefault();
     event.currentTarget.classList.remove('drag-over');
-    
+
     const files = event.dataTransfer.files;
     if (files.length > 0) {
         const file = files[0];

@@ -6,7 +6,7 @@ class BoardController {
         console.log("🔧 BoardController 构造函数被调用");
         console.log("  - analysisDisplay:", analysisDisplay);
         console.log("  - analysisStorage:", analysisStorage);
-        
+
         this.analysisDisplay = analysisDisplay;
         this.gameData = null;
         this.currentMoveIndex = -1;
@@ -25,14 +25,20 @@ class BoardController {
     // 设置事件监听器
     setupEventListeners() {
         const controls = {
-            'logostartBtn': () => this.goToMove(0),
-            'logofastBackwardBtn': () => this.goToMove(Math.max(0, this.currentMoveIndex - 5)),
+            'logostartBtn': () => this.goToMove(-1), // 回到最初 (空棋盘)
+            'logofastBackwardBtn': () => {
+                const currentIndex = window.currentMoveIndex !== undefined ? window.currentMoveIndex : this.currentMoveIndex;
+                this.goToMove(Math.max(-1, currentIndex - 10)); // 快退10步
+            },
             'logobackwardBtn': () => this.previousMove(),
             'logoforwardBtn': () => this.nextMove(),
-            'logofastForwardBtn': () => this.goToMove(Math.min(this.gameData?.moves.length || 0, this.currentMoveIndex + 5)),
+            'logofastForwardBtn': () => {
+                const currentIndex = window.currentMoveIndex !== undefined ? window.currentMoveIndex : this.currentMoveIndex;
+                this.goToMove(Math.min((this.gameData?.moves.length || 0) - 1, currentIndex + 10)); // 快进10步
+            },
             'logoendBtn': () => this.goToLastMove(),
             'logoshowMovesBtn': () => this.toggleMoveNumbers(),
-            'startBtn': () => this.goToMove(0),
+            'startBtn': () => this.goToMove(-1),
             'prevBtn': () => this.previousMove(),
             'nextBtn': () => this.nextMove(),
             'endBtn': () => this.goToLastMove(),
@@ -52,15 +58,15 @@ class BoardController {
         const boardElement = document.getElementById('board');
         if (boardElement && this.gameData) {
             console.log("准备渲染棋盘，moves格式:", this.gameData.moves.slice(0, 3));
-            
+
             // 清空现有内容
             boardElement.innerHTML = '';
-            
+
             // 计算棋盘大小
             const cellSize = this.calculateBoardSize();
-            
+
             console.log('开始创建棋盘，cellSize:', cellSize);
-            
+
             // 🔥 关键修复：设置全局变量，确保 GoBoard12.js 中的函数能正常工作
             window.currentMoves = this.gameData.moves;
             window.currentMoveIndex = -1;
@@ -70,17 +76,17 @@ class BoardController {
                 moves: this.gameData.moves,
                 gameInfo: this.gameData.gameInfo || {}
             };
-            
+
             // 更新CSS变量
             if (typeof updateStoneSizeCSS === 'function') {
                 updateStoneSizeCSS(cellSize);
             }
-            
+
             // 使用 createBoard3 函数创建棋盘
             if (typeof createBoard3 === 'function') {
                 window.cellSize = cellSize;
                 window.stoneSize = Math.floor(cellSize * 0.95);
-                
+
                 createBoard3({
                     domElement: boardElement,
                     boardSize: 19,
@@ -88,9 +94,9 @@ class BoardController {
                     lineColor: '#000',
                     backgroundColor: '#DEB887'
                 });
-                
+
                 this.analysisDisplay.addLogEntry(`棋盘已创建，cellSize: ${cellSize}`, 'success');
-                
+
                 // 启用控制按钮
                 setTimeout(() => {
                     this.enableControlButtons();
@@ -103,29 +109,29 @@ class BoardController {
         }
     }
 
-   /* setupBoardControls() {   //listerner重复了
-        const controls = {
-            'logostartBtn': () => this.goToMove(0),
-            'logofastBackwardBtn': () => this.goToMove(Math.max(0, this.currentMoveIndex - 10)),
-            'logobackwardBtn': () => this.previousMove(),
-            'logoforwardBtn': () => this.nextMove(),
-            'logofastForwardBtn': () => this.goToMove(Math.min(this.gameData?.moves.length || 0, this.currentMoveIndex + 10)),
-            'logoendBtn': () => this.goToLastMove(),
-            'logoshowMovesBtn': () => this.toggleMoveNumbers(),
-            'startBtn': () => this.goToMove(0),
-            'prevBtn': () => this.previousMove(),
-            'nextBtn': () => this.nextMove(),
-            'endBtn': () => this.goToLastMove(),
-            'autoPlayBtn': () => this.toggleAutoPlay()
-        };  
-
-        Object.entries(controls).forEach(([id, handler]) => {
-            const btn = document.getElementById(id);
-            if (btn) {
-                btn.addEventListener('click', handler);
-            }
-        });
-    }  */
+    /* setupBoardControls() {   //listerner重复了
+         const controls = {
+             'logostartBtn': () => this.goToMove(0),
+             'logofastBackwardBtn': () => this.goToMove(Math.max(0, this.currentMoveIndex - 10)),
+             'logobackwardBtn': () => this.previousMove(),
+             'logoforwardBtn': () => this.nextMove(),
+             'logofastForwardBtn': () => this.goToMove(Math.min(this.gameData?.moves.length || 0, this.currentMoveIndex + 10)),
+             'logoendBtn': () => this.goToLastMove(),
+             'logoshowMovesBtn': () => this.toggleMoveNumbers(),
+             'startBtn': () => this.goToMove(0),
+             'prevBtn': () => this.previousMove(),
+             'nextBtn': () => this.nextMove(),
+             'endBtn': () => this.goToLastMove(),
+             'autoPlayBtn': () => this.toggleAutoPlay()
+         };  
+ 
+         Object.entries(controls).forEach(([id, handler]) => {
+             const btn = document.getElementById(id);
+             if (btn) {
+                 btn.addEventListener('click', handler);
+             }
+         });
+     }  */
 
     updateMoveInfo() {
         const moveInfoElement = document.getElementById('moveInfo');
@@ -133,13 +139,13 @@ class BoardController {
             const currentIndex = window.currentMoveIndex !== undefined ? window.currentMoveIndex : this.currentMoveIndex;
             const moveNum = Math.max(0, currentIndex + 1);
             moveInfoElement.textContent = `当前步数：${moveNum} / ${this.gameData.moves.length}`;
-            
+
             // 🔥 调试：添加日志
             console.log("🔍 BoardController.updateMoveInfo() 被调用");
             console.log("  - currentIndex:", currentIndex);
             console.log("  - candidatePointsDisplay:", this.candidatePointsDisplay);
             console.log("  - candidatePointsDisplay.currentSGFHash:", this.candidatePointsDisplay?.currentSGFHash);
-            
+
             // 🔥 新增：显示当前步的候选点
             if (this.candidatePointsDisplay) {
                 console.log("  - 准备调用 displayCandidatePoints");
@@ -149,31 +155,42 @@ class BoardController {
             }
         }
     }
-    
 
-        goToMove(index) {
-        console.log("🔍 BoardController.goToMove() 被调用，index:", index);
+
+    goToMove(index) {
+        console.log(`🔍 BoardController.goToMove(${index})`);
         this.currentMoveIndex = index;
-        console.log("currentMoveIndex:", this.currentMoveIndex);
+        window.currentMoveIndex = index; // 确保全局同步
+
         if (typeof renderMovesToIndex === 'function') {
             renderMovesToIndex(index);
+        } else {
+            console.error("❌ renderMovesToIndex function not found!");
         }
-        console.log("🔍 准备调用 updateMoveInfo()");
-        this.updateMoveInfo(); // 这里会调用displayCandidatePoints
+
+        this.updateMoveInfo();
     }
 
     previousMove() {
+        console.log("🔍 BoardController.previousMove()");
         if (typeof moveBackward === 'function') {
             moveBackward();
+            this.currentMoveIndex = window.currentMoveIndex; // 反向同步
+        } else {
+            console.error("❌ moveBackward function not found!");
         }
-        this.updateMoveInfo(); // 这里会调用displayCandidatePoints
+        this.updateMoveInfo();
     }
 
     nextMove() {
+        console.log("🔍 BoardController.nextMove()");
         if (typeof moveForward === 'function') {
             moveForward();
+            this.currentMoveIndex = window.currentMoveIndex; // 反向同步
+        } else {
+            console.error("❌ moveForward function not found!");
         }
-        this.updateMoveInfo(); // 这里会调用displayCandidatePoints
+        this.updateMoveInfo();
     }
 
     goToLastMove() {
@@ -194,7 +211,7 @@ class BoardController {
                 intersection.removeChild(stone);
             }
         });
-        
+
         // 清空棋盘状态
         if (typeof boardState !== 'undefined') {
             for (let i = 0; i < 19; i++) {
@@ -203,7 +220,7 @@ class BoardController {
                 }
             }
         }
-        
+
         console.log('BoardController.clearBoard 执行完成');
     }
 
