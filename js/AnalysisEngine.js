@@ -243,9 +243,20 @@ class AnalysisEngine {
 
     // 分析单步
     async analyzeMove(gameData, moveIndex) {
-        const currentMove = gameData.moves[moveIndex - 1];
+        // 🔥 增加同步检查日志
+        console.log(`[COORD_SYNC] 分析第${moveIndex}手检查:`);
+        console.log(`  - rawMoves 长度: ${gameData.rawMoves.length}`);
+        console.log(`  - moves 长度: ${gameData.moves.length}`);
 
-        console.log(`分析第${moveIndex}手`);
+        if (gameData.rawMoves.length !== gameData.moves.length) {
+            console.error(`[COORD_SYNC] ⚠️ 警告：数据长度不一致！可能会导致坐标偏移。`);
+        }
+
+        const currentMove = gameData.moves[moveIndex - 1];
+        const rawMove = gameData.rawMoves[moveIndex - 1];
+
+        console.log(`  - 原始着法 (rawMoves[${moveIndex - 1}]):`, rawMove);
+        console.log(`  - 转换后着法 (moves[${moveIndex - 1}]):`, currentMove);
 
         try {
             // 🔥 检查是否应该停止
@@ -266,8 +277,19 @@ class AnalysisEngine {
             );
 
             if (result.success) {
+                // 确定当前落子方
+                let nextPlayer = 'black';
+                if (moveIndex > 0) {
+                    const lastMove = gameData.moves[moveIndex - 1]; // 注意：gameData.moves是已经转换过的
+                    // 或者更简单的：偶数步是黑棋下(0, 2...)，奇数步是白棋下(1, 3...)
+                    // moveIndex 是"当前要分析的局面是第几手之后"。
+                    // moveIndex=0 (空盘) -> Next: Black
+                    // moveIndex=1 (黑下了) -> Next: White
+                    nextPlayer = (moveIndex % 2 === 0) ? 'black' : 'white';
+                }
+
                 // 解析分析结果
-                const analysisData = this.parseAnalysisResult(result.data);
+                const analysisData = this.parseAnalysisResult(result.data, nextPlayer);
 
                 // 立即保存到IndexedDB（单条记录）
                 const analysisResult = this.analysisStorage.addAnalysisResult(
@@ -325,15 +347,15 @@ class AnalysisEngine {
     }
 
     // 解析 KataGo 分析结果
-    parseAnalysisResult(rawData) {
+    parseAnalysisResult(rawData, explicitSideToMove = null) {
 
         console.log('🔥 [DEBUG] KataGo原始返回数据(Full):', JSON.stringify(rawData, null, 2));
         console.log(`🔥 [DEBUG] analysis 数组是否存在: ${!!rawData.analysis}`);
         console.log(`🔥 [DEBUG] analysis 数组长度: ${rawData.analysis ? rawData.analysis.length : 'N/A'}`);
 
-        // 如果数量少于7个，打印警告
-        if (rawData.analysis && rawData.analysis.length < 7) {
-            console.warn('⚠️ KataGo返回的Variations数量少于7个！可能是引擎配置限制。');
+        // 如果数量少于3个，打印警告
+        if (rawData.analysis && rawData.analysis.length < 3) {
+            console.warn('⚠️ KataGo返回的Variations数量少于3个！可能是引擎配置限制。');
         }
 
         // 🔥 添加原始数据大小检查
@@ -369,65 +391,79 @@ class AnalysisEngine {
         let visits = 0;
         let time = rawData.analysis_time || 0;
 
-        // 首先尝试从主要字段获取数据
-        if (rawData.winrate !== null && rawData.winrate !== undefined) {
-            winRate = (rawData.winrate * 100).toFixed(1);
+        // 1. 确定当前落子方 (Side to move)
+        // 优先使用传入的 explicitSideToMove，否则尝试从 rootInfo 获取，最后默认 black
+        let sideToMove = explicitSideToMove;
+        if (!sideToMove) {
+            sideToMove = (rawData.rootInfo && rawData.rootInfo.currentPlayer === 'W') ? 'white' : 'black';
         }
+        console.log(`🔥 [DEBUG] 当前落子方: ${sideToMove} (explicit: ${explicitSideToMove}, rootInfo: ${rawData.rootInfo?.currentPlayer})`);
 
+        // 2. 确定推荐步
         if (rawData.bot_move) {
             recommendedMove = rawData.bot_move;
         }
 
-        if (rawData.score !== null && rawData.score !== undefined) {
+        // 3. 确定胜率 (归一化为黑棋胜率 0-100)
+        if (rawData.rootInfo && rawData.rootInfo.winrate !== undefined) {
+            // 注意: KataGo rootInfo.winrate 已经是黑棋胜率了（无论谁下）
+            winRate = (rawData.rootInfo.winrate * 100).toFixed(1);
+        } else if (rawData.winrate !== null && rawData.winrate !== undefined) {
+            winRate = (rawData.winrate * 100).toFixed(1);
+        }
+
+        if (rawData.rootInfo && rawData.rootInfo.scoreLead !== undefined) {
+            score = rawData.rootInfo.scoreLead.toFixed(2);
+        } else if (rawData.score !== null && rawData.score !== undefined) {
             score = rawData.score.toFixed(2);
         }
 
-        if (rawData.visits) {
+        if (rawData.rootInfo && rawData.rootInfo.visits) {
+            visits = rawData.rootInfo.visits;
+        } else if (rawData.visits) {
             visits = rawData.visits;
         }
 
-        // 如果主要字段为空，尝试从 analysis 数组中获取
-        if (rawData.analysis && rawData.analysis.length > 0) {
-            const firstAnalysis = rawData.analysis[0];
-
-            if (!recommendedMove && firstAnalysis.move) {
-                recommendedMove = firstAnalysis.move;
-            }
-
-            if (winRate === 0 && firstAnalysis.winrate !== null && firstAnalysis.winrate !== undefined) {
-                winRate = (firstAnalysis.winrate * 100).toFixed(1);
-            }
-
-            if (score === 0 && (firstAnalysis.scoreLead !== null || firstAnalysis.scoreMean !== null)) {
-                score = (firstAnalysis.scoreLead || firstAnalysis.scoreMean || 0).toFixed(2);
-            }
-
-            if (visits === 0 && firstAnalysis.visits) {
-                visits = firstAnalysis.visits;
-            }
-        }
-
-        // 🔥 尝试从 full_analysis.moveInfos 获取更完整的变化数据
+        // 4. 处理候选变化 (Variations)
         let variationsSource = [];
-
         if (rawData.full_analysis && rawData.full_analysis.moveInfos) {
-            console.log(`🔥 [DEBUG] 使用 full_analysis.moveInfos (包含 ${rawData.full_analysis.moveInfos.length} 个候选手)`);
-            variationsSource = rawData.full_analysis.moveInfos.map(info => ({
-                move: info.move,
-                winrate: info.winrate,
-                scoreLead: info.scoreLead,
-                scoreMean: info.scoreMean,
-                visits: info.visits,
-                prior: info.prior,
-                order: info.order
-            })).sort((a, b) => a.order - b.order);
+            variationsSource = rawData.full_analysis.moveInfos;
+        } else if (rawData.moveInfos) {
+            variationsSource = rawData.moveInfos;
         } else {
-            console.log(`⚠️ [DEBUG] full_analysis.moveInfos 不存在，使用 rawData.analysis`);
             variationsSource = rawData.analysis || [];
         }
 
+        console.log(`🔥 [DEBUG] 原始候选点数量: ${variationsSource.length}`);
+
+        // 5. 归一化并显式排序
+        // 关键：KataGo 的 moveInfos.winrate 通常也是相对于黑棋的（取决于配置，但习惯上是黑棋）
+        // 如果不是，我们需要在这里进行 100-x 的处理。经过分析，KataGo 返回通常是黑棋胜率。
+
+        const processedVariations = variationsSource.map(info => {
+            let wr = (info.winrate !== undefined) ? parseFloat(info.winrate) : 0;
+            // 转换为 0-100
+            if (wr <= 1.0) wr *= 100;
+
+            return {
+                move: info.move,
+                winrate: wr,
+                scoreLead: info.scoreLead || info.scoreMean || 0,
+                visits: info.visits || 0
+            };
+        });
+
+        // 🔥 显式按当前方利益排序
+        processedVariations.sort((a, b) => {
+            if (sideToMove === 'black') {
+                return b.winrate - a.winrate; // 黑棋选胜率最高的
+            } else {
+                return a.winrate - b.winrate; // 白棋选黑棋胜率最低的
+            }
+        });
+
         const result = {
-            recommendedMove: recommendedMove || '',
+            recommendedMove: recommendedMove || (processedVariations[0] ? processedVariations[0].move : ''),
             winRate: winRate,
             score: score,
             visits: visits,
@@ -436,13 +472,11 @@ class AnalysisEngine {
                 move: info.move,
                 probability: info.prior || info.probability
             })) || [],
-            // 🔥 使用 variationsSource 并截取前10个
-            variations: variationsSource.slice(0, 10).map(info => ({
-                moves: [info.move],
-                // 注意：moveInfos 中的 winrate 可能是小数 (0.55)，而 analysis 中可能是 null
-                winRate: (info.winrate !== undefined) ? (info.winrate * 100).toFixed(1) : '0.0',
-                score: (info.scoreLead || info.scoreMean || 0).toFixed(2),
-                visits: info.visits || 0
+            variations: processedVariations.slice(0, 10).map(v => ({
+                moves: [v.move],
+                winRate: v.winrate.toFixed(1), // 存储格式：0-100 字符串
+                score: v.scoreLead.toFixed(2),
+                visits: v.visits
             })),
             rawData: rawData
         };
@@ -549,10 +583,9 @@ class AnalysisEngine {
                     score: result.analysis.score,
                     visits: result.analysis.visits,
                     time: result.analysis.time,
-                    // 只保留前7个变化，减少数据量
-                    variations: result.analysis.variations?.slice(0, 7) || [],
-                    // 只保留前10个策略，减少数据量  
-                    policy: result.analysis.policy?.slice(0, 10) || []
+                    // 保存所有变化 -> 恢复为只保存前10个
+                    variations: result.analysis.variations ? result.analysis.variations.slice(0, 10) : [],
+                    policy: result.analysis.policy || []
                     // 🔥 完全移除 rawData！这是数据量大的罪魁祸首
                 }
             })),

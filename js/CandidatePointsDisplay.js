@@ -53,49 +53,55 @@ class CandidatePointsDisplay {
             console.log("  - 加载到的分析结果数量:", analysisResults.length);
             console.log("  - 分析结果详情:", analysisResults);
 
-            // 修复：显示当前手的分析结果，而不是下一手的
-            // 分析结果的 moveNumber 是从1开始的，currentMoveIndex 是从0开始的
+            // 修复：显示当前状态下的建议（即下一手落点建议）
+            // KataGo 的分析记录中，moveNumber N 的结果通常包含对 Move N+1 的建议
+            // 当 currentMoveIndex 是 22 (23手已下)，我们要看建议 24，即分析记录 moveNumber 23
             const targetMoveNumber = currentMoveIndex + 1;
-            console.log("  - 查找目标步数:", targetMoveNumber);
+            console.log("  - 查找目标分析记录 (对应下一手建议):", targetMoveNumber);
 
-            // 先尝试找当前手的分析结果
+            // 先尝试找目标步（下一手）的分析结果
             let currentAnalysis = analysisResults.find(result => result.moveNumber === targetMoveNumber);
-
-            // 如果没有找到当前手的，尝试找前一手的（显示下一手的候选点）
-            if (!currentAnalysis && targetMoveNumber > 1) {
-                const previousMoveNumber = targetMoveNumber - 1;
-                currentAnalysis = analysisResults.find(result => result.moveNumber === previousMoveNumber);
-                console.log(`  - 当前手(${targetMoveNumber})分析结果未找到，尝试使用前一手(${previousMoveNumber})的分析结果`);
-            }
 
             console.log("  - 找到的分析结果:", currentAnalysis);
 
-            if (currentAnalysis && currentAnalysis.analysis && currentAnalysis.analysis.variations) {
-                console.log(`  - 显示第${currentAnalysis.moveNumber}手的候选点:`, currentAnalysis.analysis.variations);
+            if (currentAnalysis && currentAnalysis.analysis && (currentAnalysis.analysis.variations || currentAnalysis.analysis.analysis)) {
+                // 有些数据格式 variations 在 analysis 下，有些直接在 root 下
+                const variations = currentAnalysis.analysis.variations || currentAnalysis.analysis.analysis;
+                console.log(`  - 显示第${currentAnalysis.moveNumber}手的候选点:`, variations);
 
-                // 显示前5个候选点（改为5个）
-                const variations = currentAnalysis.analysis.variations.slice(0, 5);
-                console.log("  - 准备显示的候选点数量:", variations.length);
+                // 显示所有保存的候选点
+                const topVariations = variations;
+                console.log("  - 准备显示的候选点数量:", topVariations.length);
 
-                variations.forEach((variation, index) => {
+                topVariations.forEach((variation, index) => {
                     console.log(`  - 处理候选点 ${index}:`, variation);
                     if (variation.moves && variation.moves.length > 0) {
                         const candidateMove = variation.moves[0]; // 取第一个候选手
-                        let winRate = (variation.winRate * 1).toFixed(1); // 不乘以100，保持你的原设置
+                        let wrVal = parseFloat(variation.winRate || 0);
 
-                        // 如果下一手是白棋，显示白棋胜率（100 - 黑棋胜率）
-                        if (nextPlayerColor === 'white') {
-                            winRate = (100 - parseFloat(winRate)).toFixed(1);
+                        // 安全检查：如果是比例格式 (0-1)，转换为百分比 (0-100)
+                        if (wrVal > 0 && wrVal <= 1) wrVal *= 100;
+
+                        // 逻辑已前置到 AnalysisEngine，数据库存的就是黑棋视角胜率
+
+                        // 🔥 如果是白棋，显示白棋视角胜率 (100 - blackWinRate)
+                        let displayWinRateVal = wrVal;
+                        if (nextPlayerColor === 'white') {   //好像AI搞反了，我手工换过来 TXY 2026.2.17
+                            //if (nextPlayerColor === 'black') {
+                            displayWinRateVal = 100 - wrVal;
                         }
 
-                        console.log(`    - 候选点 ${index}: ${candidateMove}, 原始胜率: ${(variation.winRate * 1).toFixed(1)}%, 显示胜率: ${winRate}% (${nextPlayerColor})`);
+                        let winRate = displayWinRateVal.toFixed(1);
+                        console.log(`    - 候选点 ${index}: ${candidateMove}, 显示胜率: ${winRate}% (${nextPlayerColor} Perspective)`);
 
                         // 解析候选手位置（如 "Q16"）
                         const position = this.parseSGFPosition(candidateMove);
                         console.log(`    - 解析位置结果:`, position);
 
                         if (position) {
-                            this.addCandidatePointMarker(position.row, position.col, winRate, index, nextPlayerColor);
+                            // index === 0 是最佳选点（因为已经排过序了）
+                            const isBest = index === 0;
+                            this.addCandidatePointMarker(position.row, position.col, winRate, index, nextPlayerColor, isBest);
                         }
                     }
                 });
@@ -144,12 +150,14 @@ class CandidatePointsDisplay {
             }
         }
 
-        // 默认情况：根据手数奇偶性判断
-        return ((currentMoveIndex + 1) % 2 === 1) ? 'black' : 'white';
+        // 正确的奇偶性逻辑：
+        // 第 1 手 (index -1 下之前) -> 黑 (0 % 2 == 0)
+        // 第 2 手 (index 0 下之前)  -> 白 (1 % 2 == 1)
+        return ((currentMoveIndex + 1) % 2 === 0) ? 'black' : 'white';
     }
 
     // 添加候选点标记
-    addCandidatePointMarker(row, col, winRate, index, playerColor) {
+    addCandidatePointMarker(row, col, winRate, index, playerColor, isBest = false) {
         const intersection = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
         if (!intersection) {
             console.warn(`未找到交点 (${row}, ${col})`);
@@ -166,7 +174,14 @@ class CandidatePointsDisplay {
         // 根据棋子颜色设置样式
         const isWhite = playerColor === 'white';
         const borderColor = isWhite ? '#fff' : '#000';
-        const backgroundColor = isWhite ? 'rgba(255, 255, 255, 0.3)' : 'rgba(173, 216, 230, 0.7)';
+
+        // 🔥 最佳选点显示淡绿色，其他显示淡蓝色/白色
+        let backgroundColor;
+        if (isBest) {
+            backgroundColor = 'rgba(40, 167, 69, 0.6)'; // 淡绿色 (Bootstrap Success Color with opacity)
+        } else {
+            backgroundColor = isWhite ? 'rgba(255, 255, 255, 0.3)' : 'rgba(173, 216, 230, 0.7)';
+        }
         const textColor = isWhite ? '#000' : '#000';
 
         // 创建候选点元素

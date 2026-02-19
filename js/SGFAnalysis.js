@@ -506,9 +506,9 @@ class SGFAnalyzer {
             return {
                 row: rowIndex,
                 col: colIndex,
-                color: normalizedColor  // 使用正确的颜色格式
+                color: normalizedColor
             };
-        }).filter(m => m !== null); // 移除无效的移动
+        });
     }
 
     // 计算棋盘大小
@@ -683,6 +683,18 @@ class SGFAnalyzer {
                 (moveNumber, moveData, analysisData) => {
                     // 每步分析完成回调 - 显示分析结果
                     this.analysisDisplay.displayAnalysisResult(moveNumber, moveData, analysisData);
+
+                    // 🔥 恢复：实时显示棋盘上的候选点
+                    // moveNumber 是当前分析的手数（例如1），对应数组索引 0
+                    // 我们想要显示 "第1手下完后的候选点（即第2手的建议）"
+                    // CandidatePointsDisplay.displayCandidatePoints(index) 会查找 index+1 的建议
+                    // 所以传入 moveNumber - 1 (即 index 0) -> 查找 moveNumber 1 的建议？
+                    // 不，AnalysisEngine 存的是 moveNumber: 1 (第1手后的局面分析)
+                    // CandidatePointsDisplay(0) -> target = 0+1 = 1.
+                    // Correct.
+                    if (this.boardController && this.boardController.candidatePointsDisplay) {
+                        this.boardController.candidatePointsDisplay.displayCandidatePoints(moveNumber - 1);
+                    }
                 }
             );
 

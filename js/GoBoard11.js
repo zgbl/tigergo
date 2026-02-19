@@ -927,6 +927,10 @@ function createBoard() {
         }
     }
     addStarPoints();
+
+    if (typeof window.addBoardLabels === 'function') {
+        window.addBoardLabels(board, 19, 30);
+    }
 }
 
 function createBoard3(options) {
@@ -1017,6 +1021,10 @@ function createBoard3(options) {
 
     // 将所有元素一次性添加到 DOM
     domElement.appendChild(fragment);
+
+    if (typeof window.addBoardLabels === 'function') {
+        window.addBoardLabels(domElement, boardSize, cellSize);
+    }
 } 
 
 

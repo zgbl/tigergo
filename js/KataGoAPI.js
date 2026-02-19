@@ -204,7 +204,7 @@ class KataGoAPI {
     async analyzePosition(moves, moveIndex, signal = null, analysisDepth = 'normal') {
         try {
             // 只取到指定手数的着法
-            const moveNumber = moveIndex + 1;
+            const moveNumber = moveIndex;
             const apiMoves = moves.slice(0, moveNumber);
 
             this.debugPrint(`分析第 ${moveNumber} 手，使用着法`, apiMoves);

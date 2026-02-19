@@ -17,6 +17,7 @@ class ProblemEditor {
         this.lossRanking = [];
         this.lossFilter = 'all'; // 'all', 'black', 'white'
         this.isVerifying = false; // AI verification in progress
+        this.winrateChart = null; // Chart.js instance
 
         this.init();
     }
@@ -54,11 +55,20 @@ class ProblemEditor {
         console.log("🎮 Setting up control button listeners");
         this.boardController.setupEventListeners();
 
-        // 🔥 关键：劫持 BoardController.goToMove，确保手动导航时也清理候选点
-        const originalGoToMove = this.boardController.goToMove.bind(this.boardController);
-        this.boardController.goToMove = (index) => {
+        // 🔥 关键：劫持 BoardController.updateMoveInfo，确保任何导航行为（前进、后退、跳转）都触发清理与同步
+        const originalUpdateMoveInfo = this.boardController.updateMoveInfo.bind(this.boardController);
+        this.boardController.updateMoveInfo = () => {
+            // 1. 先调用原始逻辑更新文本和数据库候选点
+            originalUpdateMoveInfo();
+
+            // 2. 清理编辑器特有的候选点标记 (ABCD)
             this.clearCandidates();
-            originalGoToMove(index);
+
+            // 3. 同步更新胜率图指示器
+            const currentIndex = window.currentMoveIndex !== undefined ? window.currentMoveIndex : this.boardController.currentMoveIndex;
+            // 胜率图索引 = 步数 (0对应开始, 1对应第一步)
+            const moveNum = Math.max(0, currentIndex + 1);
+            this.updateChartIndicator(moveNum);
         };
 
         // 🔥 初始化 KataGo API（使用 Custom Server, 即 192.168.0.162:8080）
@@ -80,6 +90,9 @@ class ProblemEditor {
 
         // 7. 绑定 Resize
         this.bindResize();
+
+        // 8. 初始化可拖拽边栏
+        this.initResizableSidebar();
     }
 
     async showGameSelector() {
@@ -147,6 +160,10 @@ class ProblemEditor {
             // Store analysis results for search
             this.analysisResults = data.analysisResults || [];
             console.log(`Loaded ${this.analysisResults.length} analysis records`);
+
+            // 🔥 初始化并构建胜率图表
+            this.initChart();
+            this.updateWinrateChart();
 
             // 🔥 构建胜率损失排行
             this.buildWinrateLossRanking();
@@ -226,6 +243,49 @@ class ProblemEditor {
         if (fW) fW.addEventListener('click', () => this.setLossFilter('white'));
     }
 
+    /**
+     * 初始化左侧边栏拖拽调宽功能
+     */
+    initResizableSidebar() {
+        const handle = document.getElementById('leftResizeHandle');
+        const container = document.querySelector('.analysis-container');
+        if (!handle || !container) return;
+
+        let isResizing = false;
+
+        handle.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            document.body.style.cursor = 'col-resize';
+            handle.classList.add('active');
+            e.preventDefault();
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isResizing) return;
+
+            // 计算新的宽度 (横向鼠标位置)
+            let newWidth = e.clientX;
+
+            // 限制范围 (200px - 800px)
+            if (newWidth < 200) newWidth = 200;
+            if (newWidth > 800) newWidth = 800;
+
+            container.style.setProperty('--sidebar-width', `${newWidth}px`);
+        });
+
+        window.addEventListener('mouseup', () => {
+            if (isResizing) {
+                isResizing = false;
+                document.body.style.cursor = 'default';
+                handle.classList.remove('active');
+
+                // 触发 window resize 事件，让原有的 resize 监听器处理布局刷新
+                // 这样能复用 bindResize 中的防抖和逻辑，且避免直接调用 initBoard 可能带来的重置风险
+                window.dispatchEvent(new Event('resize'));
+            }
+        });
+    }
+
     setMode(mode) {
         this.editMode = mode;
         document.getElementById('modeView').classList.toggle('active', mode === 'view');
@@ -277,14 +337,14 @@ class ProblemEditor {
         if (!listEl) return;
 
         if (!this.analysisResults || this.analysisResults.length < 2) {
-            listEl.innerHTML = '<li class="loss-empty">分析数据不足（需要至少2步棋的分析）</li>';
+            listEl.innerHTML = `<li class="loss-empty">需要至少 2 手分析数据才能计算胜率变化</li>`;
             return;
         }
 
         console.log(`📊 开始计算胜率损失排行... (总记录数: ${this.analysisResults.length})`);
 
-        // 1. 计算所有步数的损失 (黑白一起)
-        const allLosses = [];
+        // 1. 计算所有步数的变化
+        const allChanges = [];
 
         for (let i = 1; i < this.analysisResults.length; i++) {
             const prev = this.analysisResults[i - 1];
@@ -292,77 +352,95 @@ class ProblemEditor {
 
             if (!prev || !curr) continue;
 
-            const prevWinRate = this.extractWinRate(prev);
-            const currWinRate = this.extractWinRate(curr);
+            const prevBWR = this.extractWinRate(prev);
+            const currBWR = this.extractWinRate(curr);
 
-            if (prevWinRate === null || currWinRate === null) continue;
+            if (prevBWR === null || currBWR === null) continue;
 
             const moveInfo = this.getMoveInfo(curr);
-            const moveIndex = curr.moveNumber !== undefined ? curr.moveNumber : i;
+            const moveIndex = curr.moveNumber || i;
 
-            // 🔥 统一损失公式 (适用 Side-to-Move 格式):
-            // 损失 = 落子方落子前胜率 - (100 - 落子后对方胜率)
-            // = prevWinRate + currWinRate - 100
-            const loss = parseFloat((prevWinRate + currWinRate - 100).toFixed(1));
+            // 归一化胜率为“当前落子方视角”
+            let prevPlayerWR, currPlayerWR;
+            const isBlack = moveInfo.color === 'B' || moveInfo.color === 'black';
 
-            // 无论黑白，只要有损失就记录
-            if (loss > 0.1) {
-                allLosses.push({
+            if (isBlack) {
+                prevPlayerWR = prevBWR;
+                currPlayerWR = currBWR;
+            } else {
+                prevPlayerWR = 100 - prevBWR;
+                currPlayerWR = 100 - currBWR;
+            }
+
+            const loss = prevPlayerWR - currPlayerWR;
+
+            // 只要变动超过 0.1% 就记录，无论是亏了还是赚了
+            if (Math.abs(loss) > 0.1) {
+                allChanges.push({
                     moveIndex: moveIndex,
-                    color: moveInfo.color,
-                    coord: moveInfo.coord,
+                    color: isBlack ? 'B' : 'W',
+                    coord: moveInfo.coord || '--',
                     lossPercent: loss,
-                    prevWinRate: prevWinRate,
-                    currWinRate: currWinRate,
-                    scoreLoss: this.extractScoreLoss(prev, curr, moveInfo.color)
+                    currWR: currPlayerWR,
+                    prevWR: prevPlayerWR,
+                    scoreLoss: this.extractScoreLoss(prev, curr, isBlack ? 'B' : 'W')
                 });
             }
         }
 
         // 保存原始数据供筛选
-        this.lossRanking = allLosses;
+        this.lossRanking = allChanges;
 
         // 2. 应用筛选
-        let filteredLosses = [...allLosses];
+        let filtered = [...allChanges];
         if (this.lossFilter === 'black') {
-            filteredLosses = filteredLosses.filter(l => l.color === 'B');
+            filtered = filtered.filter(l => l.color === 'B');
         } else if (this.lossFilter === 'white') {
-            filteredLosses = filteredLosses.filter(l => l.color === 'W');
+            filtered = filtered.filter(l => l.color === 'W');
         }
 
-        // 3. 按损失排序 (从大到小)
-        filteredLosses.sort((a, b) => b.lossPercent - a.lossPercent);
+        // 3. 按损失排序 (从大到小，收益排在最后)
+        filtered.sort((a, b) => b.lossPercent - a.lossPercent);
 
-        // 4. 渲染前 20 名 (确保显示 20 个局面)
-        const topN = filteredLosses.slice(0, 20);
-        console.log(`✅ 筛选后共 ${filteredLosses.length} 个失误点, 渲染前 ${topN.length} 个`);
+        // 4. 渲染 (显示前 100 名)
+        const topN = filtered.slice(0, 100);
+        console.log(`✅ 筛选后共 ${filtered.length} 个变化点, 渲染前 ${topN.length} 个`);
 
         if (topN.length === 0) {
-            listEl.innerHTML = `<li class="loss-empty">在此筛选条件下没有找到明显的胜率损失</li>`;
+            listEl.innerHTML = `<li class="loss-empty">在此条件下没有找到明显的胜率变动</li>`;
             return;
         }
 
-        const maxLoss = topN[0].lossPercent;
-
         listEl.innerHTML = topN.map((item, idx) => {
-            const rankClass = idx < 3 ? 'top3' : idx < 10 ? 'top10' : 'normal';
-            const severityClass = item.lossPercent >= 10 ? 'severe' :
-                item.lossPercent >= 5 ? 'moderate' :
-                    item.lossPercent >= 2 ? 'minor' : 'tiny';
-            const barWidth = Math.max(10, (item.lossPercent / maxLoss) * 100);
+            const isLoss = item.lossPercent >= 0.1;
+            const isGain = item.lossPercent <= -0.1;
+            const absLoss = Math.abs(item.lossPercent);
+
+            const badgeClass = isLoss ? 'loss' : (isGain ? 'gain' : 'neutral');
+            const sign = isLoss ? '-' : (isGain ? '+' : '');
 
             return `
-                <li class="loss-item" data-move-index="${item.moveIndex}" onclick="editor.onLossItemClick(${item.moveIndex})">
-                    <span class="loss-rank ${rankClass}">${idx + 1}</span>
-                    <span class="loss-move-num">#${item.moveIndex}</span>
-                    <span class="loss-color ${item.color === 'B' ? 'black' : 'white'}"></span>
-                    <span class="loss-coord">${item.coord}</span>
-                    <span class="loss-bar-container">
-                        <span class="loss-bar ${severityClass}" style="width: ${barWidth}%"></span>
+            <li class="loss-item" data-move-index="${item.moveIndex}" onclick="editor.onLossItemClick(${item.moveIndex})">
+                <span class="rank-num">${idx + 1}</span>
+                
+                <span class="color-dot" style="background: ${item.color === 'B' ? '#333' : '#fff'};"></span>
+                
+                <span class="move-num">#${item.moveIndex}</span>
+                
+                <span class="coord-info">${item.coord}</span>
+                
+                <div class="wr-stats">
+                    <span class="curr-wr">${item.currWR.toFixed(1)}%</span>
+                    <span class="prev-wr">前: ${item.prevWR.toFixed(1)}%</span>
+                </div>
+                
+                <div class="loss-badge-container">
+                    <span class="loss-badge ${badgeClass}">
+                        ${sign}${absLoss.toFixed(1)}%
                     </span>
-                    <span class="loss-value ${severityClass}">-${item.lossPercent}%</span>
-                </li>
-            `;
+                </div>
+            </li>
+        `;
         }).join('');
     }
 
@@ -428,6 +506,10 @@ class ProblemEditor {
             // ["B", "Q16"] 格式
             color = move[0];
             coord = move[1] || '';
+        } else if (typeof move === 'object' && move !== null) {
+            // 🔥 MongoDB对象格式: {color: "black"/"white", position: "Q16", row, col}
+            color = move.color || null;
+            coord = move.position || move.coord || '';
         } else if (typeof move === 'string') {
             coord = move;
         }
@@ -560,6 +642,11 @@ class ProblemEditor {
                 </div>
             `;
             contextPanel.style.display = 'block';
+
+            // 💡 关键：确保 BoardController 的状态完全同步
+            this.boardController.currentMoveIndex = boardIndex;
+            window.currentMoveIndex = boardIndex;
+            this.boardController.updateMoveInfo();
         }
 
         // 🔥 重新绘制候选点标记
@@ -579,15 +666,22 @@ class ProblemEditor {
 
     renderCandidates() {
         const list = document.getElementById('candidateList');
+        const nextColor = this.getNextColor();
 
         // 🔥 预先计算哪个是最佳点 (正确答案)
         let bestLabel = null;
         if (this.candidates.length > 0) {
             const analyzed = this.candidates.filter(c => c.aiResult);
             if (analyzed.length > 0) {
-                const best = analyzed.reduce((prev, curr) =>
-                    (prev.aiResult.winRate > curr.aiResult.winRate) ? prev : curr
-                );
+                const best = analyzed.reduce((prev, curr) => {
+                    if (nextColor === 'B') {
+                        // 黑棋落子：寻找黑棋胜率最高的
+                        return (prev.aiResult.winRate > curr.aiResult.winRate) ? prev : curr;
+                    } else {
+                        // 白棋落子：寻找黑棋胜率最低的
+                        return (prev.aiResult.winRate < curr.aiResult.winRate) ? prev : curr;
+                    }
+                });
                 bestLabel = best.label;
             }
         }
@@ -834,12 +928,15 @@ class ProblemEditor {
         const colLetter = coord[0].toUpperCase();
         const rowNum = parseInt(coord.substring(1));
 
-        // A=0, B=1... H=7, J=8 (跳过 I)
-        let col = colLetter.charCodeAt(0) - 65;
-        if (col > 8) col--; // 减去跳过的 I
+        // 字母列: A-T (跳过 I)
+        let col;
+        if (colLetter <= 'H') {
+            col = colLetter.charCodeAt(0) - 65; // A-H -> 0-7
+        } else {
+            col = colLetter.charCodeAt(0) - 66; // J-T -> 8-18 (跳过I)
+        }
 
         const row = 19 - rowNum;
-
         return { row, col };
     }
 
@@ -873,7 +970,7 @@ class ProblemEditor {
 
         // 准备当前局面的着法序列（KataGo格式）
         const baseMoves = this.rawMoves.slice(0, currentMoveIndex + 1);
-        const nextColor = (currentMoveIndex + 1) % 2 === 0 ? 'B' : 'W';
+        const nextColor = this.getNextColor();
 
         // --- 模式 A: AI 发现模式 (0 选点时自动填充) ---
         if (this.candidates.length === 0) {
@@ -1053,6 +1150,15 @@ class ProblemEditor {
         console.log('\n🎉 所有候选点验证完成！');
     }
 
+    // 获取下一手颜色 ('B' 或 'W')
+    getNextColor() {
+        const currentMoveIndex = this.boardController ? this.boardController.currentMoveIndex : -1;
+        // 棋谱第 0 手是初始状态，第 1 手索引为 0
+        // 如果 currentMoveIndex 是 -1，下一手是第 0 手（黑先）
+        // 如果 currentMoveIndex 是 0，下一手是第 1 手（白先）
+        return (currentMoveIndex + 1) % 2 === 0 ? 'B' : 'W';
+    }
+
     // Helper to convert SGF moves to GoBoard12 format (row, col)
     convertMoves(moves) {
         console.log('开始转换棋谱格式, 原始数量:', moves ? moves.length : 0);
@@ -1125,6 +1231,151 @@ class ProblemEditor {
 
         console.log('转换完成, 最终数量:', converted.length);
         return converted;
+    }
+
+    /**
+     * 初始化 Chart.js 胜率图表
+     */
+    initChart() {
+        const ctx = document.getElementById('winrateChart');
+        if (!ctx) return;
+
+        // 如果已经存在图表，先销毁
+        if (this.winrateChart) {
+            this.winrateChart.destroy();
+        }
+
+        this.winrateChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: '黑棋胜率',
+                    data: [],
+                    borderColor: '#3498db',
+                    backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    pointHoverRadius: 5,
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    intersect: false,
+                    mode: 'index',
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function (context) {
+                                return `黑棋胜率: ${context.parsed.y.toFixed(1)}%`;
+                            },
+                            title: function (context) {
+                                return `第 ${context[0].label} 手`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        title: { display: false },
+                        grid: { display: false }
+                    },
+                    y: {
+                        min: 0,
+                        max: 100,
+                        ticks: {
+                            stepSize: 20,
+                            callback: value => value + '%'
+                        },
+                        grid: { color: '#f0f0f0' }
+                    }
+                },
+                onClick: (event, elements) => {
+                    if (elements.length > 0) {
+                        const index = elements[0].index;
+                        console.log(`📈 图表点击: 跳转到第 ${index} 手`);
+                        this.boardController.goToMove(index);
+                    }
+                }
+            }
+        });
+    }
+
+    /**
+     * 更新胜率图数据
+     */
+    updateWinrateChart() {
+        if (!this.winrateChart || !this.gameData || !this.gameData.moves) return;
+
+        // 1. 建立快速查找 Map，以 moveNumber 为索引
+        const wrMap = new Map();
+        this.analysisResults.forEach(r => {
+            const moveNum = r.moveNumber || 0;
+            const wr = this.extractWinRate(r);
+            if (wr !== null) {
+                // 如果同一个手数有多个记录（比如由于重新分析），保留最后一条或第一条（这里保留最后一条）
+                wrMap.set(moveNum, wr);
+            }
+        });
+
+        const labels = [];
+        const data = [];
+        const totalMoves = this.gameData.moves.length;
+        let lastKnownWR = 50; // 默认为 50%
+
+        // 2. 严格按棋谱步数（0 到 totalMoves）生成曲线
+        for (let i = 0; i <= totalMoves; i++) {
+            labels.push(i);
+
+            if (wrMap.has(i)) {
+                lastKnownWR = wrMap.get(i);
+            }
+            // 如果某一手没有分析，则继承前一手的值（平滑处理）
+            data.push(lastKnownWR);
+        }
+
+        this.winrateChart.data.labels = labels;
+        this.winrateChart.data.datasets[0].data = data;
+
+        // 可选：如果手数太多，隐藏 X 轴刻度，只保留每 50 手的
+        if (totalMoves > 100) {
+            this.winrateChart.options.scales.x.ticks = {
+                callback: function (value, index) {
+                    return index % 50 === 0 ? index : '';
+                }
+            };
+        }
+
+        this.winrateChart.update();
+        console.log(`📉 胜率图更新: 显示第 0-${totalMoves} 手共 ${data.length} 个点`);
+    }
+
+    /**
+     * 更新图表上的当前手数指示器
+     */
+    updateChartIndicator(index) {
+        const indicator = document.getElementById('chartMoveIndicator');
+        if (indicator) {
+            indicator.innerText = `#${index}`;
+        }
+
+        if (this.winrateChart) {
+            // 通过修改 pointRadius 来突出当前手
+            const radii = this.winrateChart.data.labels.map((_, i) => i === index ? 6 : 0);
+            const hoverRadii = this.winrateChart.data.labels.map((_, i) => i === index ? 8 : 5);
+
+            this.winrateChart.data.datasets[0].pointRadius = radii;
+            this.winrateChart.data.datasets[0].pointHoverRadius = hoverRadii;
+            this.winrateChart.data.datasets[0].pointBackgroundColor = this.winrateChart.data.labels.map((_, i) => i === index ? '#e74c3c' : '#3498db');
+
+            this.winrateChart.update('none'); // 使用 'none' 模式避免多余动画
+        }
     }
 }
 

@@ -10,6 +10,34 @@
   <link rel="stylesheet" href="css/SGFAnalysis.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
   <link rel="icon" href="https://zgbl.github.io/tigergo/favicon.ico" type="image/x-icon" />
+  <style>
+    /* 🔥 关键：强制修正棋盘偏移，解决 margin-left: 50px 的遗传问题 */
+    #board {
+      margin-left: 0 !important;
+      margin-right: 0 !important;
+      margin-bottom: 0 !important;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2) !important;
+    }
+
+    /* 优化棋盘占位容器：移除背景，集中于棋盘本身 */
+    .board-placeholder {
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      padding: 10px 0 !important;
+      min-height: auto !important;
+    }
+
+    /* 调整控制按钮间距 */
+    #controls2 {
+      margin-top: 15px !important;
+      margin-bottom: 15px !important;
+    }
+  </style>
+</head>
 
 <body>
   <div id="navbar-placeholder"></div>
@@ -591,8 +619,12 @@
 
       domElement.innerHTML = '';
       console.log('Creating board on element', domElement);
-      domElement.style.width = `${boardSize * cellSize}px`;
-      domElement.style.height = `${boardSize * cellSize}px`;
+      const marginOffset = (options && typeof options.marginOffset === 'number')
+        ? options.marginOffset
+        : cellSize;
+      const boardPhysicalSize = (boardSize - 1) * cellSize + 2 * marginOffset;
+      domElement.style.width = `${boardPhysicalSize}px`;
+      domElement.style.height = `${boardPhysicalSize}px`;
       domElement.style.position = 'relative';
       domElement.style.backgroundColor = backgroundColor;
 
@@ -601,8 +633,8 @@
         // 垂直线
         const vertical = document.createElement('div');
         vertical.style.position = 'absolute';
-        vertical.style.left = `${cellSize / 2 + i * cellSize}px`;
-        vertical.style.top = `${cellSize / 2}px`;
+        vertical.style.left = `${marginOffset + i * cellSize}px`;
+        vertical.style.top = `${marginOffset}px`;
         vertical.style.width = '1px';
         vertical.style.height = `${(boardSize - 1) * cellSize}px`;
         vertical.style.backgroundColor = lineColor;
@@ -612,8 +644,8 @@
         // 水平线
         const horizontal = document.createElement('div');
         horizontal.style.position = 'absolute';
-        horizontal.style.left = `${cellSize / 2}px`;
-        horizontal.style.top = `${cellSize / 2 + i * cellSize}px`;
+        horizontal.style.left = `${marginOffset}px`;
+        horizontal.style.top = `${marginOffset + i * cellSize}px`;
         horizontal.style.width = `${(boardSize - 1) * cellSize}px`;
         horizontal.style.height = '1px';
         horizontal.style.backgroundColor = lineColor;
@@ -629,8 +661,8 @@
           intersection.dataset.row = i;
           intersection.dataset.col = j;
           intersection.style.position = 'absolute';
-          intersection.style.left = `${j * cellSize}px`;
-          intersection.style.top = `${i * cellSize}px`;
+          intersection.style.left = `${marginOffset + j * cellSize - cellSize / 2}px`;
+          intersection.style.top = `${marginOffset + i * cellSize - cellSize / 2}px`;
           intersection.style.width = `${cellSize}px`;
           intersection.style.height = `${cellSize}px`;
           intersection.style.zIndex = '2';
@@ -663,6 +695,13 @@
           intersection.appendChild(starPoint);
         }
       });
+
+      if (typeof window.addBoardLabels === 'function') {
+        window.addBoardLabels(domElement, boardSize, cellSize, {
+          offset: marginOffset,
+          inset: Math.max(2, marginOffset * 0.2)
+        });
+      }
 
       console.log('Board creation completed');
     }

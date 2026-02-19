@@ -86,9 +86,17 @@ class AnalysisDisplay {
             analysisArray: analysisData.rawData?.analysis
         });
 
+        const displayColor = moveData && moveData.color === 'white' ? '白' : '黑';
+        const sgfPos = moveData ? this.convertToSGFPosition(moveData.row, moveData.col) : '未知';
+
         const moveInfo = moveData ?
-            `${this.convertToSGFPosition(moveData.row, moveData.col)} ${moveData.color}` :
+            `${sgfPos} ${displayColor}` :
             '未知着法';
+
+        // 调试：显示坐标转换过程
+        if (moveData) {
+            console.log(`[COORD_SYNC] 转换为SGF: (${moveData.row}, ${moveData.col}) -> ${sgfPos}`);
+        }
 
         const recommendedMove = analysisData.recommendedMove || '无';
         const winRate = analysisData.winRate || '0.0';
@@ -289,12 +297,13 @@ class AnalysisDisplay {
         const analysis = result.analysis || {};
         const move = result.move || {};
 
-        // 🔥 修复：根据手数判断棋子颜色，而不是依赖存储的颜色
-        const playerColor = result.moveNumber % 2 === 1 ? '黑' : '白';
+        // 🔥 修复：使用实际存储的颜色，而不是根据手数强行判断
+        const displayColor = move.color === 'white' ? '白' : '黑';
+        const displayPos = move.position || '未知位置';
 
         entry.innerHTML = `
             <div style="font-weight: bold; color: #495057; margin-bottom: 5px;">
-                第 ${result.moveNumber} 手: ${playerColor}${move.position || '未知位置'}
+                第 ${result.moveNumber} 手: ${displayColor}${displayPos}
             </div>
             <div style="color: #6c757d;">
                 胜率: ${analysis.winRate || '未知'}% | 
@@ -377,14 +386,13 @@ class AnalysisDisplay {
 
         // 关键修正：分析第N手时，实际是分析下第N手之前的局面
         // 所以KataGo返回的胜率是即将下子方的胜率
+        // 🔥 修复：使用实际着法颜色确定下一位落子方，而不是依赖硬编码的奇偶性
         let nextPlayerColor;
-        if (moveNumber) {
-            // 第1手：即将下子的是黑棋（奇数手）
-            // 第2手：即将下子的是白棋（偶数手）
-            // 第3手：即将下子的是黑棋（奇数手）
-            nextPlayerColor = moveNumber % 2 === 1 ? 'black' : 'white';
+        if (moveData && moveData.color) {
+            nextPlayerColor = moveData.color === 'black' ? 'white' : 'black';
+        } else if (moveNumber) {
+            nextPlayerColor = moveNumber % 2 === 1 ? 'white' : 'black';
         } else {
-            // 默认假设是黑棋
             nextPlayerColor = 'black';
         }
 

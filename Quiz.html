@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh">
   <head>
     <meta charset="UTF-8" />
@@ -369,15 +369,15 @@
       function updateStoneSizeCSS(cellSize) {
         document.documentElement.style.setProperty(
           "--stone-size",
-          `${cellSize}px`
+          `${cellSize}px`,
         );
         document.documentElement.style.setProperty(
           "--cell-size",
-          `${cellSize}px`
+          `${cellSize}px`,
         );
         document.documentElement.style.setProperty(
           "--font-size",
-          `${cellSize * 0.4}px`
+          `${cellSize * 0.4}px`,
         );
       }
 
@@ -393,8 +393,14 @@
 
         domElement.innerHTML = "";
         console.log("Creating board on element", domElement);
-        domElement.style.width = `${boardSize * cellSize}px`;
-        domElement.style.height = `${boardSize * cellSize}px`;
+        const marginOffset =
+          options && typeof options.marginOffset === "number"
+            ? options.marginOffset
+            : cellSize;
+
+        const boardPhysicalSize = (boardSize - 1) * cellSize + 2 * marginOffset;
+        domElement.style.width = `${boardPhysicalSize}px`;
+        domElement.style.height = `${boardPhysicalSize}px`;
         domElement.style.position = "relative";
         domElement.style.backgroundColor = backgroundColor;
 
@@ -403,8 +409,8 @@
           // 垂直线
           const vertical = document.createElement("div");
           vertical.style.position = "absolute";
-          vertical.style.left = `${cellSize / 2 + i * cellSize}px`;
-          vertical.style.top = `${cellSize / 2}px`;
+          vertical.style.left = `${marginOffset + i * cellSize}px`;
+          vertical.style.top = `${marginOffset}px`;
           vertical.style.width = "1px";
           vertical.style.height = `${(boardSize - 1) * cellSize}px`;
           vertical.style.backgroundColor = lineColor;
@@ -414,8 +420,8 @@
           // 水平线
           const horizontal = document.createElement("div");
           horizontal.style.position = "absolute";
-          horizontal.style.left = `${cellSize / 2}px`;
-          horizontal.style.top = `${cellSize / 2 + i * cellSize}px`;
+          horizontal.style.left = `${marginOffset}px`;
+          horizontal.style.top = `${marginOffset + i * cellSize}px`;
           horizontal.style.width = `${(boardSize - 1) * cellSize}px`;
           horizontal.style.height = "1px";
           horizontal.style.backgroundColor = lineColor;
@@ -431,8 +437,8 @@
             intersection.dataset.row = i;
             intersection.dataset.col = j;
             intersection.style.position = "absolute";
-            intersection.style.left = `${j * cellSize}px`;
-            intersection.style.top = `${i * cellSize}px`;
+            intersection.style.left = `${marginOffset + j * cellSize - cellSize / 2}px`;
+            intersection.style.top = `${marginOffset + i * cellSize - cellSize / 2}px`;
             intersection.style.width = `${cellSize}px`;
             intersection.style.height = `${cellSize}px`;
             intersection.style.zIndex = "2";
@@ -457,7 +463,7 @@
 
         starPoints.forEach(([row, col]) => {
           const intersection = domElement.querySelector(
-            `[data-row="${row}"][data-col="${col}"]`
+            `[data-row="${row}"][data-col="${col}"]`,
           );
           if (intersection) {
             const starPoint = document.createElement("div");
@@ -473,6 +479,13 @@
             intersection.appendChild(starPoint);
           }
         });
+
+        if (typeof window.addBoardLabels === "function") {
+          window.addBoardLabels(domElement, boardSize, cellSize, {
+            offset: marginOffset,
+            inset: Math.max(2, marginOffset * 0.2),
+          });
+        }
 
         console.log("Board creation completed");
       }

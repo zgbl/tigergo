@@ -1013,10 +1013,15 @@ function createBoard3(options) {
         backgroundColor = '#DEB887'
     } = options;
 
+    const marginOffset = (options && typeof options.marginOffset === 'number')
+        ? options.marginOffset
+        : cellSize;
+
     domElement.innerHTML = '';
     console.log('Line 840, Creating board on element', domElement);
-    domElement.style.width = `${boardSize * cellSize}px`;
-    domElement.style.height = `${boardSize * cellSize}px`;
+    const boardPhysicalSize = (boardSize - 1) * cellSize + 2 * marginOffset;
+    domElement.style.width = `${boardPhysicalSize}px`;
+    domElement.style.height = `${boardPhysicalSize}px`;
     domElement.style.position = 'relative';
     domElement.style.backgroundColor = backgroundColor;
 
@@ -1033,24 +1038,24 @@ function createBoard3(options) {
         // 创建垂直线
         const vertical = document.createElement('div');
         vertical.className = 'line vertical';
-        vertical.style.left = `${cellSize / 2 + i * cellSize}px`;
+        vertical.style.left = `${marginOffset + i * cellSize}px`;
         //console.log("画垂直线：", cellSize/2 + i * cellSize);
         vertical.style.height = `${(boardSize - 1) * cellSize}px`;
         vertical.style.width = '1px';
         vertical.style.backgroundColor = lineColor;
         vertical.style.position = 'absolute';
-        vertical.style.top = `${cellSize / 2}px`;
+        vertical.style.top = `${marginOffset}px`;
         fragment.appendChild(vertical);
 
         // 创建水平线
         const horizontal = document.createElement('div');
         horizontal.className = 'line horizontal';
-        horizontal.style.top = `${cellSize / 2 + i * cellSize}px`;
+        horizontal.style.top = `${marginOffset + i * cellSize}px`;
         horizontal.style.width = `${(boardSize - 1) * cellSize}px`; // 修改这里
         horizontal.style.height = '1px';
         horizontal.style.backgroundColor = lineColor;
         horizontal.style.position = 'absolute';
-        horizontal.style.left = `${cellSize / 2}px`; // 添加这行
+        horizontal.style.left = `${marginOffset}px`; // 添加这行
         fragment.appendChild(horizontal);
     }
 
@@ -1062,8 +1067,8 @@ function createBoard3(options) {
             intersection.dataset.row = i;
             intersection.dataset.col = j;
             intersection.style.position = 'absolute';
-            intersection.style.left = `${j * cellSize}px`;
-            intersection.style.top = `${i * cellSize}px`;
+            intersection.style.left = `${marginOffset + j * cellSize - cellSize / 2}px`;
+            intersection.style.top = `${marginOffset + i * cellSize - cellSize / 2}px`;
             intersection.style.width = `${cellSize}px`;
             intersection.style.height = `${cellSize}px`;
             intersection.addEventListener('click', (e) => handleClick(e, domElement));
@@ -1091,6 +1096,70 @@ function createBoard3(options) {
 
     // 将所有元素一次性添加到 DOM
     domElement.appendChild(fragment);
+
+    if (typeof window.addBoardLabels === 'function') {
+        window.addBoardLabels(domElement, boardSize, cellSize, {
+            offset: marginOffset,
+            inset: Math.max(2, marginOffset * 0.2)
+        });
+    }
+}
+
+if (typeof window.addBoardLabels !== 'function') {
+    window.addBoardLabels = function addBoardLabels(domElement, boardSize, cellSize, options = {}) {
+        if (!domElement) return;
+
+        const {
+            offset = cellSize / 2,
+            inset = cellSize / 8,
+            letters = "ABCDEFGHJKLMNOPQRST".split("")
+        } = options;
+
+        domElement.querySelectorAll('.board-label').forEach((el) => el.remove());
+
+        const labelsFragment = document.createDocumentFragment();
+        const rowBase = boardSize;
+
+        for (let i = 0; i < boardSize; i++) {
+            const letter = letters[i] || '';
+
+            const colLabelTop = document.createElement('div');
+            colLabelTop.className = 'board-label';
+            colLabelTop.textContent = letter;
+            colLabelTop.style.left = `${offset + i * cellSize}px`;
+            colLabelTop.style.top = `${inset}px`;
+            colLabelTop.style.transform = 'translateX(-50%)';
+            labelsFragment.appendChild(colLabelTop);
+
+            const colLabelBottom = document.createElement('div');
+            colLabelBottom.className = 'board-label';
+            colLabelBottom.textContent = letter;
+            colLabelBottom.style.left = `${offset + i * cellSize}px`;
+            colLabelBottom.style.bottom = `${inset}px`;
+            colLabelBottom.style.transform = 'translateX(-50%)';
+            labelsFragment.appendChild(colLabelBottom);
+
+            const rowLabel = rowBase - i;
+
+            const rowLabelLeft = document.createElement('div');
+            rowLabelLeft.className = 'board-label';
+            rowLabelLeft.textContent = rowLabel;
+            rowLabelLeft.style.left = `${inset}px`;
+            rowLabelLeft.style.top = `${offset + i * cellSize}px`;
+            rowLabelLeft.style.transform = 'translateY(-50%)';
+            labelsFragment.appendChild(rowLabelLeft);
+
+            const rowLabelRight = document.createElement('div');
+            rowLabelRight.className = 'board-label';
+            rowLabelRight.textContent = rowLabel;
+            rowLabelRight.style.right = `${inset}px`;
+            rowLabelRight.style.top = `${offset + i * cellSize}px`;
+            rowLabelRight.style.transform = 'translateY(-50%)';
+            labelsFragment.appendChild(rowLabelRight);
+        }
+
+        domElement.appendChild(labelsFragment);
+    };
 }
 
 
