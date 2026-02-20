@@ -101,6 +101,20 @@ A specialized tool for manually creating and refining Go problems from analyzed 
     - **Stop**: Manual stop button.
 5.  **Grading & Saving**:
     - System calculates Winrate Loss / Score Loss for each candidate.
-    - **Best Move**: Automatically marked as Correct Answer.
-    - **Partial Credit**: Other moves graded based on loss magnitude.
+    - **Grading**: System calculates Winrate Loss / Score Loss for each candidate.
+    - **Score Overrides**: Support manual scoring (0-10) for candidate points.
     - **Save**: Stores problem set for "Exam Mode".
+6.2 Data Integrity & Duplication
+1.  **SGF Association**: Every problem must be linked to its source SGF via `sgfHash` and `moveNumber`.
+2.  **Duplicate Check**: Before saving, the editor must check if a problem already exists for the same `sgfHash` and `moveNumber`.
+3.  **User Choice**: If a duplicate is found, prompt the user to:
+    - **Show Original**: View the existing problem.
+    - **Overwrite**: Replace the existing problem with the current one.
+    - **Cancel**: Abandon the new problem creation.
+6.3 Scoring Logic
+1.  **Manual Scoring**: Each candidate point must have a score field (0-10).
+2.  **Default Scores**:
+    - Correct Answer (lowest loss): 10 points.
+    - Near-optimal moves: 8-9 points.
+    - Other moves: 0-7 points based on loss magnitude.
+3.  **UI**: Provide input fields or select boxes for manual score adjustment during the "Grading & Saving" phase.

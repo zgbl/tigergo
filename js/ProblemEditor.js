@@ -64,7 +64,13 @@ class ProblemEditor {
             // 2. 清理编辑器特有的候选点标记 (ABCD)
             this.clearCandidates();
 
-            // 3. 同步更新胜率图指示器
+            // 🔥 渲染上一手棋的小三角标志
+            this.renderLastMoveTriangle();
+
+            // 3. 渲染实战下一手提示
+            this.renderActualNextMoveHint();
+
+            // 4. 同步更新胜率图指示器
             const currentIndex = window.currentMoveIndex !== undefined ? window.currentMoveIndex : this.boardController.currentMoveIndex;
             // 胜率图索引 = 步数 (0对应开始, 1对应第一步)
             const moveNum = Math.max(0, currentIndex + 1);
@@ -551,6 +557,8 @@ class ProblemEditor {
         this.candidates = [];
         this.renderCandidates();
         this.updateBoardOverlay();
+        // 清理实战下一手提示
+        document.querySelectorAll('.actual-move-hint').forEach(el => el.remove());
     }
 
     /**
@@ -573,38 +581,6 @@ class ProblemEditor {
         const boardIndex = moveIndex - 2;
         if (this.boardController) {
             this.boardController.goToMove(boardIndex);
-        }
-
-        // 🔥 清除旧的三角标记
-        document.querySelectorAll('.last-move-triangle').forEach(el => el.remove());
-
-        // 🔥 在上一手的棋子上添加三角标记 (即第 moveIndex - 1 手)
-        if (this.gameData && this.gameData.moves && boardIndex >= 0) {
-            const lastMove = this.gameData.moves[boardIndex];
-            if (lastMove && lastMove.row !== undefined && lastMove.col !== undefined) {
-                const intersection = document.querySelector(
-                    `[data-row="${lastMove.row}"][data-col="${lastMove.col}"]`
-                );
-                if (intersection) {
-                    const triangle = document.createElement('div');
-                    triangle.className = 'last-move-triangle';
-                    const isBlack = lastMove.color === 'black';
-                    const triColor = isBlack ? '#ffffff' : '#000000';
-                    triangle.style.cssText = `
-                        position: absolute;
-                        top: 50%; left: 50%;
-                        transform: translate(-50%, -50%);
-                        width: 0; height: 0;
-                        border-left: 7px solid transparent;
-                        border-right: 7px solid transparent;
-                        border-bottom: 12px solid ${triColor};
-                        z-index: 15;
-                        pointer-events: none;
-                        filter: drop-shadow(0 0 1px rgba(0,0,0,0.3));
-                    `;
-                    intersection.appendChild(triangle);
-                }
-            }
         }
 
         // 🔥 显示局面信息面板
@@ -658,10 +634,59 @@ class ProblemEditor {
         if (this.candidates.length >= labels.length) return;
 
         const label = labels[this.candidates.length];
-        this.candidates.push({ row, col, label });
+        // 🔥 修复：初始分数为 0，等到 AI 验证完再统一评分
+        const score = 0;
+        this.candidates.push({ row, col, label, score });
 
         this.renderCandidates();
         this.updateBoardOverlay();
+    }
+
+    /**
+     * 更新候选点的分数
+     */
+    updateCandidateScore(label, score) {
+        const candidate = this.candidates.find(c => c.label === label);
+        if (candidate) {
+            candidate.score = parseInt(score, 10);
+            candidate.manualScore = true; // 🔥 标记为手动修改过，重新评分时可选择保留
+            console.log(`Updated candidate ${label} score to ${candidate.score}`);
+        }
+    }
+
+    /**
+     * 根据分析结果重新计算评分
+     */
+    recalculateScores() {
+        console.log('📊 开始重新校准候选点评分...');
+
+        // 过滤掉没有分析结果的点
+        const analyzed = this.candidates.filter(c => c.aiResult && c.aiResult.lossPercent !== undefined);
+        if (analyzed.length === 0) return;
+
+        // 按胜率损失从小到大排序
+        const sorted = [...analyzed].sort((a, b) => a.aiResult.lossPercent - b.aiResult.lossPercent);
+
+        // 重新赋值分值
+        this.candidates.forEach(c => {
+            // 如果用户手动改过分，我们可以选择保留，或者弹出提示。这里暂且总是根据 AI 更新
+            const rank = sorted.indexOf(c);
+            if (rank === 0) {
+                c.score = 10;
+            } else if (rank !== -1) {
+                // 根据损失程度给分 (0-8)
+                const loss = c.aiResult.lossPercent;
+                if (loss < 2.0) c.score = 8;
+                else if (loss < 5.0) c.score = 6;
+                else if (loss < 10.0) c.score = 4;
+                else if (loss < 20.0) c.score = 2;
+                else c.score = 0;
+            } else {
+                c.score = 0;
+            }
+        });
+
+        this.renderCandidates();
     }
 
     renderCandidates() {
@@ -695,9 +720,16 @@ class ProblemEditor {
             } else if (c.aiResult) {
                 const r = c.aiResult;
                 const wrColor = r.lossPercent > 5 ? '#e74c3c' : r.lossPercent > 2 ? '#e67e22' : '#27ae60';
+
+                // 将胜率转换为当前下棋方的视角
+                let displayWR = r.winRate;
+                if (nextColor === 'W' && displayWR !== undefined) {
+                    displayWR = parseFloat((100 - displayWR).toFixed(1));
+                }
+
                 statsHtml = `
                     <span style="color:${wrColor}; font-weight:bold;">
-                        胜率: ${r.winRate}%
+                        胜率: ${displayWR}%
                     </span><br>
                     <span style="color:#555; font-size:11px;">
                         损失: <strong style="color:${wrColor}">-${r.lossPercent}%</strong>
@@ -710,6 +742,9 @@ class ProblemEditor {
                 }
             }
 
+            const winRateLoss = c.aiResult ? c.aiResult.lossPercent : 0;
+            const score = c.score !== undefined ? c.score : 0;
+
             return `
                 <li class="candidate-item" id="candidate-${c.label}">
                     <span class="candidate-label">${c.label}</span>
@@ -718,6 +753,11 @@ class ProblemEditor {
                         ${statsHtml}
                     </span>
                     <div class="candidate-actions">
+                        <div class="candidate-score-edit">
+                            <label>评分:</label>
+                            <input type="number" class="score-input" min="0" max="10" value="${score}" 
+                                   onchange="editor.updateCandidateScore('${c.label}', this.value)">
+                        </div>
                         <button class="action-btn delete-btn" onclick="editor.removeCandidate('${c.label}')">
                             <i class="fas fa-trash"></i>
                         </button>
@@ -737,7 +777,6 @@ class ProblemEditor {
         // Clear existing custom candidates
         document.querySelectorAll('.manual-candidate').forEach(el => el.remove());
 
-        const board = document.getElementById('board');
         this.candidates.forEach(c => {
             const intersection = document.querySelector(`[data-row="${c.row}"][data-col="${c.col}"]`);
             if (intersection) {
@@ -758,6 +797,83 @@ class ProblemEditor {
                 intersection.appendChild(dot);
             }
         });
+    }
+
+    /**
+     * 在当前局面的最后一手添加小三角标志
+     */
+    renderLastMoveTriangle() {
+        // 🔥 清除旧的三角标记
+        document.querySelectorAll('.last-move-triangle').forEach(el => el.remove());
+
+        const currentIndex = window.currentMoveIndex !== undefined ? window.currentMoveIndex : (this.boardController ? this.boardController.currentMoveIndex : -1);
+
+        if (!this.gameData || !this.gameData.moves || currentIndex < 0) return;
+
+        const lastMove = this.gameData.moves[currentIndex];
+        if (lastMove && lastMove.row !== undefined && lastMove.col !== undefined && !lastMove.pass) {
+            const intersection = document.querySelector(`[data-row="${lastMove.row}"][data-col="${lastMove.col}"]`);
+            if (intersection && intersection.querySelector('.stone')) {
+                const triangle = document.createElement('div');
+                triangle.className = 'last-move-triangle';
+                const isBlack = lastMove.color === 'black' || lastMove.color === 'B';
+                const triColor = isBlack ? '#ffffff' : '#000000';
+                triangle.style.cssText = `
+                    position: absolute;
+                    top: 50%; left: 50%;
+                    transform: translate(-50%, -50%);
+                    width: 0; height: 0;
+                    border-left: 7px solid transparent;
+                    border-right: 7px solid transparent;
+                    border-bottom: 12px solid ${triColor};
+                    z-index: 15;
+                    pointer-events: none;
+                    filter: drop-shadow(0 0 1px rgba(0,0,0,0.3));
+                `;
+                intersection.appendChild(triangle);
+            }
+        }
+    }
+
+    /**
+     * 渲染实战下一手提示
+     */
+    renderActualNextMoveHint() {
+        // 先清理旧的提示
+        document.querySelectorAll('.actual-move-hint').forEach(el => el.remove());
+
+        const currentIndex = window.currentMoveIndex !== undefined ? window.currentMoveIndex : this.boardController.currentMoveIndex;
+
+        // 确保数据存在且有下一手
+        if (!this.gameData || !this.gameData.moves || currentIndex + 1 >= this.gameData.moves.length) {
+            return;
+        }
+
+        const nextMove = this.gameData.moves[currentIndex + 1];
+
+        // 如果是虚着，不显示
+        if (!nextMove || nextMove.pass || nextMove.row === undefined || nextMove.col === undefined) {
+            console.log('Next move is pass or invalid, skipping hint');
+            return;
+        }
+
+        const intersection = document.querySelector(`[data-row="${nextMove.row}"][data-col="${nextMove.col}"]`);
+        if (intersection) {
+            // 检查该位置是否已有棋子 (通常应该没有，除非是回退局面)
+            if (intersection.querySelector('.stone')) {
+                return;
+            }
+
+            const hint = document.createElement('div');
+            hint.className = 'actual-move-hint';
+            hint.title = `实战下一手: ${this.rowColToKataGo(nextMove.row, nextMove.col)}`;
+
+            // 内部不放任何图标，保持清晰
+            hint.innerHTML = '';
+
+            intersection.appendChild(hint);
+            console.log(`Rendered actual move hint at ${nextMove.row}, ${nextMove.col}`);
+        }
     }
 
     /**
@@ -782,20 +898,32 @@ class ProblemEditor {
     }
 
     /**
+     * 检查该局面是否已有题目
+     */
+    async checkExistence(sgfHash, moveNumber) {
+        try {
+            const apiUrl = `${CONFIG.API_VERCEL_NEXTJS_BASE_URL}/api/testQuestions?sgfHash=${sgfHash}&moveNumber=${moveNumber}`;
+            const response = await fetch(apiUrl);
+            if (!response.ok) return null;
+
+            const result = await response.json();
+            if (result.success && result.data && result.data.questions && result.data.questions.length > 0) {
+                return result.data.questions[0];
+            }
+            return null;
+        } catch (error) {
+            console.error('🔍 检查题目重复失败:', error);
+            return null;
+        }
+    }
+
+    /**
      * 保存题目到数据库
      */
     async saveProblem() {
         if (this.candidates.length < 2) {
             alert('请至少选择 2 个候选点（一个最佳点，几个干扰点）');
             return;
-        }
-
-        // 检查是否所有候选点都有 AI 结果
-        const missingAI = this.candidates.find(c => !c.aiResult);
-        if (missingAI) {
-            if (!confirm('部分候选点缺少 AI 验证数据，是否仍要保存？')) {
-                return;
-            }
         }
 
         const saveBtn = document.getElementById('saveProblemBtn');
@@ -808,11 +936,29 @@ class ProblemEditor {
             const currentMoveIndex = this.boardController.currentMoveIndex;
             const moveNumber = currentMoveIndex + 1;
             const boardState = this.getBoardStateAtCurrentMove();
-
-            // 确定下一手颜色 (与 aiVerifyCandidates 逻辑一致)
             const nextColor = (currentMoveIndex + 1) % 2 === 0 ? 'B' : 'W';
 
-            // 准备候选点数据，适配后端结构
+            // 🔥 1. 检查是否已存在该局面的题目
+            console.log(`🔍 检查重复题目: hash=${this.gameId}, move=${moveNumber}`);
+            const existingQuestion = await this.checkExistence(this.gameId, moveNumber);
+            let overwrite = false;
+
+            if (existingQuestion) {
+                const choice = confirm(`⚠️ 该局面（第${moveNumber}手）已存在题目：\n"${existingQuestion.questionText}"\n\n是否覆盖原有题目？\n[确定] 覆盖原有题目\n[取消] 放弃保存`);
+                if (!choice) {
+                    console.log('🚫 用户取消保存');
+                    // 重置按钮状态
+                    if (saveBtn) {
+                        saveBtn.disabled = false;
+                        saveBtn.innerHTML = '<i class="fas fa-save"></i> 保存题目';
+                    }
+                    return;
+                }
+                overwrite = true;
+                console.log('🔄 进入覆盖模式');
+            }
+
+            // 准备候选点数据
             const formattedCandidates = this.candidates.map(c => {
                 const r = c.aiResult || {};
                 return {
@@ -825,11 +971,12 @@ class ProblemEditor {
                     winRateLoss: r.lossPercent || 0,
                     scoreLoss: r.scoreDiff || 0,
                     type: (r.lossPercent !== undefined && r.lossPercent < 1.0) ? 'best' : 'alternate',
-                    description: (r.lossPercent !== undefined && r.lossPercent < 1.0) ? '最佳选点' : '次优选点'
+                    description: (r.lossPercent !== undefined && r.lossPercent < 1.0) ? '最佳选点' : '次优选点',
+                    score: c.score !== undefined ? c.score : 0 // 🔥 保存时包含手动评分
                 };
             });
 
-            // 自动寻找正确答案（损失最小的点）
+            // 自动寻找正确答案
             let bestCandidate = formattedCandidates.reduce((prev, curr) => {
                 return (prev.winRateLoss < curr.winRateLoss) ? prev : curr;
             });
@@ -837,11 +984,10 @@ class ProblemEditor {
             const description = document.getElementById('questionText')?.value || `第${moveNumber}手，${nextColor === 'B' ? '黑' : '白'}方下一步最佳选择是？`;
             const difficulty = document.getElementById('difficultySelect')?.value || '3';
 
-            // 构建最终 Payload
-            // 🔥 修复：增加 id 和 sgfHash (question 内部也需要)
+            // 构建 Payload
             const payload = {
                 questions: [{
-                    id: `${this.gameId}_${moveNumber}`,
+                    id: existingQuestion ? existingQuestion.id : `${this.gameId}_${moveNumber}`,
                     sgfHash: this.gameId,
                     sgfFilename: this.gameData?.filename || 'manual_edit',
                     moveNumber: moveNumber,
@@ -859,17 +1005,16 @@ class ProblemEditor {
                     questionText: description,
                     title: description,
                     source: this.gameData?.filename || '棋谱编辑器',
-                    createdAt: new Date().toISOString()
+                    createdAt: existingQuestion ? existingQuestion.createdAt : new Date().toISOString()
                 }],
                 metadata: {
                     sgfHash: this.gameId,
                     sgfFilename: this.gameData?.filename,
                     totalQuestions: 1,
                     source: 'problem_editor'
-                }
+                },
+                overwrite: overwrite // 🔥 传递覆盖标志
             };
-
-            console.log('🚀 发送保存请求:', payload);
 
             const apiUrl = `${CONFIG.API_VERCEL_NEXTJS_BASE_URL}/api/testQuestions`;
             const response = await fetch(apiUrl, {
@@ -887,9 +1032,8 @@ class ProblemEditor {
 
             const result = await response.json();
             console.log('✅ 保存成功:', result);
-            alert('题目保存成功！');
+            alert(overwrite ? '题目覆盖成功！' : '题目保存成功！');
 
-            // 🔥 保存成功后清理候选点，准备下一题
             this.clearCandidates();
 
         } catch (error) {
@@ -976,8 +1120,9 @@ class ProblemEditor {
         if (this.candidates.length === 0) {
             console.log(`🚀 进入 AI 发现模式, 分析局面: 第 ${currentMoveIndex + 1} 手`);
             try {
+                // 🔥 修复：使用 baseMoves.length 确保分析当前局面的全部着法
                 const result = await this.kataGoAPI.analyzePosition(
-                    baseMoves, currentMoveIndex, null, 'deep'
+                    baseMoves, baseMoves.length, null, 'deep'
                 );
 
                 if (result.success && result.data && result.data.analysis) {
@@ -994,6 +1139,7 @@ class ProblemEditor {
                         return {
                             label: labels[idx],
                             row, col,
+                            score: 0, // 🔥 初始给 0
                             aiResult: {
                                 winRate: wr,
                                 score: sc,
@@ -1031,8 +1177,9 @@ class ProblemEditor {
         let baseScore = null;
         try {
             console.log('🔍 分析基准局面...');
+            // 🔥 修复：使用 baseMoves.length 确保分析基准局面的全部着法
             const baseResult = await this.kataGoAPI.analyzePosition(
-                baseMoves, currentMoveIndex, null, 'deep'
+                baseMoves, baseMoves.length, null, 'deep'
             );
             if (baseResult.success) {
                 const baseData = baseResult.data;
@@ -1068,10 +1215,27 @@ class ProblemEditor {
                 // 构建着法序列：基础着法 + 候选着法
                 const testMoves = [...baseMoves, [nextColor, kataGoCoord]];
 
-                // 调用 KataGo 分析（用 deep 模式，约10-15秒）
+                // 🔥 记录开始时间以确保起码分析达到配置时长
+                const startTime = Date.now();
+                const analysisDepth = 'extreme'; // 默认使用极端模式验证选点
+                const analysisConfig = this.kataGoAPI.getAnalysisConfig(analysisDepth);
+                const minDuration = analysisConfig.minDuration || 15000;
+
+                console.log(`⏱️ [${candidate.label}] 开始深度验证 (目标 ${minDuration / 1000}s)...`);
+
+                // 调用 KataGo 分析 (使用配置的深度)
+                // 🔥 修复：使用 testMoves.length 确保包含候选这一手
                 const result = await this.kataGoAPI.analyzePosition(
-                    testMoves, testMoves.length - 1, null, 'deep'
+                    testMoves, testMoves.length, null, analysisDepth
                 );
+
+                // 🔥 计算已用时间并强制补足配置时长
+                const elapsed = Date.now() - startTime;
+                if (elapsed < minDuration) {
+                    const waitTime = minDuration - elapsed;
+                    console.log(`⏳ [${candidate.label}] 分析过快 (${(elapsed / 1000).toFixed(1)}s), 补足等待 ${(waitTime / 1000).toFixed(1)}s...`);
+                    await new Promise(resolve => setTimeout(resolve, waitTime));
+                }
 
                 candidate.verifying = false;
 
@@ -1139,6 +1303,9 @@ class ProblemEditor {
             this.renderCandidates();
             this.updateBoardOverlay();
         }
+
+        // 🔥 所有候选点验证完成后，重新计算评分 (根据实际 AI 损失排名)
+        this.recalculateScores();
 
         // 完成
         this.isVerifying = false;

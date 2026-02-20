@@ -1,76 +1,83 @@
 :root {
-    --board-size: 19;
-    --board-color: #deb887;
-    --line-color: #000;
-    --cell-size: 28px;  /* 添加cell-size作为基础单位 */
-    --stone-size: 28px;
-    --font-size: 12px;
-    --small-stone-size: 15px;
-    --small-font-size: 8px;
-  }
-  
-  /* 主棋盘样式 */
-  #board {
-    display: grid;
-    flex: 0 0 auto;
-    grid-template-columns: repeat(var(--board-size), 1fr);
-    grid-template-rows: repeat(var(--board-size), 1fr);
-    background-image: url('../images/woodboard1.jpg');
-    gap: 0;
-    width: calc(var(--board-size) * var(--cell-size));  /* 使用cell-size */
-    height: calc(var(--board-size) * var(--cell-size)); /* 使用cell-size */
-    background-color: var(--board-color);
-    border: 2px solid var(--line-color);
-    position: relative;
-    z-index: 1;
-    margin-bottom: 10px;
-    margin-left: 50px;  
-  }
+  --board-size: 19;
+  --board-color: #deb887;
+  --line-color: #000;
+  --cell-size: 28px;
+  /* 添加cell-size作为基础单位 */
+  --stone-size: 28px;
+  --font-size: 12px;
+  --small-stone-size: 15px;
+  --small-font-size: 8px;
+}
 
-  .board {
-    display: grid;
-    grid-template-columns: repeat(19, 1fr);
-    grid-template-rows: repeat(19, 1fr);
-    position: relative;
-  }
+/* 主棋盘样式 */
+#board {
+  display: grid;
+  flex: 0 0 auto;
+  grid-template-columns: repeat(var(--board-size), 1fr);
+  grid-template-rows: repeat(var(--board-size), 1fr);
+  background-image: url('../images/woodboard1.jpg');
+  gap: 0;
+  width: calc(var(--board-size) * var(--cell-size));
+  /* 使用cell-size */
+  height: calc(var(--board-size) * var(--cell-size));
+  /* 使用cell-size */
+  background-color: var(--board-color);
+  border: 2px solid var(--line-color);
+  position: relative;
+  z-index: 1;
+  margin-bottom: 10px;
+  margin-left: 50px;
+}
 
-  .board::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: 
-      linear-gradient(#000 1px, transparent 1px),
-      linear-gradient(90deg, #000 1px, transparent 1px);
-    background-size: calc(100% / 18) calc(100% / 18);
-  }
-  
-  .intersection {
-    position: relative;
-    z-index: 1;
-  }
+.board {
+  display: grid;
+  grid-template-columns: repeat(19, 1fr);
+  grid-template-rows: repeat(19, 1fr);
+  position: relative;
+}
 
-  .line {
-    position: absolute;
-    background-color: var(--line-color);
-  }
-  
-  .vertical {
-    width: 1px;
-    height: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-  }
-  
-  .horizontal {
-    width: 100%;
-    height: 1px;
-    top: 50%;
-    transform: translateY(-50%);
-  }
-  
-  .stone {
+.board::before {
+  content: '';
   position: absolute;
-  top: 50%; left: 50%;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background:
+    linear-gradient(#000 1px, transparent 1px),
+    linear-gradient(90deg, #000 1px, transparent 1px);
+  background-size: calc(100% / 18) calc(100% / 18);
+}
+
+.intersection {
+  position: relative;
+  z-index: 1;
+}
+
+.line {
+  position: absolute;
+  background-color: var(--line-color);
+}
+
+.vertical {
+  width: 1px;
+  height: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.horizontal {
+  width: 100%;
+  height: 1px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.stone {
+  position: absolute;
+  top: 50%;
+  left: 50%;
   transform: translate(-50%, -50%);
   /* 🔥 修复：统一使用 cell-size 计算棋子大小 */
   width: calc(var(--cell-size) * 0.9);
@@ -78,164 +85,173 @@
   border-radius: 50%;
   background-size: cover;
   z-index: 3;
-  }
+}
 
-  .move-number {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    /* 🔥 修复：统一使用 cell-size 计算 */
-    width: calc(var(--cell-size) * 0.9);
-    height: calc(var(--cell-size) * 0.9);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    /* 🔥 修复：字体大小也使用 cell-size 计算 */
-    font-size: calc(var(--cell-size) * 0.4);
-    font-weight: bold;
-    z-index: 2;
-    color: white;
-  }
-    
-  .stone.black {
-    /*background-color: black; */
-    background-image: url('../images/black_64.png')
-  }
-  
-  .stone.white {
-    /*background-color: rgb(15, 10, 10); */
-    background-image: url('../images/white_64.png');
-    /*border: 1px solid black; */  /* 棋子改成图片，白子不要边框 */  
-  }
-  
-  .star-point {
-    width: calc(var(--cell-size) * 0.2);  /* 使用cell-size */
-    height: calc(var(--cell-size) * 0.2); /* 使用cell-size */
-    background-color: var(--line-color);
-    border-radius: 50%;
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    pointer-events: none;  /*使星位元素不能被点击*/
-    z-index: 2;
-  }
-  
-  .move-number {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    /*width: calc(var(--cell-size) * 0.9);  使用cell-size Trae改的，造成number显示位置偏移 */
-    /*height: calc(var(--cell-size) * 0.9);  使用cell-size */
-    width: calc(var(--stone-size) * 1px);  /* 恢复去年设置 2025.8.3  */
-    height: calc(var(--stone-size) * 1px);  /* 恢复去年设置 2025.8.3  */
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: var(--font-size);
-    font-weight: bold;
-    z-index: 2;
-    color: white;
-  }
-  
-  .stone.white .move-number {
-    color: black;
-  }
-  
-  /* 小棋盘样式 */
-  .small-board-container {
-    max-width: 100%;
-    overflow-x: auto;
-  }
-  
-  .small-board {
-    display: grid;
-    grid-template-columns: repeat(var(--board-size), 1fr);
-    grid-template-rows: repeat(var(--board-size), 1fr);
-    gap: 0;
-    width: calc(var(--board-size) * var(--small-stone-size));
-    height: calc(var(--board-size) * var(--small-stone-size));
-    background-color: var(--board-color);
-    border: 1px solid var(--line-color);
-    position: relative;
-  }
-  
-  .small-board .intersection {
-    position: relative;
-    width: var(--small-stone-size);
-    height: var(--small-stone-size);
-    /*transform: translate(-50%, -50%); */
-  }
-  
-  .small-board .line {
-    position: absolute;
-    background-color: var(--line-color);
-  }
-  
-  .small-board .vertical {
-    width: 1px;
-    height: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-  }
-  
-  .small-board .horizontal {
-    width: 100%;
-    height: 1px;
-    top: 50%;
-    transform: translateY(-50%);
-  }
-  
-  .small-board .stone {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: var(--small-stone-size);
-    height: var(--small-stone-size);
-  }
-  
-  .small-board .move-number {
-    font-size: var(--small-font-size);
-  }
-  
-  .small-board-controls {
-    margin-top: 10px;
-    text-align: center;
-  }
-  
-  .small-board-controls button {
-    margin: 0 5px;
-  }
+.move-number {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  /* 🔥 修复：统一使用 cell-size 计算 */
+  width: calc(var(--cell-size) * 0.9);
+  height: calc(var(--cell-size) * 0.9);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  /* 🔥 修复：字体大小也使用 cell-size 计算 */
+  font-size: calc(var(--cell-size) * 0.4);
+  font-weight: bold;
+  z-index: 2;
+  color: white;
+}
+
+.stone.black {
+  /*background-color: black; */
+  background-image: url('../images/black_64.png')
+}
+
+.stone.white {
+  /*background-color: rgb(15, 10, 10); */
+  background-image: url('../images/white_64.png');
+  /*border: 1px solid black; */
+  /* 棋子改成图片，白子不要边框 */
+}
+
+.star-point {
+  width: calc(var(--cell-size) * 0.2);
+  /* 使用cell-size */
+  height: calc(var(--cell-size) * 0.2);
+  /* 使用cell-size */
+  background-color: var(--line-color);
+  border-radius: 50%;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  /*使星位元素不能被点击*/
+  z-index: 2;
+}
+
+.move-number {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  /*width: calc(var(--cell-size) * 0.9);  使用cell-size Trae改的，造成number显示位置偏移 */
+  /*height: calc(var(--cell-size) * 0.9);  使用cell-size */
+  width: calc(var(--stone-size) * 1px);
+  /* 恢复去年设置 2025.8.3  */
+  height: calc(var(--stone-size) * 1px);
+  /* 恢复去年设置 2025.8.3  */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: var(--font-size);
+  font-weight: bold;
+  z-index: 2;
+  color: white;
+}
+
+.stone.white .move-number {
+  color: black;
+}
+
+/* 小棋盘样式 */
+.small-board-container {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.small-board {
+  display: grid;
+  grid-template-columns: repeat(var(--board-size), 1fr);
+  grid-template-rows: repeat(var(--board-size), 1fr);
+  gap: 0;
+  width: calc(var(--board-size) * var(--small-stone-size));
+  height: calc(var(--board-size) * var(--small-stone-size));
+  background-color: var(--board-color);
+  border: 1px solid var(--line-color);
+  position: relative;
+}
+
+.small-board .intersection {
+  position: relative;
+  width: var(--small-stone-size);
+  height: var(--small-stone-size);
+  /*transform: translate(-50%, -50%); */
+}
+
+.small-board .line {
+  position: absolute;
+  background-color: var(--line-color);
+}
+
+.small-board .vertical {
+  width: 1px;
+  height: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.small-board .horizontal {
+  width: 100%;
+  height: 1px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.small-board .stone {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: var(--small-stone-size);
+  height: var(--small-stone-size);
+}
+
+.small-board .move-number {
+  font-size: var(--small-font-size);
+}
+
+.small-board-controls {
+  margin-top: 10px;
+  text-align: center;
+}
+
+.small-board-controls button {
+  margin: 0 5px;
+}
 
 
-  .control-btn {
-    width: calc(var(--cell-size) * 1.8);  /* 使用cell-size */
-    height: calc(var(--cell-size) * 1.8); /* 使用cell-size */
-    font-size: calc(var(--font-size) * 1.2); /* 调整字体比例 */
-    margin: 5px;
-    padding: 5px;
-    border: none;
-    border-radius: 5px;
-    background-color: #f0f0f059;
-    color: #050404;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    content: attr(title);
-  }
-  
-  .control-btn:hover {
-    background-color: #b7b4b4;
-  }
-  
-  /* 控制图标大小 
+.control-btn {
+  width: calc(var(--cell-size) * 1.8);
+  /* 使用cell-size */
+  height: calc(var(--cell-size) * 1.8);
+  /* 使用cell-size */
+  font-size: calc(var(--font-size) * 1.2);
+  /* 调整字体比例 */
+  margin: 5px;
+  padding: 5px;
+  border: none;
+  border-radius: 5px;
+  background-color: #f0f0f059;
+  color: #050404;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  content: attr(title);
+}
+
+.control-btn:hover {
+  background-color: #b7b4b4;
+}
+
+/* 控制图标大小 
   .control-btn i {
     font-size: 30px;
   }  */
-  
-  /* 响应式设计 
+
+/* 响应式设计 
   @media (max-width: 1024px) {
     .control-btn {
       width: 30px;
@@ -247,15 +263,55 @@
       font-size: 16px;
     }
   } */
-  /* 棋盘坐标标签 */
-  .board-label {
-    position: absolute;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: calc(var(--cell-size) * 0.4);
-    font-weight: bold;
-    color: #333;
-    pointer-events: none;
-    z-index: 2;
+/* 棋盘坐标标签 */
+.board-label {
+  position: absolute;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: calc(var(--cell-size) * 0.4);
+  font-weight: bold;
+  color: #333;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* 实战下一手提示样式 */
+.actual-move-hint {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: calc(var(--cell-size) * 1.05);
+  /* 稍微大一点，包围住候选点 */
+  height: calc(var(--cell-size) * 1.05);
+  border: 2px solid #d500f9;
+  /* 紫色实线 */
+  background-color: transparent;
+  /* 移除透明背景，避免干扰数字 */
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 15;
+  pointer-events: none;
+  box-shadow: 0 0 5px rgba(213, 0, 249, 0.4);
+  animation: pulse-ring 2s infinite;
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.6;
   }
+
+  50% {
+    transform: translate(-50%, -50%) scale(1.05);
+    opacity: 1;
+  }
+
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.6;
+  }
+}

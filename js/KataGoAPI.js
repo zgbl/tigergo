@@ -211,6 +211,10 @@ class KataGoAPI {
 
             // 🔥 根据分析深度设置访问次数和其他参数
             const analysisConfig = this.getAnalysisConfig(analysisDepth);
+            console.log(`🔍 分析配置 (${analysisDepth}):`, analysisConfig);
+
+            // 如果提供了 explicitMaxTime，优先使用，否则使用配置中的
+            const maxTimeSeconds = analysisConfig.maxTime || 30;
 
             // 🔥 增强的请求体格式，包含分析参数
             const payload = {
@@ -218,6 +222,7 @@ class KataGoAPI {
                 moves: apiMoves,
                 // 🔥 添加分析参数以获取更多候选变化
                 maxVisits: analysisConfig.maxVisits,
+                maxTime: maxTimeSeconds, // 🔥 发送 maxTime 给后端/KataGo
                 analysisWideRootNoise: analysisConfig.wideRootNoise,
                 includeOwnership: true,
                 includeMovesOwnership: false,
@@ -237,7 +242,9 @@ class KataGoAPI {
             console.log(`🔍 API 请求 payload:`, payload);
 
             let finalSignal;
-            const timeoutMs = analysisDepth === 'ultra' ? 60000 : analysisDepth === 'deep' ? 45000 : 30000;
+            // 🔥 使用配置中的 maxTime 加上缓冲区作为网络超时
+            const buffer = 15000;
+            const timeoutMs = (maxTimeSeconds * 1000) + buffer;
 
             if (signal && signal.aborted) {
                 // 🔥 信号已中断，直接返回失败，不要 throw
@@ -308,30 +315,22 @@ class KataGoAPI {
 
     // 🔥 新增：根据分析深度获取分析配置
     getAnalysisConfig(analysisDepth) {
-        const configs = {
-            fast: {
-                maxVisits: 400,
-                wideRootNoise: 0.02,
-                reportInterval: 100
-            },
-            normal: {
-                maxVisits: 800,
-                wideRootNoise: 0.04,
-                reportInterval: 200
-            },
-            deep: {
-                maxVisits: 1600,
-                wideRootNoise: 0.06,
-                reportInterval: 400
-            },
-            ultra: {
-                maxVisits: 3200,
-                wideRootNoise: 0.08,
-                reportInterval: 800
-            }
+        // 优先从全局配置获取
+        const modes = window.CONFIG?.KATAGO_ANALYSIS_MODES;
+        if (modes && modes[analysisDepth]) {
+            return modes[analysisDepth];
+        }
+
+        // 后备本地默认配置 (以防 CONFIG 未加载)
+        const defaultConfigs = {
+            fast: { maxVisits: 400, maxTime: 5, wideRootNoise: 0.02, reportInterval: 100 },
+            normal: { maxVisits: 800, maxTime: 10, wideRootNoise: 0.04, reportInterval: 200 },
+            deep: { maxVisits: 1600, maxTime: 20, wideRootNoise: 0.06, reportInterval: 400 },
+            ultra: { maxVisits: 3200, maxTime: 30, wideRootNoise: 0.08, reportInterval: 800 },
+            extreme: { maxVisits: 50000, maxTime: 60, wideRootNoise: 0.10, reportInterval: 1000 }
         };
 
-        return configs[analysisDepth] || configs.normal;
+        return defaultConfigs[analysisDepth] || defaultConfigs.normal;
     }
 
     // 格式化分析结果

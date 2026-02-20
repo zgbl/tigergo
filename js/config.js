@@ -59,6 +59,50 @@ const KATAGO_ENGINES = {
     }
 };
 
+// 🔥 新增：KataGo 分析深度配置 (统一管理 hardcoded 参数)
+const KATAGO_ANALYSIS_MODES = {
+    fast: {
+        maxVisits: 400,
+        maxTime: 5,
+        minDuration: 2000, // UI 最小展示时长 (ms)
+        wideRootNoise: 0.02,
+        reportInterval: 100,
+        delay: 2000 // AnalysisEngine 步间延迟 (ms)
+    },
+    normal: {
+        maxVisits: 800,
+        maxTime: 10,
+        minDuration: 5000,
+        wideRootNoise: 0.04,
+        reportInterval: 200,
+        delay: 5000
+    },
+    deep: {
+        maxVisits: 1600,
+        maxTime: 20,
+        minDuration: 10000,
+        wideRootNoise: 0.06,
+        reportInterval: 400,
+        delay: 8000
+    },
+    ultra: {
+        maxVisits: 3200,
+        maxTime: 30,
+        minDuration: 15000,
+        wideRootNoise: 0.08,
+        reportInterval: 800,
+        delay: 10000
+    },
+    extreme: {
+        maxVisits: 50000,
+        maxTime: 60,
+        minDuration: 15000,
+        wideRootNoise: 0.10,
+        reportInterval: 1000,
+        delay: 15000
+    }
+};
+
 // 根据环境设置配置
 function getConfig() {
     const env = detectEnvironment();
@@ -79,6 +123,7 @@ function getConfig() {
             KATAGO_PROXY_URL: "http://localhost:3000/api/katago",
             // 🔥 新增：引擎选项
             KATAGO_ENGINES: KATAGO_ENGINES,
+            KATAGO_ANALYSIS_MODES: KATAGO_ANALYSIS_MODES,
             ENV: "local"
         },
         github: {
@@ -92,6 +137,7 @@ function getConfig() {
             KATAGO_PROXY_URL: "https://blackricegobackend2-nextjs.vercel.app/api/katago",
             // 🔥 新增：引擎选项
             KATAGO_ENGINES: KATAGO_ENGINES,
+            KATAGO_ANALYSIS_MODES: KATAGO_ANALYSIS_MODES,
             ENV: "github"
         },
         production: {
@@ -105,6 +151,7 @@ function getConfig() {
             KATAGO_PROXY_URL: "https://blackricegobackend2-nextjs.vercel.app/api/katago",
             // 🔥 新增：引擎选项
             KATAGO_ENGINES: KATAGO_ENGINES,
+            KATAGO_ANALYSIS_MODES: KATAGO_ANALYSIS_MODES,
             ENV: "production"
         }
     };

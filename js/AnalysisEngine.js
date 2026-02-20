@@ -185,14 +185,12 @@ class AnalysisEngine {
                     console.log(`第${moveIndex}手分析失败，将在延迟后继续下一手`);
                 }
 
-                // 🔥 无论成功还是失败，都要执行延迟（移到这里确保总是执行）
-                const delays = { fast: 2000, normal: 5000, deep: 8000, ultra: 10000 };
-                console.log('🔧 延迟配置对象:', delays);
-                console.log('🔧 当前分析深度参数:', analysisDepth);
-                console.log('🔧 delays[analysisDepth]:', delays[analysisDepth]);
-                console.log('🔧 最终使用的延迟时间:', delays[analysisDepth] || 5000);
-                console.log(`第${moveIndex}手分析完成，等待 ${delays[analysisDepth] || 5000}ms 后继续...`);
-                await this.sleep(delays[analysisDepth] || 5000);
+                // 🔥 获取分析深度对应的延迟配置
+                const analysisConfig = this.katagoAPI.getAnalysisConfig(analysisDepth);
+                const delayMs = analysisConfig.delay || 5000;
+
+                console.log(`第${moveIndex}手分析完成，根据配置 (${analysisDepth}) 等待 ${delayMs}ms 后继续...`);
+                await this.sleep(delayMs);
             }
 
             // 分析完成后保存
