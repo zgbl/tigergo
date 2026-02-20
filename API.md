@@ -215,8 +215,28 @@ GET /api/testQuestions?page=1&limit=20&difficulty=medium&category=endgame
 - `page`: 页码（默认 1）
 - `limit`: 每页数量（默认 20）
 - `difficulty`: 难度筛选（easy/medium/hard）
+- `verificationStatus`: 验证状态筛选（pending/verified/failed）
 - `category`: 分类筛选
 - `sort`: 排序方式（createdAt/-createdAt）
+
+##### 批量更新测试题
+
+```http
+PATCH /api/testQuestions
+Content-Type: application/json
+
+{
+  "updates": [
+    {
+      "id": "string",
+      "candidatePoints": "array",
+      "winRate": "number",
+      "correctAnswer": "string",
+      "verificationStatus": "verified"
+    }
+  ]
+}
+```
 
 ##### 获取单个测试题
 
@@ -427,6 +447,12 @@ Content-Type: application/json
   difficulty: String,   // 'easy', 'medium', 'hard'
   category: String,     // 题目分类
   explanation: String,  // 解题说明
+  verificationStatus: { 
+    type: String, 
+    enum: ['pending', 'verified', 'failed'], 
+    default: 'verified' 
+  },
+  verifiedAt: Date,     // AI 验证完成时间
   createdAt: Date,
   updatedAt: Date
 }
@@ -611,6 +637,6 @@ const CURRENT_ENV = "local"; // 'local', 'github', 'production'
 
 ---
 
-**文档版本**: v1.0  
-**最后更新**: 2025 年 1 月  
+**文档版本**: v1.1  
+**最后更新**: 2026 年 2 月  
 **维护者**: TigerGo 开发团队

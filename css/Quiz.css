@@ -12,6 +12,35 @@ body {
     min-height: 100vh;
 }
 
+/* 压缩 Quiz 页面的导航栏以节省空间 */
+#navbar-placeholder .container {
+    margin: 5px 0 5px 3%;
+    padding: 2px 20px;
+}
+
+#navbar-placeholder header {
+    padding: 0;
+}
+
+#navbar-placeholder .logo img {
+    height: 35px;
+    width: auto;
+}
+
+#navbar-placeholder nav {
+    padding: 2px 0;
+    gap: 12px;
+}
+
+#navbar-placeholder nav a {
+    font-size: 15px;
+}
+
+#navbar-placeholder .icon {
+    width: 18px;
+    height: 18px;
+}
+
 /* 主容器 */
 .quiz-container {
     display: grid;

@@ -65,6 +65,23 @@ class QuizPage {
         // 音效元素
         this.correctSound = document.getElementById('correctSound');
         this.incorrectSound = document.getElementById('incorrectSound');
+        this.stoneSound = document.getElementById('stoneSound');
+
+        // 🔊 音量控制
+        this.volumeSlider = document.getElementById('volumeSlider');
+        this.volumeValue = document.getElementById('volumeValue');
+        const savedVol = parseInt(localStorage.getItem('quizVolume') ?? '30');
+        this.setVolume(savedVol);
+    }
+
+    setVolume(pct) {
+        const vol = Math.max(0, Math.min(100, pct)) / 100;
+        if (this.correctSound) this.correctSound.volume = vol;
+        if (this.incorrectSound) this.incorrectSound.volume = vol;
+        if (this.stoneSound) this.stoneSound.volume = vol;
+        if (this.volumeSlider) this.volumeSlider.value = pct;
+        if (this.volumeValue) this.volumeValue.textContent = `${pct}%`;
+        localStorage.setItem('quizVolume', pct);
     }
 
     bindEvents() {
@@ -74,6 +91,24 @@ class QuizPage {
         this.submitAnswerBtn.addEventListener('click', () => this.submitAnswer());
         this.nextQuestionBtn.addEventListener('click', () => this.nextQuestion());
         this.restartQuizBtn.addEventListener('click', () => this.restartQuiz());
+
+        // 🔊 音量滑块
+        if (this.volumeSlider) {
+            this.volumeSlider.addEventListener('input', (e) => this.setVolume(parseInt(e.target.value)));
+        }
+        const volumeIcon = document.getElementById('volumeIcon');
+        const volumePopup = document.getElementById('volumePopup');
+        if (volumeIcon && volumePopup) {
+            volumeIcon.addEventListener('click', (e) => {
+                e.stopPropagation();
+                volumePopup.style.display = volumePopup.style.display === 'flex' ? 'none' : 'flex';
+            });
+            document.addEventListener('click', (e) => {
+                if (!volumePopup.contains(e.target) && e.target !== volumeIcon) {
+                    volumePopup.style.display = 'none';
+                }
+            });
+        }
 
         // 答题选项变化事件
         this.answerOptions.addEventListener('change', (e) => {
@@ -610,10 +645,12 @@ class QuizPage {
                         Math.max(0, winRatePercent - baselineWinRate).toFixed(1);
                 }
 
+                // 🔥 答题前只显示选项标签，不泄露胜率和描述
+                optionTexts[index].innerHTML = `${candidate.label}`;
+                // 保存数据供答题后显示
                 const lossValue = parseFloat(winRateLossDisp);
-                const lossText = lossValue === 0 ? `<span style="color: inherit;">0.0%</span>` : `<span style="color: #e53e3e;">-${winRateLossDisp}%</span>`;
-                const descText = candidate.description ? `  ${candidate.description}` : '';
-                optionTexts[index].innerHTML = `${candidate.label}: ${lossText}${descText}`;
+                optionTexts[index].dataset.lossText = lossValue === 0 ? `0.0%` : `-${winRateLossDisp}%`;
+                optionTexts[index].dataset.descText = candidate.description || '';
             }
         });
 
@@ -711,6 +748,25 @@ class QuizPage {
             this.correctSound.play().catch(() => { });
         } else if (!isCorrect && this.incorrectSound) {
             this.incorrectSound.play().catch(() => { });
+        }
+
+        // 🔥 答题后：揭示所有选项的胜率损失和描述
+        const optionTexts = this.answerOptions.querySelectorAll('.option-text');
+        if (question.candidates) {
+            question.candidates.forEach((candidate, idx) => {
+                if (optionTexts[idx]) {
+                    const loss = optionTexts[idx].dataset.lossText || '';
+                    const desc = optionTexts[idx].dataset.descText || '';
+                    const isCorrectChoice = candidate.label === question.correctAnswer;
+                    const lossColor = (loss === '0.0%' || isCorrectChoice) ? 'inherit' : '#e53e3e';
+                    const descHtml = desc ? `  ${desc}` : '';
+                    optionTexts[idx].innerHTML = `${candidate.label}: <span style="color:${lossColor}">${loss}</span>${descHtml}`;
+                    // 高亮正确答案
+                    if (isCorrectChoice) {
+                        optionTexts[idx].closest('.answer-option')?.style.setProperty('background', '#e6ffed');
+                    }
+                }
+            });
         }
     }
 
@@ -838,5 +894,10 @@ class QuizPage {
 
 // 页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', () => {
+    // 加载公共导航栏
+    if (typeof loadNavbar === 'function') {
+        loadNavbar();
+    }
+
     window.quizPage = new QuizPage();
 });

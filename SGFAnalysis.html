@@ -583,7 +583,7 @@
         cellSizeFromHeight = 30;
       }
 
-      let cellSize = Math.min(cellSizeFromWidth, cellSizeFromHeight);
+      let cellSize = Math.min(cellSizeFromWidth, cellSizeFromHeight) * 0.8;
       const boardSize = 19;
       const stoneSize = Math.floor(cellSize * 0.95);
       let maxFrameWidth = cellSize * (boardSize + 3);

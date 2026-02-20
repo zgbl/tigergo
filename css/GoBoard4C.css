@@ -2,12 +2,12 @@
   --board-size: 19;
   --board-color: #deb887;
   --line-color: #000;
-  --cell-size: 28px;
+  --cell-size: 22px;
   /* 添加cell-size作为基础单位 */
-  --stone-size: 28px;
-  --font-size: 12px;
-  --small-stone-size: 15px;
-  --small-font-size: 8px;
+  --stone-size: 22px;
+  --font-size: 10px;
+  --small-stone-size: 12px;
+  --small-font-size: 7px;
 }
 
 /* 主棋盘样式 */

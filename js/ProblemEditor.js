@@ -17,6 +17,7 @@ class ProblemEditor {
         this.lossRanking = [];
         this.lossFilter = 'all'; // 'all', 'black', 'white'
         this.isVerifying = false; // AI verification in progress
+        this.pendingQuestions = []; // 待验证题目列表
         this.winrateChart = null; // Chart.js instance
 
         this.init();
@@ -174,6 +175,9 @@ class ProblemEditor {
             // 🔥 构建胜率损失排行
             this.buildWinrateLossRanking();
 
+            // 🔥 加载该棋谱的待验证题目
+            this.loadPendingQuestions();
+
         } catch (e) {
             console.error('Error loading game:', e);
             alert('加载失败: ' + e.message);
@@ -224,6 +228,18 @@ class ProblemEditor {
         document.getElementById('modeEdit').addEventListener('click', () => this.setMode('edit'));
 
         document.getElementById('saveProblemBtn').addEventListener('click', () => this.saveProblem());
+
+        // 快速保存按钮
+        const quickSaveBtn = document.getElementById('quickSaveProblemBtn');
+        if (quickSaveBtn) {
+            quickSaveBtn.addEventListener('click', () => this.quickSaveProblem());
+        }
+
+        // 批量验证按钮
+        const batchVerifyBtn = document.getElementById('batchVerifyBtn');
+        if (batchVerifyBtn) {
+            batchVerifyBtn.addEventListener('click', () => this.batchVerifyAll());
+        }
 
         document.getElementById('switchGameBtn').addEventListener('click', () => this.showGameSelector());
 
@@ -1580,6 +1596,404 @@ class ProblemEditor {
 
             this.winrateChart.update('none'); // 使用 'none' 模式避免多余动画
         }
+    }
+
+    // ==================== 快速保存 + 批量验证 ====================
+
+    /**
+     * 快速保存题目（不等AI验证）
+     * 保存候选点坐标和棋盘状态，使用占位值填充必填字段
+     */
+    async quickSaveProblem() {
+        if (this.candidates.length < 2) {
+            alert('请至少选择 2 个候选点');
+            return;
+        }
+
+        const btn = document.getElementById('quickSaveProblemBtn');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 保存中...';
+        }
+
+        try {
+            const currentMoveIndex = this.boardController.currentMoveIndex;
+            const moveNumber = currentMoveIndex + 1;
+            const boardState = this.getBoardStateAtCurrentMove();
+            const nextColor = (currentMoveIndex + 1) % 2 === 0 ? 'B' : 'W';
+            const questionId = `${this.gameId}_${moveNumber}`;
+
+            // 检查重复
+            const existing = await this.checkExistence(this.gameId, moveNumber);
+            if (existing) {
+                const choice = confirm(`第${moveNumber}手已有题目，是否覆盖？`);
+                if (!choice) {
+                    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-bolt"></i> 快速保存'; }
+                    return;
+                }
+            }
+
+            // 使用占位值构建候选点（满足后端必填校验）
+            const labels = ['A', 'B', 'C', 'D'];
+            const formattedCandidates = this.candidates.map((c, idx) => ({
+                label: c.label || labels[idx],
+                row: c.row,
+                col: c.col,
+                position: this.rowColToKataGo(c.row, c.col),
+                winRate: c.aiResult?.winRate || 0,
+                score: c.score || 0,
+                winRateLoss: c.aiResult?.lossPercent || 0,
+                scoreLoss: 0,
+                type: idx === 0 ? 'best' : 'alternate',
+                description: idx === 0 ? '待验证' : ''
+            }));
+
+            const firstCandidate = formattedCandidates[0];
+            const description = document.getElementById('questionText')?.value
+                || `第${moveNumber}手，${nextColor === 'B' ? '黑' : '白'}方下一步最佳选择是？`;
+
+            const payload = {
+                questions: [{
+                    id: questionId,
+                    sgfHash: this.gameId,
+                    sgfFilename: this.gameData?.filename || 'manual_edit',
+                    moveNumber: moveNumber,
+                    boardState: boardState,
+                    currentPlayer: nextColor === 'B' ? 'black' : 'white',
+                    candidatePoints: formattedCandidates,
+                    correctAnswer: {
+                        label: firstCandidate.label,
+                        position: firstCandidate.position,
+                        winRate: 0,
+                        explanation: '待AI验证'
+                    },
+                    winRateLoss: 0,
+                    difficulty: document.getElementById('difficultySelect')?.value === '1' ? 'easy'
+                        : document.getElementById('difficultySelect')?.value === '5' ? 'hard' : 'medium',
+                    questionText: description,
+                    title: description,
+                    source: this.gameData?.filename || '棋谱编辑器',
+                    verificationStatus: 'pending'
+                }],
+                metadata: {
+                    sgfHash: this.gameId,
+                    sgfFilename: this.gameData?.filename,
+                    totalQuestions: 1,
+                    source: 'problem_editor'
+                },
+                overwrite: !!existing
+            };
+
+            const apiUrl = `${CONFIG.API_VERCEL_NEXTJS_BASE_URL}/api/testQuestions`;
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`保存失败: ${response.status} ${errorText}`);
+            }
+
+            console.log(`✅ 快速保存成功: 第${moveNumber}手`);
+
+            // 添加到待验证列表
+            this.pendingQuestions.push({
+                id: questionId,
+                moveNumber: moveNumber,
+                sgfHash: this.gameId,
+                currentPlayer: nextColor === 'B' ? 'black' : 'white',
+                candidateCount: formattedCandidates.length
+            });
+
+            this.renderPendingQuestions();
+            this.clearCandidates();
+
+        } catch (error) {
+            console.error('❌ 快速保存失败:', error);
+            alert(`保存失败: ${error.message}`);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-bolt"></i> 快速保存';
+            }
+        }
+    }
+
+    /**
+     * 从服务器加载当前棋谱的待验证题目
+     */
+    async loadPendingQuestions() {
+        if (!this.gameId) return;
+        try {
+            const apiUrl = `${CONFIG.API_VERCEL_NEXTJS_BASE_URL}/api/testQuestions?sgfHash=${this.gameId}&verificationStatus=pending&limit=50`;
+            const response = await fetch(apiUrl);
+            if (!response.ok) return;
+
+            const result = await response.json();
+            if (result.success && result.data?.questions) {
+                this.pendingQuestions = result.data.questions.map(q => ({
+                    id: q.id,
+                    moveNumber: q.moveNumber,
+                    sgfHash: q.sgfHash,
+                    currentPlayer: q.currentPlayer,
+                    candidateCount: q.candidatePoints?.length || 0
+                }));
+                this.renderPendingQuestions();
+            }
+        } catch (error) {
+            console.error('加载待验证题目失败:', error);
+        }
+    }
+
+    /**
+     * 渲染待验证题目列表
+     */
+    renderPendingQuestions() {
+        const panel = document.getElementById('pendingQuestionsPanel');
+        const list = document.getElementById('pendingQuestionsList');
+        const countBadge = document.getElementById('pendingCount');
+
+        if (!panel || !list) return;
+
+        if (this.pendingQuestions.length === 0) {
+            panel.style.display = 'none';
+            return;
+        }
+
+        panel.style.display = 'block';
+        countBadge.textContent = this.pendingQuestions.length;
+
+        list.innerHTML = this.pendingQuestions.map((q, idx) => {
+            const colorDot = q.currentPlayer === 'black'
+                ? '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#222;border:1px solid #ccc;margin-right:6px"></span>'
+                : '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#fff;border:1px solid #ccc;margin-right:6px"></span>';
+            return `
+                <li class="loss-item" style="cursor:pointer; padding:6px 8px"
+                    onclick="editor.goToPendingQuestion(${q.moveNumber})">
+                    <span class="rank-num">${idx + 1}</span>
+                    ${colorDot}
+                    <span style="font-weight:bold; color:#2c3e50">第${q.moveNumber}手</span>
+                    <span style="margin-left:auto; color:#e67e22; font-size:11px">
+                        <i class="fas fa-clock"></i> 待验证
+                    </span>
+                </li>
+            `;
+        }).join('');
+    }
+
+    /**
+     * 点击待验证题目链接 → 跳转到对应局面
+     */
+    goToPendingQuestion(moveNumber) {
+        if (this.boardController) {
+            this.boardController.goToMove(moveNumber - 1);
+            // 触发UI更新
+            this.renderLastMoveTriangle();
+            this.renderActualNextMoveHint();
+            this.updateWinrateChart();
+            this.updateChartIndicator(moveNumber - 1);
+        }
+    }
+
+    /**
+     * 批量 AI 验证所有待验证题目
+     */
+    async batchVerifyAll() {
+        if (this.isVerifying) {
+            console.warn('❗ 验证正在进行中');
+            return;
+        }
+
+        if (!this.kataGoAPI) {
+            alert('KataGo API 未初始化');
+            return;
+        }
+
+        // 如果本地没有 pending 列表，尝试从服务器加载
+        if (this.pendingQuestions.length === 0) {
+            await this.loadPendingQuestions();
+        }
+
+        if (this.pendingQuestions.length === 0) {
+            alert('没有待验证的题目');
+            return;
+        }
+
+        const pendingIds = new Set(this.pendingQuestions.map(q => q.id));
+        const total = this.pendingQuestions.length;
+        if (!confirm(`将开始批量验证 ${total} 个题目，这可能需要较长时间。继续？`)) return;
+
+        this.isVerifying = true;
+
+        const batchBtn = document.getElementById('batchVerifyBtn');
+        const progressBar = document.getElementById('batchProgressBar');
+        const progressFill = document.getElementById('batchProgressFill');
+        const progressText = document.getElementById('batchProgressText');
+
+        if (batchBtn) {
+            batchBtn.disabled = true;
+            batchBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 批量验证中...';
+        }
+        if (progressBar) progressBar.style.display = 'block';
+
+        // 获取完整题目数据（不用 verificationStatus 过滤，兼容未部署后端）
+        let fullQuestions = [];
+        try {
+            const apiUrl = `${CONFIG.API_VERCEL_NEXTJS_BASE_URL}/api/testQuestions?sgfHash=${this.gameId}&limit=100`;
+            const resp = await fetch(apiUrl);
+            const data = await resp.json();
+            if (data.success && data.data?.questions) {
+                // 只保留本地 pending 列表中的题目
+                fullQuestions = data.data.questions.filter(q => pendingIds.has(q.id));
+            }
+            console.log(`📋 获取到 ${fullQuestions.length} 个待验证题目数据`);
+        } catch (e) {
+            console.error('加载完整题目数据失败:', e);
+            alert('加载题目数据失败');
+            this.isVerifying = false;
+            if (batchBtn) { batchBtn.disabled = false; batchBtn.innerHTML = '<i class="fas fa-tasks"></i> 批量 AI验证'; }
+            return;
+        }
+
+        if (fullQuestions.length === 0) {
+            alert('无法从服务器获取题目数据，请检查网络或后端是否已部署');
+            this.isVerifying = false;
+            if (batchBtn) { batchBtn.disabled = false; batchBtn.innerHTML = '<i class="fas fa-tasks"></i> 批量 AI验证'; }
+            return;
+        }
+
+        let successCount = 0;
+        let failCount = 0;
+
+        for (let i = 0; i < fullQuestions.length; i++) {
+            const question = fullQuestions[i];
+            const moveIndex = question.moveNumber - 1;
+
+            // 更新进度
+            const pct = Math.round(((i) / total) * 100);
+            if (progressFill) progressFill.style.width = `${pct}%`;
+            if (progressText) progressText.textContent = `${i}/${total} - 正在验证第${question.moveNumber}手...`;
+
+            console.log(`\n📦 [批量 ${i + 1}/${total}] 开始验证第${question.moveNumber}手`);
+
+            try {
+                // 1. 跳转到对应局面
+                this.boardController.goToMove(moveIndex);
+
+                // 2. 恢复候选点
+                const labels = ['A', 'B', 'C', 'D'];
+                this.candidates = (question.candidatePoints || []).map((cp, idx) => ({
+                    label: cp.label || labels[idx],
+                    row: cp.row,
+                    col: cp.col,
+                    score: cp.score || 0,
+                    aiResult: null // 将由 AI 验证填充
+                }));
+
+                this.renderCandidates();
+                this.updateBoardOverlay();
+
+                // 3. 调用现有 AI 验证逻辑（临时解除 isVerifying 锁，否则 aiVerifyCandidates 会直接跳过）
+                this.isVerifying = false;
+                await this.aiVerifyCandidates();
+                this.isVerifying = true;
+
+                // 4. AI验证完成后，構建更新数据并通过 PATCH 更新
+                const nextColor = this.getNextColor();
+                const isBlackTurn = nextColor === 'B';
+
+                let formattedCandidates = this.candidates.map(c => {
+                    const r = c.aiResult || {};
+                    return {
+                        label: c.label,
+                        row: c.row,
+                        col: c.col,
+                        position: r.coord || this.rowColToKataGo(c.row, c.col),
+                        winRate: r.winRate || 0,
+                        score: r.score || 0,
+                        winRateLoss: r.lossPercent || 0,
+                        scoreLoss: r.scoreDiff || 0,
+                        type: 'alternate',
+                        description: ''
+                    };
+                });
+
+                // 排序并分配 type
+                formattedCandidates.sort((a, b) => isBlackTurn
+                    ? b.winRate - a.winRate
+                    : a.winRate - b.winRate
+                );
+
+                const winrates = formattedCandidates.map(c => c.winRate);
+                const baselineWR = isBlackTurn ? Math.max(...winrates) : Math.min(...winrates);
+
+                formattedCandidates.forEach((c, idx) => {
+                    c.type = idx === 0 ? 'best' : 'alternate';
+                    c.description = idx === 0 ? '最佳选点' : idx === 1 ? '次优选点' : '';
+                    c.winRateLoss = parseFloat((isBlackTurn
+                        ? Math.max(0, baselineWR - c.winRate)
+                        : Math.max(0, c.winRate - baselineWR)).toFixed(1));
+                });
+
+                formattedCandidates.sort((a, b) => a.label.localeCompare(b.label));
+
+                const bestCandidate = formattedCandidates.find(c => c.type === 'best');
+
+                // PATCH 更新
+                const updatePayload = {
+                    questions: [{
+                        id: question.id,
+                        candidatePoints: formattedCandidates,
+                        correctAnswer: {
+                            label: bestCandidate.label,
+                            position: bestCandidate.position,
+                            winRate: bestCandidate.winRate,
+                            explanation: `最佳选点，胜率: ${bestCandidate.winRate}%`
+                        },
+                        winRateLoss: bestCandidate.winRateLoss,
+                        verificationStatus: 'verified',
+                        verifiedAt: new Date().toISOString()
+                    }]
+                };
+
+                const patchResp = await fetch(`${CONFIG.API_VERCEL_NEXTJS_BASE_URL}/api/testQuestions`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updatePayload)
+                });
+
+                if (patchResp.ok) {
+                    successCount++;
+                    console.log(`✅ [批量 ${i + 1}/${total}] 第${question.moveNumber}手 验证成功`);
+                } else {
+                    failCount++;
+                    console.error(`❌ [批量 ${i + 1}/${total}] PATCH 失败:`, await patchResp.text());
+                }
+
+            } catch (error) {
+                failCount++;
+                console.error(`❌ [批量 ${i + 1}/${total}] 第${question.moveNumber}手 验证异常:`, error);
+            }
+
+            this.clearCandidates();
+        }
+
+        // 完成
+        if (progressFill) progressFill.style.width = '100%';
+        if (progressText) progressText.textContent = `完成！成功 ${successCount}/${total}，失败 ${failCount}`;
+
+        this.isVerifying = false;
+        if (batchBtn) {
+            batchBtn.disabled = false;
+            batchBtn.innerHTML = '<i class="fas fa-tasks"></i> 批量 AI验证';
+        }
+
+        // 刷新待验证列表
+        await this.loadPendingQuestions();
+
+        alert(`批量验证完成！\n成功: ${successCount}\n失败: ${failCount}`);
     }
 }
 
