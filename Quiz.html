@@ -1,583 +1,293 @@
 <!doctype html>
 <html lang="zh">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>围棋答题 - 黑米围棋</title>
-    <link rel="stylesheet" href="css/GoBoard4C.css" />
-    <link rel="stylesheet" href="css/Styles5.css" />
-    <link rel="stylesheet" href="css/Quiz.css" />
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
-    />
-    <link
-      rel="icon"
-      href="https://zgbl.github.io/tigergo/favicon.ico"
-      type="image/x-icon"
-    />
-  </head>
 
-  <body>
-    <!-- 添加导航栏 -->
-    <div id="navbar-placeholder"></div>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>围棋答题 - 黑米围棋</title>
+  <link rel="stylesheet" href="css/GoBoard4C.css" />
+  <link rel="stylesheet" href="css/Styles5.css" />
+  <link rel="stylesheet" href="css/Quiz.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+  <link rel="icon" href="https://zgbl.github.io/tigergo/favicon.ico" type="image/x-icon" />
+</head>
 
-    <div class="quiz-container">
-      <!-- 左侧题目设置区域 -->
-      <div class="quiz-settings-section">
-        <h2 class="settings-title">
-          <i class="fas fa-cog"></i>
-          题目设置
-        </h2>
+<body>
+  <!-- 添加导航栏 -->
+  <div id="navbar-placeholder"></div>
 
-        <div class="settings-panel">
-          <div class="setting-group">
-            <label class="setting-label">题目来源</label>
-            <select class="setting-select" id="questionSource">
-              <option value="all">所有题目</option>
-              <option value="recent">最近生成</option>
-              <option value="difficulty-easy">简单题目</option>
-              <option value="difficulty-medium">中等题目</option>
-              <option value="difficulty-hard">困难题目</option>
-            </select>
-          </div>
+  <div class="quiz-container">
+    <!-- 左侧题目设置区域 -->
+    <div class="quiz-settings-section">
+      <h2 class="settings-title">
+        <i class="fas fa-cog"></i>
+        题目设置
+      </h2>
 
-          <div class="setting-group">
-            <label class="setting-label">题目数量</label>
-            <input
-              type="number"
-              class="setting-input"
-              id="questionCount"
-              min="1"
-              max="50"
-              value="10"
-            />
-          </div>
-
-          <div class="setting-group">
-            <label class="setting-label">随机顺序</label>
-            <input
-              type="checkbox"
-              class="setting-checkbox"
-              id="randomOrder"
-              checked
-            />
-          </div>
+      <div class="settings-panel">
+        <div class="setting-group">
+          <label class="setting-label">题目来源</label>
+          <select class="setting-select" id="questionSource">
+            <option value="all">所有题目</option>
+            <option value="recent">最近生成</option>
+            <option value="difficulty-easy">简单题目</option>
+            <option value="difficulty-medium">中等题目</option>
+            <option value="difficulty-hard">困难题目</option>
+          </select>
         </div>
 
-        <div class="quiz-controls">
-          <button class="quiz-btn primary" id="loadQuestionsBtn">
-            <i class="fas fa-download"></i>
-            加载题目
-          </button>
-          <!-- 第73行 - 删除disabled属性 -->
-          <button class="quiz-btn secondary" id="resetQuizBtn">
-            <i class="fas fa-redo"></i>
-            重新开始
-          </button>
-
-          <!-- 第77行 - 删除disabled属性 -->
-          <button class="quiz-btn secondary" id="nextGroupBtn">
-            <i class="fas fa-forward"></i>
-            下一组
-          </button>
+        <div class="setting-group">
+          <label class="setting-label">题目数量</label>
+          <input type="number" class="setting-input" id="questionCount" min="1" max="50" value="10" />
         </div>
 
-        <!-- 题目进度 -->
-        <div class="quiz-progress" id="quizProgress" style="display: none">
-          <h3 class="progress-title">
-            <i class="fas fa-chart-line"></i>
-            答题进度
-          </h3>
-          <div class="progress-info">
-            <div class="progress-bar">
-              <div class="progress-fill" id="progressFill"></div>
-            </div>
-            <div class="progress-text">
-              <span id="currentQuestion">1</span> /
-              <span id="totalQuestions">10</span>
-            </div>
-          </div>
-          <div class="score-info">
-            <div class="score-item">
-              <span class="score-label">正确:</span>
-              <span class="score-value correct" id="correctCount">0</span>
-            </div>
-            <div class="score-item">
-              <span class="score-label">错误:</span>
-              <span class="score-value incorrect" id="incorrectCount">0</span>
-            </div>
-            <div class="score-item">
-              <span class="score-label">正确率:</span>
-              <span class="score-value" id="accuracyRate">0%</span>
-            </div>
-          </div>
+        <div class="setting-group">
+          <label class="setting-label">随机顺序</label>
+          <input type="checkbox" class="setting-checkbox" id="randomOrder" checked />
         </div>
       </div>
 
-      <!-- 中间主内容区域 -->
-      <div class="main-content">
-        <div class="page-header">
-          <h1 class="page-title">
-            <i class="fas fa-brain"></i>
-            围棋答题
-          </h1>
-          <p class="page-subtitle">测试您的围棋技能</p>
-        </div>
+      <div class="quiz-controls">
+        <button class="quiz-btn primary" id="loadQuestionsBtn">
+          <i class="fas fa-download"></i>
+          加载题目
+        </button>
+        <!-- 第73行 - 删除disabled属性 -->
+        <button class="quiz-btn secondary" id="resetQuizBtn">
+          <i class="fas fa-redo"></i>
+          重新开始
+        </button>
 
-        <!-- 题目信息 -->
-        <div class="question-info" id="questionInfo" style="display: none">
-          <div class="question-title">
-            <h3 id="questionTitle">请选择最佳下法</h3>
-            <span class="question-number" id="questionNumber">题目 #1</span>
-          </div>
-          <div class="question-meta">
-            <span class="question-difficulty" id="questionDifficulty"
-              >难度: 中等</span
-            >
-            <span class="question-source" id="questionSource"
-              >来源: 实战对局</span
-            >
-          </div>
-        </div>
-
-        <div class="board-container">
-          <div class="board-placeholder" id="boardPlaceholder">
-            <div id="board"></div>
-          </div>
-
-          <!-- 候选点标记说明 -->
-          <div
-            class="candidate-legend"
-            id="candidateLegend"
-            style="display: none"
-          >
-            <h4>候选点:</h4>
-            <div class="legend-items">
-              <div class="legend-item">
-                <span class="candidate-marker a">A</span>
-                <span class="legend-text">选项A</span>
-              </div>
-              <div class="legend-item">
-                <span class="candidate-marker b">B</span>
-                <span class="legend-text">选项B</span>
-              </div>
-              <div class="legend-item">
-                <span class="candidate-marker c">C</span>
-                <span class="legend-text">选项C</span>
-              </div>
-              <div class="legend-item">
-                <span class="candidate-marker d">D</span>
-                <span class="legend-text">选项D</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 加载状态 -->
-        <div class="loading-state" id="loadingState">
-          <div class="loading-content">
-            <i class="fas fa-spinner fa-spin"></i>
-            <p>请先加载题目开始答题</p>
-          </div>
-        </div>
+        <!-- 第77行 - 删除disabled属性 -->
+        <button class="quiz-btn secondary" id="nextGroupBtn">
+          <i class="fas fa-forward"></i>
+          下一组
+        </button>
       </div>
 
-      <!-- 右侧答题区域 -->
-      <div class="answer-section">
-        <div class="answer-panel">
-          <h3 class="panel-title">
-            <i class="fas fa-check-circle"></i>
-            选择答案
-          </h3>
-
-          <div class="answer-options" id="answerOptions">
-            <div class="answer-option">
-              <input type="radio" id="optionA" name="answer" value="A" />
-              <label for="optionA" class="option-label">
-                <span class="option-marker">A</span>
-                <span class="option-text">选项A</span>
-              </label>
-            </div>
-            <div class="answer-option">
-              <input type="radio" id="optionB" name="answer" value="B" />
-              <label for="optionB" class="option-label">
-                <span class="option-marker">B</span>
-                <span class="option-text">选项B</span>
-              </label>
-            </div>
-            <div class="answer-option">
-              <input type="radio" id="optionC" name="answer" value="C" />
-              <label for="optionC" class="option-label">
-                <span class="option-marker">C</span>
-                <span class="option-text">选项C</span>
-              </label>
-            </div>
-            <div class="answer-option">
-              <input type="radio" id="optionD" name="answer" value="D" />
-              <label for="optionD" class="option-label">
-                <span class="option-marker">D</span>
-                <span class="option-text">选项D</span>
-              </label>
-            </div>
+      <!-- 题目进度 -->
+      <div class="quiz-progress" id="quizProgress" style="display: none">
+        <h3 class="progress-title">
+          <i class="fas fa-chart-line"></i>
+          答题进度
+        </h3>
+        <div class="progress-info">
+          <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
           </div>
-
-          <div class="answer-controls">
-            <button class="quiz-btn primary" id="submitAnswerBtn">
-              <i class="fas fa-check"></i>
-              提交答案
-            </button>
-            <button class="quiz-btn secondary" id="nextQuestionBtn">
-              <i class="fas fa-arrow-right"></i>
-              下一题
-            </button>
+          <div class="progress-text">
+            <span id="currentQuestion">1</span> /
+            <span id="totalQuestions">10</span>
           </div>
         </div>
-
-        <!-- 答题结果 -->
-        <div class="result-panel" id="resultPanel" style="display: none">
-          <h3 class="panel-title">
-            <i class="fas fa-chart-bar"></i>
-            答题结果
-          </h3>
-
-          <div class="result-content" id="resultContent">
-            <div class="result-item">
-              <div class="result-label">您的答案:</div>
-              <div class="result-value" id="userAnswer">-</div>
-            </div>
-            <div class="result-item">
-              <div class="result-label">正确答案:</div>
-              <div class="result-value" id="correctAnswer">-</div>
-            </div>
-            <div class="result-item">
-              <div class="result-label">胜率变化:</div>
-              <div class="result-value" id="winrateChange">-</div>
-            </div>
+        <div class="score-info">
+          <div class="score-item">
+            <span class="score-label">正确:</span>
+            <span class="score-value correct" id="correctCount">0</span>
           </div>
-        </div>
-
-        <!-- 最终成绩 -->
-        <div class="final-score" id="finalScore" style="display: none">
-          <h3 class="panel-title">
-            <i class="fas fa-trophy"></i>
-            最终成绩
-          </h3>
-
-          <div class="score-summary" id="scoreSummary">
-            <div class="score-item large">
-              <div class="score-label">总正确率</div>
-              <div class="score-value" id="finalAccuracy">0%</div>
-            </div>
-            <div class="score-breakdown">
-              <div class="breakdown-item">
-                <span class="breakdown-label">正确:</span>
-                <span class="breakdown-value correct" id="finalCorrect">0</span>
-              </div>
-              <div class="breakdown-item">
-                <span class="breakdown-label">错误:</span>
-                <span class="breakdown-value incorrect" id="finalIncorrect"
-                  >0</span
-                >
-              </div>
-              <div class="breakdown-item">
-                <span class="breakdown-label">总题数:</span>
-                <span class="breakdown-value" id="finalTotal">0</span>
-              </div>
-            </div>
-
-            <!-- 添加重新开始按钮 -->
-            <button class="quiz-btn primary" id="restartQuizBtn">
-              <i class="fas fa-redo"></i>
-              重新开始
-            </button>
+          <div class="score-item">
+            <span class="score-label">错误:</span>
+            <span class="score-value incorrect" id="incorrectCount">0</span>
+          </div>
+          <div class="score-item">
+            <span class="score-label">正确率:</span>
+            <span class="score-value" id="accuracyRate">0%</span>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- 音效元素 -->
-    <audio id="stoneSound" preload="auto">
-      <source src="Sounds/PlayStone2.mp3" type="audio/mpeg" />
-    </audio>
+    <!-- 中间主内容区域 -->
+    <div class="main-content">
+      <div class="page-header">
+        <h1 class="page-title">
+          <i class="fas fa-brain"></i>
+          围棋答题
+        </h1>
+        <p class="page-subtitle">测试您的围棋技能</p>
+      </div>
 
-    <!-- 添加缺失的音效元素 -->
-    <audio id="correctSound" preload="auto">
-      <source src="Sounds/correct-choice.mp3" type="audio/mpeg" />
-    </audio>
+      <!-- 题目信息 -->
+      <div class="question-info" id="questionInfo" style="display: none">
+        <div class="question-title">
+          <h3 id="questionTitle">请选择最佳下法</h3>
+          <span class="question-number" id="questionNumber">题目 #1</span>
+        </div>
+        <div class="question-meta">
+          <span class="question-difficulty" id="questionDifficulty">难度: 中等</span>
+          <span class="question-source" id="questionSource">来源: 实战对局</span>
+        </div>
+      </div>
 
-    <audio id="incorrectSound" preload="auto">
-      <source src="Sounds/incorrect.mp3" type="audio/mpeg" />
-    </audio>
+      <div class="board-container">
+        <div class="board-placeholder" id="boardPlaceholder">
+          <div id="board"></div>
+        </div>
 
-    <!-- JavaScript -->
-    <script src="js/config.js"></script>
-    <script src="js/GoBoard12.js"></script>
-    <script src="js/navbar.js"></script>
+        <!-- 候选点标记说明 -->
+        <div class="candidate-legend" id="candidateLegend" style="display: none">
+          <h4>候选点:</h4>
+          <div class="legend-items">
+            <div class="legend-item">
+              <span class="candidate-marker a">A</span>
+              <span class="legend-text">选项A</span>
+            </div>
+            <div class="legend-item">
+              <span class="candidate-marker b">B</span>
+              <span class="legend-text">选项B</span>
+            </div>
+            <div class="legend-item">
+              <span class="candidate-marker c">C</span>
+              <span class="legend-text">选项C</span>
+            </div>
+            <div class="legend-item">
+              <span class="candidate-marker d">D</span>
+              <span class="legend-text">选项D</span>
+            </div>
+          </div>
+        </div>
+      </div>
 
-    <!-- 添加棋盘创建代码 -->
-    <script>
-      const maxWinSize = 3000;
-      const minWinSize = 300;
+      <!-- 加载状态 -->
+      <div class="loading-state" id="loadingState">
+        <div class="loading-content">
+          <i class="fas fa-spinner fa-spin"></i>
+          <p>请先加载题目开始答题</p>
+        </div>
+      </div>
+    </div>
 
-      // 计算棋盘大小的函数
-      function calculateBoardSize() {
-        const winWidth = window.innerWidth;
-        const winHeight = window.innerHeight;
+    <!-- 右侧答题区域 -->
+    <div class="answer-section">
+      <div class="answer-panel">
+        <h3 class="panel-title">
+          <i class="fas fa-check-circle"></i>
+          选择答案
+        </h3>
 
-        let cellSizeFromWidth, cellSizeFromHeight;
+        <div class="answer-options" id="answerOptions">
+          <div class="answer-option">
+            <input type="radio" id="optionA" name="answer" value="A" />
+            <label for="optionA" class="option-label">
+              <span class="option-marker">A</span>
+              <span class="option-text">选项A</span>
+            </label>
+          </div>
+          <div class="answer-option">
+            <input type="radio" id="optionB" name="answer" value="B" />
+            <label for="optionB" class="option-label">
+              <span class="option-marker">B</span>
+              <span class="option-text">选项B</span>
+            </label>
+          </div>
+          <div class="answer-option">
+            <input type="radio" id="optionC" name="answer" value="C" />
+            <label for="optionC" class="option-label">
+              <span class="option-marker">C</span>
+              <span class="option-text">选项C</span>
+            </label>
+          </div>
+          <div class="answer-option">
+            <input type="radio" id="optionD" name="answer" value="D" />
+            <label for="optionD" class="option-label">
+              <span class="option-marker">D</span>
+              <span class="option-text">选项D</span>
+            </label>
+          </div>
+        </div>
 
-        // 根据宽度计算 cellSize
-        if (winWidth < 480) {
-          cellSizeFromWidth = Math.floor((winWidth - 20) / 20);
-          if (winWidth < minWinSize) {
-            cellSizeFromWidth = Math.floor((minWinSize - 20) / 20);
-          }
-        } else if (winWidth > 768) {
-          cellSizeFromWidth = Math.floor(winWidth / 28);
-          if (winWidth > maxWinSize) {
-            cellSizeFromWidth = Math.floor(maxWinSize / 28);
-          }
-        } else {
-          cellSizeFromWidth = 30;
-        }
+        <div class="answer-controls">
+          <button class="quiz-btn primary" id="submitAnswerBtn">
+            <i class="fas fa-check"></i>
+            提交答案
+          </button>
+          <button class="quiz-btn secondary" id="nextQuestionBtn">
+            <i class="fas fa-arrow-right"></i>
+            下一题
+          </button>
+        </div>
+      </div>
 
-        // 根据高度计算 cellSize
-        if (winHeight < 480) {
-          cellSizeFromHeight = Math.floor((winHeight - 20) / 20);
-          if (winHeight < minWinSize) {
-            cellSizeFromHeight = Math.floor((minWinSize - 20) / 20);
-          }
-        } else if (winHeight > 768) {
-          cellSizeFromHeight = Math.floor(winHeight / 25);
-          if (winHeight > maxWinSize) {
-            cellSizeFromHeight = Math.floor(maxWinSize / 25);
-          }
-        } else {
-          cellSizeFromHeight = 30;
-        }
+      <!-- 答题结果 -->
+      <div class="result-panel" id="resultPanel" style="display: none">
+        <h3 class="panel-title">
+          <i class="fas fa-chart-bar"></i>
+          答题结果
+        </h3>
 
-        let cellSize = Math.min(cellSizeFromWidth, cellSizeFromHeight);
-        const boardSize = 19;
-        const stoneSize = Math.floor(cellSize * 0.95);
-        let maxFrameWidth = cellSize * (boardSize + 3);
+        <div class="result-content" id="resultContent">
+          <div class="result-item">
+            <div class="result-label">您的答案:</div>
+            <div class="result-value" id="userAnswer">-</div>
+          </div>
+          <div class="result-item">
+            <div class="result-label">正确答案:</div>
+            <div class="result-value" id="correctAnswer">-</div>
+          </div>
+          <div class="result-item">
+            <div class="result-label">胜率变化:</div>
+            <div class="result-value" id="winrateChange">-</div>
+          </div>
+        </div>
+      </div>
 
-        return { cellSize, stoneSize, maxFrameWidth };
-      }
+      <!-- 最终成绩 -->
+      <div class="final-score" id="finalScore" style="display: none">
+        <h3 class="panel-title">
+          <i class="fas fa-trophy"></i>
+          最终成绩
+        </h3>
 
-      // 更新CSS变量的函数
-      function updateStoneSizeCSS(cellSize) {
-        document.documentElement.style.setProperty(
-          "--stone-size",
-          `${cellSize}px`,
-        );
-        document.documentElement.style.setProperty(
-          "--cell-size",
-          `${cellSize}px`,
-        );
-        document.documentElement.style.setProperty(
-          "--font-size",
-          `${cellSize * 0.4}px`,
-        );
-      }
+        <div class="score-summary" id="scoreSummary">
+          <div class="score-item large">
+            <div class="score-label">总正确率</div>
+            <div class="score-value" id="finalAccuracy">0%</div>
+          </div>
+          <div class="score-breakdown">
+            <div class="breakdown-item">
+              <span class="breakdown-label">正确:</span>
+              <span class="breakdown-value correct" id="finalCorrect">0</span>
+            </div>
+            <div class="breakdown-item">
+              <span class="breakdown-label">错误:</span>
+              <span class="breakdown-value incorrect" id="finalIncorrect">0</span>
+            </div>
+            <div class="breakdown-item">
+              <span class="breakdown-label">总题数:</span>
+              <span class="breakdown-value" id="finalTotal">0</span>
+            </div>
+          </div>
 
-      // 创建棋盘的函数
-      function createBoard3(options) {
-        let {
-          domElement,
-          boardSize = 19,
-          cellSize,
-          lineColor = "#000",
-          backgroundColor = "#DEB887",
-        } = options;
+          <!-- 添加重新开始按钮 -->
+          <button class="quiz-btn primary" id="restartQuizBtn">
+            <i class="fas fa-redo"></i>
+            重新开始
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 
-        domElement.innerHTML = "";
-        console.log("Creating board on element", domElement);
-        const marginOffset =
-          options && typeof options.marginOffset === "number"
-            ? options.marginOffset
-            : cellSize;
+  <!-- 音效元素 -->
+  <audio id="stoneSound" preload="auto">
+    <source src="Sounds/PlayStone2.mp3" type="audio/mpeg" />
+  </audio>
 
-        const boardPhysicalSize = (boardSize - 1) * cellSize + 2 * marginOffset;
-        domElement.style.width = `${boardPhysicalSize}px`;
-        domElement.style.height = `${boardPhysicalSize}px`;
-        domElement.style.position = "relative";
-        domElement.style.backgroundColor = backgroundColor;
+  <!-- 添加缺失的音效元素 -->
+  <audio id="correctSound" preload="auto">
+    <source src="Sounds/correct-choice.mp3" type="audio/mpeg" />
+  </audio>
 
-        // 绘制棋盘线
-        for (let i = 0; i < boardSize; i++) {
-          // 垂直线
-          const vertical = document.createElement("div");
-          vertical.style.position = "absolute";
-          vertical.style.left = `${marginOffset + i * cellSize}px`;
-          vertical.style.top = `${marginOffset}px`;
-          vertical.style.width = "1px";
-          vertical.style.height = `${(boardSize - 1) * cellSize}px`;
-          vertical.style.backgroundColor = lineColor;
-          vertical.style.zIndex = "1";
-          domElement.appendChild(vertical);
+  <audio id="incorrectSound" preload="auto">
+    <source src="Sounds/incorrect.mp3" type="audio/mpeg" />
+  </audio>
 
-          // 水平线
-          const horizontal = document.createElement("div");
-          horizontal.style.position = "absolute";
-          horizontal.style.left = `${marginOffset}px`;
-          horizontal.style.top = `${marginOffset + i * cellSize}px`;
-          horizontal.style.width = `${(boardSize - 1) * cellSize}px`;
-          horizontal.style.height = "1px";
-          horizontal.style.backgroundColor = lineColor;
-          horizontal.style.zIndex = "1";
-          domElement.appendChild(horizontal);
-        }
+  <!-- JavaScript -->
+  <script src="js/config.js"></script>
+  <script src="js/GoBoard12.js"></script>
+  <script src="js/navbar.js"></script>
+  <script src="js/QuizBoard.js"></script>
+  <script src="js/QuizPage.js"></script>
+</body>
 
-        // 创建交叉点
-        for (let i = 0; i < boardSize; i++) {
-          for (let j = 0; j < boardSize; j++) {
-            const intersection = document.createElement("div");
-            intersection.className = "intersection";
-            intersection.dataset.row = i;
-            intersection.dataset.col = j;
-            intersection.style.position = "absolute";
-            intersection.style.left = `${marginOffset + j * cellSize - cellSize / 2}px`;
-            intersection.style.top = `${marginOffset + i * cellSize - cellSize / 2}px`;
-            intersection.style.width = `${cellSize}px`;
-            intersection.style.height = `${cellSize}px`;
-            intersection.style.zIndex = "2";
-            intersection.addEventListener("click", (e) => handleClick(e));
-
-            domElement.appendChild(intersection);
-          }
-        }
-
-        // 添加星位
-        const starPoints = [
-          [3, 3],
-          [3, 9],
-          [3, 15],
-          [9, 3],
-          [9, 9],
-          [9, 15],
-          [15, 3],
-          [15, 9],
-          [15, 15],
-        ];
-
-        starPoints.forEach(([row, col]) => {
-          const intersection = domElement.querySelector(
-            `[data-row="${row}"][data-col="${col}"]`,
-          );
-          if (intersection) {
-            const starPoint = document.createElement("div");
-            starPoint.style.position = "absolute";
-            starPoint.style.top = "50%";
-            starPoint.style.left = "50%";
-            starPoint.style.transform = "translate(-50%, -50%)";
-            starPoint.style.width = `${cellSize * 0.2}px`;
-            starPoint.style.height = `${cellSize * 0.2}px`;
-            starPoint.style.backgroundColor = lineColor;
-            starPoint.style.borderRadius = "50%";
-            starPoint.style.zIndex = "3";
-            intersection.appendChild(starPoint);
-          }
-        });
-
-        if (typeof window.addBoardLabels === "function") {
-          window.addBoardLabels(domElement, boardSize, cellSize, {
-            offset: marginOffset,
-            inset: Math.max(2, marginOffset * 0.2),
-          });
-        }
-
-        console.log("Board creation completed");
-      }
-
-      // 点击处理函数
-      function handleClick(event) {
-        try {
-          const row = parseInt(event.target.dataset.row, 10);
-          const col = parseInt(event.target.dataset.col, 10);
-
-          if (isNaN(row) || isNaN(col)) {
-            console.log("Invalid intersection clicked");
-            return;
-          }
-
-          console.log(`Clicked on intersection: (${row}, ${col})`);
-          // 在答题页面中，可能需要根据具体需求处理点击事件
-        } catch (error) {
-          console.error("Error in handleClick:", error.message);
-        }
-      }
-
-      // 初始化棋盘
-      function initializeBoard() {
-        console.log("初始化棋盘");
-
-        // 添加必要的全局变量，防止GoBoard12.js报错
-        window.currentMoves = [];
-        window.currentMoveIndex = -1;
-        window.displayMode = 0;
-        window.showingRecentMoves = false;
-
-        // 计算棋盘大小
-        let { cellSize, stoneSize } = calculateBoardSize();
-        console.log("计算得到的 cellSize:", cellSize);
-
-        // 更新CSS变量
-        updateStoneSizeCSS(cellSize);
-
-        // 创建棋盘
-        const mainBoard = document.getElementById("board");
-        if (mainBoard) {
-          createBoard3({
-            domElement: mainBoard,
-            boardSize: 19,
-            cellSize: cellSize,
-          });
-          console.log("棋盘创建完成");
-        } else {
-          console.error("找不到棋盘容器元素");
-        }
-      }
-
-      // 页面加载完成后初始化
-      document.addEventListener("DOMContentLoaded", function () {
-        console.log("Quiz.html DOMContentLoaded");
-
-        // 加载导航栏
-        if (typeof loadNavbar === "function") {
-          loadNavbar();
-        }
-
-        // 初始化棋盘
-        initializeBoard();
-        console.log("Quiz.html 初始化完成");
-      });
-
-      // 窗口大小改变时重新创建棋盘
-      window.addEventListener("resize", function () {
-        console.log("窗口大小改变，重新创建棋盘");
-
-        // 重新计算棋盘大小
-        let { cellSize, stoneSize } = calculateBoardSize();
-        console.log("重新计算得到的 cellSize:", cellSize);
-
-        // 更新CSS变量
-        updateStoneSizeCSS(cellSize);
-
-        // 重新创建棋盘
-        const mainBoard = document.getElementById("board");
-        if (mainBoard) {
-          createBoard3({
-            domElement: mainBoard,
-            boardSize: 19,
-            cellSize: cellSize,
-          });
-          console.log("棋盘重新创建完成");
-        }
-      });
-    </script>
-
-    <script src="js/QuizBoard.js"></script>
-    <script src="js/QuizPage.js"></script>
-  </body>
 </html>

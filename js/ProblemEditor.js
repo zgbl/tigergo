@@ -959,7 +959,7 @@ class ProblemEditor {
             }
 
             // 准备候选点数据
-            const formattedCandidates = this.candidates.map(c => {
+            let formattedCandidates = this.candidates.map(c => {
                 const r = c.aiResult || {};
                 return {
                     label: c.label,
@@ -970,16 +970,53 @@ class ProblemEditor {
                     score: r.score || 0,
                     winRateLoss: r.lossPercent || 0,
                     scoreLoss: r.scoreDiff || 0,
-                    type: (r.lossPercent !== undefined && r.lossPercent < 1.0) ? 'best' : 'alternate',
-                    description: (r.lossPercent !== undefined && r.lossPercent < 1.0) ? '最佳选点' : '次优选点',
-                    score: c.score !== undefined ? c.score : 0 // 🔥 保存时包含手动评分
+                    scoreVal: c.score !== undefined ? c.score : 0 // 🔥 保存时包含手动评分
                 };
             });
 
-            // 自动寻找正确答案
-            let bestCandidate = formattedCandidates.reduce((prev, curr) => {
-                return (prev.winRateLoss < curr.winRateLoss) ? prev : curr;
+            // 按照绝对胜率排序，而不是相对的 winRateLoss（因为如果 loss 被折叠为0会导致排序错误）
+            const isBlackTurn = nextColor === 'B';
+            formattedCandidates.sort((a, b) => {
+                if (isBlackTurn) {
+                    return b.winRate - a.winRate; // 黑棋求胜率最高
+                } else {
+                    return a.winRate - b.winRate; // 白棋求黑棋胜率最低
+                }
             });
+
+            // 重新计算并保存真正的相对于全场最佳选点的 winRateLoss
+            const winrates = formattedCandidates.map(c => c.winRate);
+            const baselineWinRate = isBlackTurn ? Math.max(...winrates) : Math.min(...winrates);
+
+            // 分配 type 和 description
+            formattedCandidates.forEach((candidate, index) => {
+                let typeStr, descStr;
+                if (index === 0) {
+                    typeStr = 'best';
+                    descStr = '最佳选点';
+                } else if (index === 1) {
+                    typeStr = 'alternate';
+                    descStr = '次优选点';
+                } else {
+                    typeStr = 'alternate';
+                    descStr = ''; // 第3，4名不显示描述
+                }
+                candidate.type = typeStr;
+                candidate.description = descStr;
+
+                // 强制修正入库时的 winRateLoss
+                let trueLoss = isBlackTurn ? Math.max(0, baselineWinRate - candidate.winRate) : Math.max(0, candidate.winRate - baselineWinRate);
+                candidate.winRateLoss = parseFloat(trueLoss.toFixed(1));
+
+                candidate.score = candidate.scoreVal; // 将原始名字覆盖回来
+                delete candidate.scoreVal;
+            });
+
+            // 恢复字母顺序 (可选项，避免乱序)
+            formattedCandidates.sort((a, b) => a.label.localeCompare(b.label));
+
+            // 自动寻找正确答案 (直接使用刚才打好标签的最佳选点)
+            let bestCandidate = formattedCandidates.find(c => c.type === 'best');
 
             const description = document.getElementById('questionText')?.value || `第${moveNumber}手，${nextColor === 'B' ? '黑' : '白'}方下一步最佳选择是？`;
             const difficulty = document.getElementById('difficultySelect')?.value || '3';

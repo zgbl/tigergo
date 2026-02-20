@@ -278,12 +278,24 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    min-height: 400px;
+    padding: 10px 0;
 }
 
 .board-placeholder {
-    position: relative;
-    margin-bottom: 20px;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 !important;
+}
+
+#board {
+    margin: 0 auto !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2) !important;
+    border-radius: 4px;
+    overflow: visible !important;
 }
 
 /* 候选点图例 */
@@ -428,7 +440,7 @@ body {
     background: rgba(102, 126, 234, 0.05);
 }
 
-.answer-option input[type="radio"]:checked + .option-label {
+.answer-option input[type="radio"]:checked+.option-label {
     border-color: #667eea;
     background: rgba(102, 126, 234, 0.1);
 }
@@ -583,15 +595,39 @@ body {
         height: auto;
         min-height: 100vh;
     }
-    
+
     .quiz-settings-section,
     .answer-section {
         order: 2;
     }
-    
+
     .main-content {
         order: 1;
     }
+}
+
+/* 棋子渲染增强 - 匹配专业引擎效果 */
+.stone {
+    position: absolute;
+    border-radius: 50%;
+    z-index: 3;
+    background-size: cover;
+    background-repeat: no-repeat;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
+    pointer-events: none;
+}
+
+.stone.black,
+.stone.B {
+    background-image: var(--stone-black-img, url('../images/black_64.png'));
+    background-color: #222;
+}
+
+.stone.white,
+.stone.W {
+    background-image: var(--stone-white-img, url('../images/white_64.png'));
+    background-color: #fff;
+    border: 1px solid #ccc;
 }
 
 /* 棋盘上的候选点标记 */
@@ -604,14 +640,30 @@ body {
     align-items: center;
     justify-content: center;
     font-weight: 700;
-    font-size: 12px;
+    font-size: 13px;
     color: white;
     z-index: 10;
-    pointer-events: none;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+    pointer-events: auto !important;
+    /* 使标记可点击 */
+    border: 2px solid white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    cursor: pointer;
 }
+
+/* 选中状态 */
+.candidate-point.selected {
+    transform: translate(-50%, -50%) scale(1.3);
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.8), 0 4px 10px rgba(0, 0, 0, 0.5);
+    z-index: 15;
+    border-width: 3px;
+}
+
+.candidate-point:hover {
+    transform: translate(-50%, -50%) scale(1.1);
+    filter: brightness(1.1);
+}
+
 
 .candidate-point.option-a {
     background: #dc3545;

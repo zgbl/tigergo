@@ -274,8 +274,8 @@ class TestQuestionGenerator {
     generateCandidatePoints(criticalMove, settings) {
         const candidates = [];
         const targetCount = settings.candidateCount || 4;
-        let bestMoveIndex = -1; // 记录最佳选点的索引
 
+        // 1. 收集所有可能的候选点 (包含实战点和变着)
         // 添加实战选点
         if (settings.actualMoveCount > 0 && criticalMove.actualMove) {
             candidates.push({
@@ -284,16 +284,13 @@ class TestQuestionGenerator {
                 row: criticalMove.actualMove.row,
                 col: criticalMove.actualMove.col,
                 winRate: parseFloat(criticalMove.analysis?.winRate) || 0,
-                description: '实战选点'
+                description: '实战选点' // 临时，后续重置
             });
         }
 
-        // 添加最佳选点和次选点
+        // 添加变着
         if (criticalMove.analysis?.variations) {
-            const remainingCount = targetCount - candidates.length;
-            const variations = criticalMove.analysis.variations.slice(0, remainingCount);
-
-            variations.forEach((variation, index) => {
+            criticalMove.analysis.variations.forEach((variation) => {
                 if (variation.moves && variation.moves.length > 0) {
                     const move = this.parseSGFPosition(variation.moves[0]);
                     if (move) {
@@ -302,16 +299,13 @@ class TestQuestionGenerator {
                         );
 
                         if (!isDuplicate) {
-                            if (index === 0) {
-                                bestMoveIndex = candidates.length; // 记录最佳选点的索引
-                            }
                             candidates.push({
-                                type: index === 0 ? 'best' : 'alternate',
+                                type: 'alternate', // 临时，后续重置
                                 position: variation.moves[0],
                                 row: move.row,
                                 col: move.col,
                                 winRate: parseFloat(variation.winRate) || 0,
-                                description: index === 0 ? '最佳选点' : '次选点'
+                                description: '候选点' // 临时，后续重置
                             });
                         }
                     }
@@ -319,8 +313,33 @@ class TestQuestionGenerator {
             });
         }
 
+        // 2. 根据当前走棋方对所有选点进行排序
+        const isBlackTurn = criticalMove.actualMove.color === 'black';
+        candidates.sort((a, b) => {
+            if (isBlackTurn) {
+                return b.winRate - a.winRate; // 黑棋选胜率最高的
+            } else {
+                return a.winRate - b.winRate; // 白棋选黑棋胜率最低的
+            }
+        });
+
+        // 3. 截取前 N 个，并分配描述与类型
+        const finalCandidates = candidates.slice(0, targetCount);
+        finalCandidates.forEach((candidate, index) => {
+            if (index === 0) {
+                candidate.type = 'best';
+                candidate.description = '最佳选点';
+            } else if (index === 1) {
+                candidate.type = 'alternate';
+                candidate.description = '次优选点';
+            } else {
+                candidate.type = 'alternate';
+                candidate.description = '';
+            }
+        });
+
         // 随机打乱候选点顺序
-        const shuffledCandidates = this.shuffleArray(candidates);
+        const shuffledCandidates = this.shuffleArray(finalCandidates);
 
         // 重新分配标签并找到最佳选点的新标签
         const labels = ['A', 'B', 'C', 'D'];
