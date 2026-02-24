@@ -6,13 +6,15 @@ class SGFAnalyzer {
         this.gameData = null;
         this.currentMoveIndex = -1;
         this.sgfParser = new SGFParser();
-        // 🔥 强制使用代理模式 connection via Next.js backend
+        // 🔥 修复：恢复使用代理模式（云端引擎必须使用代理避开CORS）
+        // 同时支持设置目标后端地址
         this.katagoAPI = new KataGoAPI(null, 'katago_gtp_bot', true);
+        this.katagoAPI.targetUrl = window.CONFIG?.KATAGO_BASE_URL || 'http://192.168.0.162:8080';
 
         // 初始化新的模块
         this.analysisStorage = new AnalysisStorage();
-        this.analysisEngine = new AnalysisEngine(this.katagoAPI, this.analysisStorage);
         this.analysisDisplay = new AnalysisDisplay();
+        this.analysisEngine = new AnalysisEngine(this.katagoAPI, this.analysisStorage, this.analysisDisplay);
         this.boardController = new BoardController(this.analysisDisplay, this.analysisStorage);
 
         // 初始化测试题生成器
@@ -25,6 +27,21 @@ class SGFAnalyzer {
         this.currentSGFHash = null;
         this.isAnalyzing = false;
         this.analysisResults = [];
+
+        // 🔥 新增：批量分析状态
+        this.batchQueue = [];
+        this.isStopped = false;
+        this.isBatchProcessing = false;
+
+        // 🔊 音量控制初始化
+        this.stoneSound = document.getElementById('stoneSound');
+        this.correctSound = document.getElementById('correctSound');
+        this.incorrectSound = document.getElementById('incorrectSound');
+        this.volumeSlider = document.getElementById('volumeSlider');
+        this.volumeValue = document.getElementById('volumeValue');
+
+        const savedVol = parseInt(localStorage.getItem('sgfVolume') ?? '30');
+        this.setVolume(savedVol);
 
         this.init();
         this.setupEventListeners();
@@ -98,6 +115,26 @@ class SGFAnalyzer {
         setTimeout(() => {
             this.testKataGoConnection();
         }, 1000);
+    }
+
+    // 🔊 设置音量
+    setVolume(pct) {
+        const vol = pct / 100;
+
+        // 🔥 修复：如果 constructor 运行时元素还没加载，这里重新获取
+        if (!this.stoneSound) this.stoneSound = document.getElementById('stoneSound');
+        if (!this.correctSound) this.correctSound = document.getElementById('correctSound');
+        if (!this.incorrectSound) this.incorrectSound = document.getElementById('incorrectSound');
+
+        if (this.stoneSound) this.stoneSound.volume = vol;
+        if (this.correctSound) this.correctSound.volume = vol;
+        if (this.incorrectSound) this.incorrectSound.volume = vol;
+
+        if (this.volumeSlider) this.volumeSlider.value = pct;
+        if (this.volumeValue) this.volumeValue.textContent = `${pct}%`;
+        localStorage.setItem('sgfVolume', pct);
+
+        console.log(`🔊 [SGFAnalysis] 音量调整为: ${pct}% (音控元素: ${this.stoneSound ? '已找到' : '未找到'})`);
     }
 
     // 🔥 新增：从表格加载SGF的方法
@@ -252,9 +289,41 @@ class SGFAnalyzer {
         // 棋盘控制按钮
         this.boardController.setupEventListeners();
 
+        // 🔥 新增：批量分析控制按钮
+        const startBatchBtn = document.getElementById('startBatchBtn');
+        const clearQueueBtn = document.getElementById('clearQueueBtn');
+
+        if (startBatchBtn) {
+            startBatchBtn.addEventListener('click', () => this.startBatchAnalysis());
+        }
+
+        if (clearQueueBtn) {
+            clearQueueBtn.addEventListener('click', () => this.clearBatchQueue());
+        }
+
         // 初始化测试题生成器
         if (window.TestQuestionGenerator) {
             this.testQuestionGenerator = new TestQuestionGenerator(this);
+        }
+
+        // 🔊 音量控制事件监听
+        if (this.volumeSlider) {
+            this.volumeSlider.addEventListener('input', (e) => this.setVolume(parseInt(e.target.value)));
+        }
+
+        const volumeIcon = document.getElementById('volumeIcon');
+        const volumePopup = document.getElementById('volumePopup');
+        if (volumeIcon && volumePopup) {
+            volumeIcon.addEventListener('click', (e) => {
+                e.stopPropagation();
+                volumePopup.style.display = volumePopup.style.display === 'flex' ? 'none' : 'flex';
+            });
+
+            document.addEventListener('click', (e) => {
+                if (!volumePopup.contains(e.target) && e.target !== volumeIcon) {
+                    volumePopup.style.display = 'none';
+                }
+            });
         }
     }
 
@@ -297,8 +366,8 @@ class SGFAnalyzer {
             try {
                 console.log(`🔍 测试 ${engine.displayName}: ${engine.url}`);
 
-                const tempAPI = new KataGoAPI();
-                tempAPI.setBaseUrl(engine.url);
+                const tempAPI = new KataGoAPI(null, 'katago_gtp_bot', this.katagoAPI.isProxyMode);
+                tempAPI.targetUrl = engine.url;
 
                 const result = await tempAPI.testConnection();
 
@@ -330,6 +399,12 @@ class SGFAnalyzer {
 
             // 5. 更新UI状态
             if (successfulEngines.length > 0) {
+                // 🔥 修复：如果用户已经开始分析了，不要在后台乱改引擎
+                if (this.analysisEngine && this.analysisEngine.isAnalyzing) {
+                    console.log('⏳ 分析已在进行中，跳过自动引擎切换');
+                    return;
+                }
+
                 this.updateConnectionStatus('connected');
 
                 // 如果当前引擎不可用，自动切换到第一个可用的引擎
@@ -340,23 +415,22 @@ class SGFAnalyzer {
 
                     if (!currentEngineResult || !currentEngineResult.success) {
                         // 当前引擎不可用，切换到可用引擎
-                        // 🔥 优先选择 custom 和 local 引擎（cloud 的 POST 有 CORS 问题）
                         const preferredOrder = ['custom', 'local', 'cloud'];
                         let bestEngine = null;
                         for (const preferred of preferredOrder) {
                             bestEngine = successfulEngines.find(r => r.engine.name === preferred);
                             if (bestEngine) break;
                         }
-                        // 如果没有找到优先引擎，回退到第一个成功的
                         if (!bestEngine) bestEngine = successfulEngines[0];
 
                         currentEngineSelect.value = bestEngine.engine.name;
-                        this.katagoAPI.setBaseUrl(bestEngine.engine.url);
+                        // 🔥 修复：只改目标解析地址，baseUrl 保持代理地址不变
+                        this.katagoAPI.targetUrl = bestEngine.engine.url;
                         console.log(`🔥 自动切换到引擎: ${bestEngine.engine.displayName} (${bestEngine.engine.url})`);
                         this.analysisDisplay.addLogEntry(`已自动切换到 ${bestEngine.engine.displayName}`, 'info');
                     } else {
-                        // 当前选中的引擎可用，确保 API base URL 已设置
-                        this.katagoAPI.setBaseUrl(currentEngineResult.engine.url);
+                        // 当前选中的引擎可用，确保 API targetUrl 已设置
+                        this.katagoAPI.targetUrl = currentEngineResult.engine.url;
                         console.log(`🔥 使用当前引擎: ${currentEngineResult.engine.displayName} (${currentEngineResult.engine.url})`);
                     }
                 }
@@ -405,14 +479,8 @@ class SGFAnalyzer {
             this.currentSGFHash = await this.analysisStorage.saveSGFFile(sgfContent, filename);
             this.analysisEngine.setSGFHash(this.currentSGFHash);
 
-            // 重新上传文件时，直接清空已有的分析结果，不再提示
-            const existingResults = await this.analysisStorage.loadAnalysisResults(this.currentSGFHash);
-            if (existingResults.length > 0) {
-                console.log(`发现已有 ${existingResults.length} 条分析结果，重新上传文件时自动清空`);
-                // 清空IndexedDB中的分析结果
-                await this.analysisStorage.clearAnalysisResults(this.currentSGFHash);
-                this.analysisDisplay.addLogEntry(`已清空 ${existingResults.length} 条历史分析结果`, 'info');
-            }
+            // 移除重新上传文件时自动清空逻辑，改为在开始分析前提示用户
+            this.analysisDisplay.addLogEntry(`已载入棋谱: ${filename}`, 'info');
 
             // 解析 SGF 内容
             const rawMoves = this.sgfParser.parseSGFMoves(sgfContent);
@@ -613,20 +681,40 @@ class SGFAnalyzer {
     updateFileInfo(filename, moveCount) {
         const fileNameElement = document.getElementById('fileName');
         const fileDetailsElement = document.getElementById('fileDetails');
-        const fileInfoElement = document.getElementById('fileInfo'); // 添加这行
+        const fileInfoElement = document.getElementById('fileInfo');
 
         if (fileNameElement) {
             fileNameElement.textContent = filename;
         }
 
-        if (fileDetailsElement) {
-            fileDetailsElement.textContent = `共 ${moveCount} 手棋`;
+        const info = this.gameData.gameInfo || {};
+        const blackStr = `${info.blackPlayer || '未知'}${info.blackRank ? ` (${info.blackRank})` : ''}`;
+        const whiteStr = `${info.whitePlayer || '未知'}${info.whiteRank ? ` (${info.whiteRank})` : ''}`;
+
+        let detailsHtml = `<div>共 ${moveCount} 手棋</div>`;
+        if (info.blackPlayer || info.whitePlayer) {
+            detailsHtml += `<div style="margin-top:5px; color:#333; font-weight:bold;">${blackStr} vs ${whiteStr}</div>`;
+        }
+        if (info.result && info.result !== '未知') {
+            detailsHtml += `<div style="font-size:12px; color:#666;">结果: ${info.result}</div>`;
+        }
+        if (info.date && info.date !== '未知') {
+            detailsHtml += `<div style="font-size:12px; color:#666;">日期: ${info.date}</div>`;
         }
 
-        // 添加这段代码来显示文件信息容器
+        if (fileDetailsElement) {
+            fileDetailsElement.innerHTML = detailsHtml;
+        }
+
         if (fileInfoElement) {
             fileInfoElement.classList.add('show');
         }
+
+        // 也更新汇总显示的胜率条标签
+        const labelBlack = document.querySelector('.winrate-label-black');
+        const labelWhite = document.querySelector('.winrate-label-white');
+        if (labelBlack) labelBlack.textContent = info.blackPlayer ? `${info.blackPlayer}${info.blackRank ? `(${info.blackRank})` : ''}` : '黑棋';
+        if (labelWhite) labelWhite.textContent = info.whitePlayer ? `${info.whitePlayer}${info.whiteRank ? `(${info.whiteRank})` : ''}` : '白棋';
     }
 
     // 开始分析
@@ -647,6 +735,22 @@ class SGFAnalyzer {
             // 确保 analysisEngine 有正确的 SGF 哈希值
             if (this.currentSGFHash) {
                 this.analysisEngine.setSGFHash(this.currentSGFHash);
+
+                // 🔥 新增：检查是否已有分析结果，如果是手动触发则提示用户
+                if (!this.isBatchProcessing) {
+                    const existingResults = await this.analysisStorage.loadAnalysisResults(this.currentSGFHash);
+                    if (existingResults.length > 0) {
+                        const confirmReanalyze = confirm(`发现该棋谱已有 ${existingResults.length} 条分析结果，是否重新分析并覆盖旧结果？`);
+                        if (!confirmReanalyze) {
+                            this.analysisDisplay.updateStatus('分析已取消');
+                            this.updateAnalysisButtons('idle');
+                            return;
+                        }
+                        // 用户确认重新分析，清空旧结果
+                        await this.analysisStorage.clearAnalysisResults(this.currentSGFHash);
+                        this.analysisDisplay.addLogEntry('历史分析结果已清空，开始重新分析', 'info');
+                    }
+                }
             }
 
             // 🔥 获取分析设置
@@ -761,6 +865,8 @@ class SGFAnalyzer {
         // 🔥 获取所有同名按钮（可能有重复 ID）
         const allBtns = document.querySelectorAll('#analyzeFileBtn');
         const stopBtn = document.getElementById('stopAnalysisBtn');
+        const startBatchBtn = document.getElementById('startBatchBtn');
+        const clearQueueBtn = document.getElementById('clearQueueBtn');
 
         console.log('updateAnalysisButtons called with state:', state, ', 找到按钮数:', allBtns.length);
 
@@ -799,33 +905,36 @@ class SGFAnalyzer {
                     };
                     break;
             }
-            console.log(`🔥 按钮${index} 已绑定 onclick, disabled=${btn.disabled}, text="${btn.textContent.trim()}"`);
         });
 
+        // 管理停止按钮
         if (stopBtn) {
-            stopBtn.disabled = (state === 'idle');
-            stopBtn.textContent = (state === 'idle') ? '停止分析' : '结束分析';
+            stopBtn.style.display = (state === 'analyzing' || state === 'paused') ? 'flex' : 'none';
+            // 重新绑定停止事件
+            const newStopBtn = stopBtn.cloneNode(true);
+            stopBtn.parentNode.replaceChild(newStopBtn, stopBtn);
+            newStopBtn.onclick = (e) => {
+                e.preventDefault();
+                this.stopAnalysis();
+            };
+        }
 
-            // 为停止分析按钮添加事件监听器
-            if (state !== 'idle') {
-                // 移除之前的事件监听器
-                const newStopBtn = stopBtn.cloneNode(true);
-                stopBtn.parentNode.replaceChild(newStopBtn, stopBtn);
-                const refreshedStopBtn = document.getElementById('stopAnalysisBtn');
-
-                refreshedStopBtn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    this.stopAnalysis();
-                });
+        // 管理批量分析按钮
+        if (startBatchBtn) {
+            if (this.isBatchProcessing) {
+                startBatchBtn.disabled = true;
+                startBatchBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 批量分析中...';
+                if (clearQueueBtn) clearQueueBtn.disabled = true;
+            } else {
+                startBatchBtn.disabled = (this.batchQueue.length === 0);
+                startBatchBtn.innerHTML = '<i class="fas fa-play"></i> 开始批量分析';
+                if (clearQueueBtn) clearQueueBtn.disabled = false;
             }
         }
 
-        // 🔥 新增：处理保存按钮状态
+        // 🔥 处理保存按钮状态
         const saveBtn = document.getElementById('saveAnalysisBtn');
         if (saveBtn) {
-            // 在任何状态下，只要有 currentSGFHash 就可以尝试保存
-            // 但为了简单起见，我们可以在 idle 或 paused 状态下允许保存
-            // 或者始终允许保存当前进度
             saveBtn.disabled = !this.currentSGFHash;
             saveBtn.style.opacity = this.currentSGFHash ? '1' : '0.5';
             saveBtn.style.pointerEvents = this.currentSGFHash ? 'auto' : 'none';
@@ -835,6 +944,7 @@ class SGFAnalyzer {
     // 停止分析
     async stopAnalysis() {
         console.log('🛑 停止分析');
+        this.isStopped = true;
 
         // 停止分析引擎
         this.analysisEngine.stopAnalysis();
@@ -849,12 +959,9 @@ class SGFAnalyzer {
             if (currentResults && currentResults.length > 0) {
                 await this.saveAnalysis();
                 this.analysisDisplay.addLogEntry(`分析已停止，已保存 ${currentResults.length} 条结果`, 'success');
-            } else {
-                this.analysisDisplay.addLogEntry('分析已停止，没有结果可保存', 'info');
             }
         } catch (error) {
             console.error('保存分析结果失败:', error);
-            this.analysisDisplay.addLogEntry(`保存失败: ${error.message}`, 'error');
         }
     }
 
@@ -867,65 +974,8 @@ class SGFAnalyzer {
         }
 
         try {
-            // 从 IndexedDB 加载分析结果
             const analysisResults = await this.analysisStorage.loadAnalysisResults(this.currentSGFHash);
-
-            if (analysisResults.length === 0) {
-                throw new Error('没有分析结果可保存');
-            }
-
-            // 🔥 添加详细的数据大小分析
-            console.log(`🔍 准备保存 ${analysisResults.length} 条分析结果到 MongoDB`);
-
-            let totalSize = 0;
-            let rawDataTotalSize = 0;
-            let maxSingleResultSize = 0;
-            let maxSingleRawDataSize = 0;
-
-            analysisResults.forEach((result, index) => {
-                const resultSize = JSON.stringify(result).length;
-                totalSize += resultSize;
-                maxSingleResultSize = Math.max(maxSingleResultSize, resultSize);
-
-                if (result.analysis && result.analysis.rawData) {
-                    const rawDataSize = JSON.stringify(result.analysis.rawData).length;
-                    rawDataTotalSize += rawDataSize;
-                    maxSingleRawDataSize = Math.max(maxSingleRawDataSize, rawDataSize);
-
-                    if (index < 3) { // 只显示前3条的详细信息
-                        console.log(`🔍 第${result.moveNumber}手分析结果:`);
-                        console.log(`  - 总大小: ${(resultSize / 1024).toFixed(2)} KB`);
-                        console.log(`  - rawData大小: ${(rawDataSize / 1024).toFixed(2)} KB (${((rawDataSize / resultSize) * 100).toFixed(1)}%)`);
-
-                        // 检查 rawData 中的具体字段
-                        if (result.analysis.rawData.analysis) {
-                            const analysisArraySize = JSON.stringify(result.analysis.rawData.analysis).length;
-                            console.log(`  - rawData.analysis数组大小: ${(analysisArraySize / 1024).toFixed(2)} KB`);
-                            console.log(`  - rawData.analysis包含 ${result.analysis.rawData.analysis.length} 个变化`);
-
-                            // 检查第一个变化的详细字段
-                            if (result.analysis.rawData.analysis[0]) {
-                                const firstVariation = result.analysis.rawData.analysis[0];
-                                Object.keys(firstVariation).forEach(key => {
-                                    if (firstVariation[key] && typeof firstVariation[key] === 'object') {
-                                        const fieldSize = JSON.stringify(firstVariation[key]).length;
-                                        if (fieldSize > 500) { // 只显示大于500字节的字段
-                                            console.log(`    - ${key}: ${(fieldSize / 1024).toFixed(2)} KB`);
-                                        }
-                                    }
-                                });
-                            }
-                        }
-                    }
-                }
-            });
-
-            console.log(`🔍 分析结果数据统计:`);
-            console.log(`  - 总记录数: ${analysisResults.length}`);
-            console.log(`  - 所有结果总大小: ${(totalSize / 1024 / 1024).toFixed(2)} MB`);
-            console.log(`  - rawData总大小: ${(rawDataTotalSize / 1024 / 1024).toFixed(2)} MB (${((rawDataTotalSize / totalSize) * 100).toFixed(1)}%)`);
-            console.log(`  - 单条结果最大: ${(maxSingleResultSize / 1024).toFixed(2)} KB`);
-            console.log(`  - 单条rawData最大: ${(maxSingleRawDataSize / 1024).toFixed(2)} KB`);
+            if (analysisResults.length === 0) return;
 
             const payload = {
                 sgf: {
@@ -933,17 +983,24 @@ class SGFAnalyzer {
                     filename: this.gameData?.filename || 'unknown.sgf',
                     content: this.gameData?.sgfContent || '',
                     uploadTime: new Date().toISOString(),
-                    gameInfo: this.gameData?.gameInfo || {}
+                    gameInfo: {
+                        ...this.gameData?.gameInfo,
+                        black: this.gameData?.gameInfo?.black || this.gameData?.gameInfo?.blackPlayer || '',
+                        white: this.gameData?.gameInfo?.white || this.gameData?.gameInfo?.whitePlayer || '',
+                        result: this.gameData?.gameInfo?.result || '',
+                        date: this.gameData?.gameInfo?.date || '',
+                        event: this.gameData?.gameInfo?.event || '',
+                        komi: this.gameData?.gameInfo?.komi || 6.5
+                    }
                 },
                 analysisConfig: {
                     engine: 'katago',
-                    engineVersion: '1.0',
+                    engineVersion: '1.0', // 添加后端必填的 engineVersion 字段
                     visits: 800,
                     time: 30,
                     analysisDate: new Date().toISOString(),
                     totalMoves: analysisResults.length
                 },
-                // 🔥 关键修复：移除 rawData，只保留核心分析数据
                 analysisResults: analysisResults.map(result => ({
                     moveNumber: result.moveNumber,
                     move: result.move,
@@ -953,71 +1010,30 @@ class SGFAnalyzer {
                         score: result.analysis.score,
                         visits: result.analysis.visits,
                         time: result.analysis.time,
-                        // 只保留前3个变化，减少数据量
                         variations: result.analysis.variations?.slice(0, 3) || [],
-                        // 只保留前10个策略，减少数据量
                         policy: result.analysis.policy?.slice(0, 10) || []
-                        // 🔥 完全移除 rawData！这是数据量大的罪魁祸首
                     }
                 })),
                 metadata: {
                     createdAt: new Date().toISOString(),
                     updatedAt: new Date().toISOString(),
                     analysisStatus: 'completed',
-                    totalAnalysisTime: analysisResults.reduce((sum, r) => sum + (r.analysis.time || 0), 0),
-                    averageTime: analysisResults.length > 0 ?
-                        (analysisResults.reduce((sum, r) => sum + (r.analysis.time || 0), 0) / analysisResults.length).toFixed(2) : 0,
                     version: '1.0'
                 }
             };
 
-            // 🔥 分析 payload 各部分的大小
-            const sgfSize = JSON.stringify(payload.sgf).length;
-            const configSize = JSON.stringify(payload.analysisConfig).length;
-            const resultsSize = JSON.stringify(payload.analysisResults).length;
-            const metadataSize = JSON.stringify(payload.metadata).length;
-            const totalPayloadSize = JSON.stringify(payload).length;
-
-            console.log(`🔍 最终 Payload 大小分析:`);
-            console.log(`  - SGF部分: ${(sgfSize / 1024).toFixed(2)} KB (${((sgfSize / totalPayloadSize) * 100).toFixed(1)}%)`);
-            console.log(`  - 配置部分: ${(configSize / 1024).toFixed(2)} KB (${((configSize / totalPayloadSize) * 100).toFixed(1)}%)`);
-            console.log(`  - 分析结果部分: ${(resultsSize / 1024).toFixed(2)} KB (${((resultsSize / totalPayloadSize) * 100).toFixed(1)}%)`);
-            console.log(`  - 元数据部分: ${(metadataSize / 1024).toFixed(2)} KB (${((metadataSize / totalPayloadSize) * 100).toFixed(1)}%)`);
-            console.log(`  - 🚨 总大小: ${(totalPayloadSize / 1024 / 1024).toFixed(2)} MB`);
-
-            // 🔥 根据大小给出警告
-            if (totalPayloadSize > 50 * 1024 * 1024) { // 50MB
-                console.error(`❌ 数据量极大 (${(totalPayloadSize / 1024 / 1024).toFixed(2)} MB)，必须优化！`);
-            } else if (totalPayloadSize > 16 * 1024 * 1024) { // 16MB
-                console.error(`❌ 数据量过大 (${(totalPayloadSize / 1024 / 1024).toFixed(2)} MB)，可能会导致 HTTP 413 错误`);
-            } else if (totalPayloadSize > 10 * 1024 * 1024) { // 10MB
-                console.warn(`⚠️ 数据量较大 (${(totalPayloadSize / 1024 / 1024).toFixed(2)} MB)，建议优化`);
-            } else {
-                console.log(`✅ 数据量正常 (${(totalPayloadSize / 1024 / 1024).toFixed(2)} MB)`);
-            }
-
             const response = await fetch(`${CONFIG.API_BASE_URL}/saveAnalysis`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
 
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-
-            console.log('分析结果已成功保存到 MongoDB');
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
             this.analysisDisplay.showSuccess('分析结果保存成功！');
-
-            // 刷新已分析棋谱列表
-            if (window.analyzedGamesTable) {
-                window.analyzedGamesTable.loadAnalyzedGames();
-            }
+            if (window.analyzedGamesTable) window.analyzedGamesTable.loadAnalyzedGames();
 
         } catch (error) {
-            console.error('保存到 MongoDB 失败:', error);
+            console.error('保存失败:', error);
             this.analysisDisplay.showError(`保存失败: ${error.message}`);
             throw error;
         } finally {
@@ -1028,28 +1044,128 @@ class SGFAnalyzer {
         }
     }
 
-    if(engineSelect) {
-        engineSelect.addEventListener('change', (e) => this.handleEngineChange(e));
-    }
-
-    // 新增：处理引擎切换
+    // 处理引擎切换
     handleEngineChange(event) {
         const selectedEngineId = event.target.value;
         const engineConfig = window.getEngineConfig ? window.getEngineConfig(selectedEngineId) : null;
 
         if (engineConfig && engineConfig.url) {
             this.katagoAPI.setBaseUrl(engineConfig.url);
+            this.katagoAPI.targetUrl = engineConfig.url; // 🔥 修复：同步更新代理目标地址
             this.analysisDisplay.addLogEntry(`已切换到引擎: ${engineConfig.name} (${engineConfig.url})`, 'info');
-
-            // 重新测试连接
             this.testKataGoConnection();
-        } else {
-            console.error('无法获取引擎配置:', selectedEngineId);
-            this.analysisDisplay.addLogEntry(`切换引擎失败: 未知引擎 ${selectedEngineId}`, 'error');
         }
     }
-}
 
+    // 批量分析相关方法
+    async addToBatchQueue(file) {
+        if (this.batchQueue.length >= 10) {
+            this.analysisDisplay.addLogEntry('队列已满，最多支持10个文件', 'warning');
+            return;
+        }
+
+        const gibParser = new GIBParser();
+        let content, filename = file.name;
+
+        try {
+            if (filename.toLowerCase().endsWith('.gib')) {
+                const arrayBuffer = await readFileAsArrayBuffer(file);
+                content = await gibParser.convertToSGF(arrayBuffer);
+                filename = filename.replace(/\.[^/.]+$/, "") + ".sgf";
+            } else {
+                content = await readFile(file);
+            }
+
+            this.batchQueue.push({ file, filename, content, status: 'pending' });
+            document.getElementById('batchQueueSection').style.display = 'block';
+            this.renderBatchQueue();
+
+            // 🔥 修复：如果是第一个文件，自动解析它，确保 this.gameData 不为 null
+            if (this.batchQueue.length === 1) {
+                console.log('⚡ 自动解析队列中的第一个文件:', filename);
+                await this.parseSGF(content, filename);
+            }
+
+            this.updateAnalysisButtons('idle');
+        } catch (error) {
+            console.error('解析失败:', error);
+        }
+    }
+
+    renderBatchQueue() {
+        const list = document.getElementById('batchQueueList');
+        const count = document.getElementById('queueCount');
+        if (!list || !count) return;
+
+        count.textContent = this.batchQueue.length;
+        list.innerHTML = '';
+
+        this.batchQueue.forEach((item, index) => {
+            const el = document.createElement('div');
+            el.className = `queue-item ${item.status === 'analyzing' ? 'active' : ''} ${item.status === 'done' ? 'done' : ''}`;
+            let statusText = item.status === 'analyzing' ? '分析中' : item.status === 'done' ? '已完成' : item.status === 'error' ? '失败' : '等待中';
+            let statusClass = `status-${item.status}`;
+
+            el.innerHTML = `
+                <span class="item-name" title="${item.filename}">${index + 1}. ${item.filename}</span>
+                <span class="item-status ${statusClass}">${statusText}</span>
+            `;
+            list.appendChild(el);
+        });
+    }
+
+    async startBatchAnalysis() {
+        if (this.isBatchProcessing || this.batchQueue.length === 0) return;
+
+        this.isBatchProcessing = true;
+        this.isStopped = false;
+        this.updateAnalysisButtons('analyzing');
+        this.analysisDisplay.addLogEntry('🎬 开始批量分析任务', 'info');
+
+        for (let i = 0; i < this.batchQueue.length; i++) {
+            if (this.isStopped) break;
+            const item = this.batchQueue[i];
+            if (item.status === 'done') continue;
+
+            item.status = 'analyzing';
+            this.renderBatchQueue();
+
+            try {
+                await this.parseSGF(item.content, item.filename);
+                await this.startAnalysis();
+                this.analysisDisplay.addLogEntry(`💾 正在自动保存 ${item.filename}...`, 'info');
+                await this.saveAnalysis();
+
+                // 🔥 检查分析手数，不足60手不标记为done
+                // 使用 analysisEngine.analysisResults 获取当前分析任务的手数
+                const moveCount = this.analysisEngine.analysisResults.length;
+                if (moveCount >= 60) {
+                    item.status = 'done';
+                    this.analysisDisplay.addLogEntry(`${item.filename} 分析完成 (共 ${moveCount} 手)`, 'success');
+                } else {
+                    item.status = 'error';
+                    this.analysisDisplay.addLogEntry(`${item.filename} 分析结果不足 60 手 (${moveCount} 手)，未标记为完成`, 'warning');
+                }
+            } catch (error) {
+                console.error('分析失败:', error);
+                item.status = 'error';
+            }
+            this.renderBatchQueue();
+        }
+
+        this.isBatchProcessing = false;
+        this.analysisDisplay.addLogEntry('🏁 批量分析任务结束', 'success');
+        this.updateAnalysisButtons('idle');
+    }
+
+    clearBatchQueue() {
+        if (this.isBatchProcessing) return;
+        this.batchQueue = [];
+        document.getElementById('batchQueueSection').style.display = 'none';
+        this.renderBatchQueue();
+        this.updateAnalysisButtons('idle');
+    }
+}
 
 // 页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', () => {
@@ -1060,3 +1176,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // 新增：引擎选择事件监听
 const engineSelect = document.getElementById('engineSelect');
+if (engineSelect) {
+    engineSelect.addEventListener('change', (e) => {
+        if (window.sgfAnalyzer) {
+            window.sgfAnalyzer.handleEngineChange(e);
+        }
+    });
+}

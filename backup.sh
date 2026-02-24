@@ -27,9 +27,17 @@ BACKUP_ITEMS=(
     "images/"
     "Sounds/"
     "Tournaments/"
+    "doc/"
+    "python/"
+    ".agent/"
+    "bad/"
+    "API.md"
+    ".gitignore"
     "README.md"
     "CNAME"
     "favicon.ico"
+    "backup.sh"
+    "backup_restore.sh"
 )
 
 # 要排除的文件和文件夹（Node.js 相关）

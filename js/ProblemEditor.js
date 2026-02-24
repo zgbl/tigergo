@@ -100,6 +100,9 @@ class ProblemEditor {
 
         // 8. 初始化可拖拽边栏
         this.initResizableSidebar();
+
+        // 9. 初始化音量控制
+        this.initVolumeControl();
     }
 
     async showGameSelector() {
@@ -126,6 +129,84 @@ class ProblemEditor {
                 if (this.gameId) this.initBoard();
             }, 200);
         });
+    }
+
+    // 🔊 初始化音量控制
+    initVolumeControl() {
+        console.log("🔊 Initializing Volume Control...");
+        this.volumeIcon = document.getElementById('volumeIcon');
+        this.volumePopup = document.getElementById('volumePopup');
+        this.volumeSlider = document.getElementById('volumeSlider');
+        this.volumeValue = document.getElementById('volumeValue');
+
+        // 音频元素
+        this.stoneSound = document.getElementById('stoneSound');
+        this.correctSound = document.getElementById('correctSound');
+        this.incorrectSound = document.getElementById('incorrectSound');
+
+        if (!this.volumeIcon || !this.volumeSlider) {
+            console.warn("🔊 Volume control elements not found");
+            return;
+        }
+
+        // 1. 从 localStorage 加载音量 (与 SGFAnalysis 共用相同的 key: 'sgfVolume')
+        const savedVolume = localStorage.getItem('sgfVolume') || 50;
+        this.setVolume(parseInt(savedVolume));
+
+        // 2. 绑定事件
+        console.log("🔊 Binding Volume Icon click event...");
+        this.volumeIcon.addEventListener('click', (e) => {
+            e.stopPropagation();
+            console.log("🔊 Volume Icon clicked! Current display:", this.volumePopup.style.display);
+            const isVisible = window.getComputedStyle(this.volumePopup).display === 'block';
+            this.volumePopup.style.display = isVisible ? 'none' : 'block';
+            console.log("🔊 New display set to:", this.volumePopup.style.display);
+        });
+
+        this.volumeSlider.addEventListener('input', (e) => {
+            console.log("🔊 Volume Slider input:", e.target.value);
+            this.setVolume(e.target.value);
+        });
+
+        // 点击外部关闭弹窗
+        document.addEventListener('click', (e) => {
+            if (this.volumePopup && !this.volumePopup.contains(e.target) && e.target !== this.volumeIcon) {
+                this.volumePopup.style.display = 'none';
+            }
+        });
+
+        console.log("🔊 Volume Control initialized with volume:", savedVolume);
+    }
+
+    // 🔊 设置音量
+    setVolume(pct) {
+        const vol = pct / 100;
+
+        // 这里的元素是在 ProblemEditor.html 中新增的
+        if (!this.stoneSound) this.stoneSound = document.getElementById('stoneSound');
+        if (!this.correctSound) this.correctSound = document.getElementById('correctSound');
+        if (!this.incorrectSound) this.incorrectSound = document.getElementById('incorrectSound');
+
+        if (this.stoneSound) this.stoneSound.volume = vol;
+        if (this.correctSound) this.correctSound.volume = vol;
+        if (this.incorrectSound) this.incorrectSound.volume = vol;
+
+        if (this.volumeSlider) this.volumeSlider.value = pct;
+        if (this.volumeValue) this.volumeValue.textContent = `${pct}%`;
+
+        // 更新图标 (可选：静音图标切换)
+        const icon = this.volumeIcon ? this.volumeIcon.querySelector('i') : null;
+        if (icon) {
+            if (pct == 0) {
+                icon.className = 'fas fa-volume-mute';
+            } else if (pct < 50) {
+                icon.className = 'fas fa-volume-down';
+            } else {
+                icon.className = 'fas fa-volume-up';
+            }
+        }
+
+        localStorage.setItem('sgfVolume', pct);
     }
 
     async loadGameData() {
@@ -158,11 +239,15 @@ class ProblemEditor {
             this.gameData.moves = convertedMoves;
 
             // Update UI Info
-            document.getElementById('gameInfoDisplay').innerHTML = `
-                <strong>${this.gameData.gameInfo.black || 'Unknown'} (B) vs ${this.gameData.gameInfo.white || 'Unknown'} (W)</strong><br>
-                Result: ${this.gameData.gameInfo.result || '?'}<br>
-                Date: ${this.gameData.gameInfo.date || '-'}
-            `;
+            const info = this.gameData.gameInfo || {};
+            const blackStr = `${info.black || info.blackPlayer || '未知'}${info.blackRank ? ` (${info.blackRank})` : ''}`;
+            const whiteStr = `${info.white || info.whitePlayer || '未知'}${info.whiteRank ? ` (${info.whiteRank})` : ''}`;
+
+            let gameInfoHtml = `<strong>${blackStr} (B) vs ${whiteStr} (W)</strong><br>`;
+            if (info.event && info.event !== '未知') gameInfoHtml += `<span style="color:#666">${info.event}</span><br>`;
+            gameInfoHtml += `结果: ${info.result || '?'}<br>日期: ${info.date || '-'}`;
+
+            document.getElementById('gameInfoDisplay').innerHTML = gameInfoHtml;
 
             // Store analysis results for search
             this.analysisResults = data.analysisResults || [];
@@ -1058,6 +1143,15 @@ class ProblemEditor {
                     questionText: description,
                     title: description,
                     source: this.gameData?.filename || '棋谱编辑器',
+
+                    // 比赛信息
+                    blackPlayer: this.gameData?.gameInfo?.blackPlayer || this.gameData?.gameInfo?.black || '',
+                    whitePlayer: this.gameData?.gameInfo?.whitePlayer || this.gameData?.gameInfo?.white || '',
+                    blackRank: this.gameData?.gameInfo?.blackRank || '',
+                    whiteRank: this.gameData?.gameInfo?.whiteRank || '',
+                    gameDate: this.gameData?.gameInfo?.date || '',
+                    result: this.gameData?.gameInfo?.result || '',
+
                     createdAt: existingQuestion ? existingQuestion.createdAt : new Date().toISOString()
                 }],
                 metadata: {
@@ -1673,6 +1767,15 @@ class ProblemEditor {
                     questionText: description,
                     title: description,
                     source: this.gameData?.filename || '棋谱编辑器',
+
+                    // 比赛信息
+                    blackPlayer: this.gameData?.gameInfo?.blackPlayer || this.gameData?.gameInfo?.black || '',
+                    whitePlayer: this.gameData?.gameInfo?.whitePlayer || this.gameData?.gameInfo?.white || '',
+                    blackRank: this.gameData?.gameInfo?.blackRank || '',
+                    whiteRank: this.gameData?.gameInfo?.whiteRank || '',
+                    gameDate: this.gameData?.gameInfo?.date || '',
+                    result: this.gameData?.gameInfo?.result || '',
+
                     verificationStatus: 'pending'
                 }],
                 metadata: {

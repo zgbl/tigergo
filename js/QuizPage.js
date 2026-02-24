@@ -183,6 +183,9 @@ class QuizPage {
         let cellSize = Math.min(cellSizeFromWidth, cellSizeFromHeight);
         cellSize = Math.max(20, Math.min(cellSize, 60)); // 限制范围
 
+        // 🔥 应用 0.8 缩放系数，防止棋盘过大挤出屏幕
+        cellSize = Math.floor(cellSize * 0.8);
+
         const stoneSize = Math.floor(cellSize * 0.95);
         return { cellSize, stoneSize };
     }
@@ -206,7 +209,7 @@ class QuizPage {
                 // 重新显示当前题目
                 if (this.questions && this.questions[this.currentQuestionIndex]) {
                     const q = this.questions[this.currentQuestionIndex];
-                    this.quizBoard.displayPosition(q.boardState, q.candidates);
+                    this.quizBoard.displayPosition(q.boardState, q.candidates, q.lastMove);
                 }
             }
         });
@@ -292,7 +295,7 @@ class QuizPage {
                     }
 
                     // 重新分配 A/B/C/D 标签
-                    const labels = ['A', 'B', 'C', 'D'];
+                    const labels = ['A', 'B', 'C', 'D', 'E'];
                     candidates = candidates.map((c, idx) => ({
                         ...c,
                         label: labels[idx]
@@ -352,6 +355,14 @@ class QuizPage {
                     boardState: boardState,
                     candidates: candidates,
                     correctAnswer: correctAnswer,
+                    currentPlayer: q.currentPlayer || 'black',
+                    lastMove: q.lastMove || null, // 🔥 新增：上一步信息
+                    blackPlayer: q.blackPlayer || '',
+                    whitePlayer: q.whitePlayer || '',
+                    blackRank: q.blackRank || '',
+                    whiteRank: q.whiteRank || '',
+                    gameDate: q.gameDate || '',
+                    result: q.result || '',
                     winrateChange: q.winRateLoss || 0
                 };
             });
@@ -482,17 +493,57 @@ class QuizPage {
         }
 
         const rawQuestions = data.data?.questions || [];
-        const newQuestions = rawQuestions.map((q, index) => ({
-            id: q.id || q._id,
-            questionNumber: this.allAvailableQuestions.length + index + 1,
-            title: q.questionText || '请选择最佳下法',
-            difficulty: q.difficulty || '中等',
-            source: q.sgfFilename || '实战对局',
-            boardState: this.convertBoardState(q.boardState),
-            candidates: q.candidatePoints || [],
-            correctAnswer: q.correctAnswer?.label || 'A',
-            winrateChange: q.winRateLoss || 0
-        }));
+        const newQuestions = rawQuestions.map((q, index) => {
+            // 候选点处理 (与 loadQuestions 逻辑保持一致)
+            let candidates = [];
+            let correctAnswer = 'A';
+
+            if (q.candidatePoints && Array.isArray(q.candidatePoints)) {
+                candidates = this.convertCandidatePoints(q.candidatePoints);
+                candidates = this.shuffleArray(candidates);
+
+                // 重新分配 A/B/C/D 标签
+                const labels = ['A', 'B', 'C', 'D', 'E'];
+                candidates = candidates.map((c, idx) => ({
+                    ...c,
+                    label: labels[idx]
+                }));
+
+                // 通过 position 字段匹配正确答案
+                if (q.correctAnswer && q.correctAnswer.position) {
+                    const correctCandidate = candidates.find(c => c.position === q.correctAnswer.position);
+                    if (correctCandidate) {
+                        correctAnswer = correctCandidate.label;
+                    } else {
+                        const bestCandidate = candidates.find(c => c.type === 'best');
+                        if (bestCandidate) correctAnswer = bestCandidate.label;
+                    }
+                } else {
+                    const bestCandidate = candidates.find(c => c.type === 'best');
+                    if (bestCandidate) correctAnswer = bestCandidate.label;
+                }
+            }
+
+            return {
+                id: q.id || q._id,
+                questionNumber: this.allAvailableQuestions.length + index + 1,
+                title: q.questionText || '请选择最佳下法',
+                difficulty: q.difficulty || '中等',
+                source: q.sgfFilename || '实战对局',
+                boardState: this.convertBoardState(q.boardState),
+                candidates: candidates,
+                correctAnswer: correctAnswer,
+                currentPlayer: q.currentPlayer || 'black',
+                lastMove: q.lastMove || null, // 🔥 新增：上一步信息
+                blackPlayer: q.blackPlayer || '',
+                whitePlayer: q.whitePlayer || '',
+                blackRank: q.blackRank || '',
+                whiteRank: q.whiteRank || '',
+                gameDate: q.gameDate || '',
+                result: q.result || '',
+                winrateChange: q.winRateLoss || 0
+            };
+        });
 
         // 合并新题目，避免重复
         const existingIds = new Set(this.allAvailableQuestions.map(q => q.id));
@@ -590,13 +641,30 @@ class QuizPage {
         this.questionDifficulty.textContent = question.difficulty;
         this.questionSourceSpan.textContent = question.source;
 
+        // 更新游戏元数据 (紧凑单行显示)
+        const gameMetadataEl = document.getElementById('gameMetadata');
+        if (gameMetadataEl) {
+            const bName = question.blackPlayer || '未知';
+            const wName = question.whitePlayer || '未知';
+            const parts = [`黑:${bName} vs 白:${wName}`];
+            if (question.gameDate && question.gameDate !== '未知') parts.push(question.gameDate);
+            if (question.result && question.result !== '未知') parts.push(question.result);
+            gameMetadataEl.innerHTML = parts.join(' | ');
+        }
+
         // 更新进度
         this.currentQuestionSpan.textContent = this.currentQuestionIndex + 1;
         const progress = ((this.currentQuestionIndex + 1) / this.questions.length) * 100;
         this.progressFill.style.width = `${progress}%`;
 
+        console.log("QuizPage: Preparing to show question", {
+            id: question.id,
+            num: question.questionNumber,
+            lastMove: question.lastMove
+        });
+
         // 显示棋盘
-        this.quizBoard.displayPosition(question.boardState, question.candidates);
+        this.quizBoard.displayPosition(question.boardState, question.candidates, question.lastMove);
 
         // 生成答题选项
         this.generateAnswerOptions(question.candidates);
@@ -614,54 +682,58 @@ class QuizPage {
 
     generateAnswerOptions(candidates) {
         console.log('=== 生成答题选项 ===');
-        console.log('candidates:', candidates);
         console.log('candidates长度:', candidates ? candidates.length : 'undefined');
 
         if (!candidates || !Array.isArray(candidates) || candidates.length === 0) {
-            console.error('无效的候选点数据，无法生成答题选项:', candidates);
-            this.answerOptions.innerHTML = '<p style="color: red;">无法加载答题选项，候选点数据缺失</p>';
+            console.error('无效的候选点数据:', candidates);
+            this.answerOptions.innerHTML = '<p style="color: red;">候选点数据缺失</p>';
             return;
         }
 
-        // 获取当前走棋方
         const question = this.questions[this.currentQuestionIndex];
         const isBlackTurn = question.currentPlayer === 'black';
-
-        // 找出基准胜率 (黑棋找最大，白棋找最小)
         const winrates = candidates.map(c => c.winRate || 0);
         const baselineWinRate = isBlackTurn ? Math.max(...winrates) : Math.min(...winrates);
 
-        // 不再动态生成选项，只更新静态选项的文本内容
-        const optionTexts = this.answerOptions.querySelectorAll('.option-text');
+        // 🔥 动态生成选项 HTML，根据实际候选点数量 (支持4选项和5选项)
+        const markerClasses = ['a', 'b', 'c', 'd', 'e'];
+        let optionsHtml = '';
         candidates.forEach((candidate, index) => {
-            if (optionTexts[index]) {
-                // 计算胜率损失 (相对于当前选手的最佳选点)
-                let winRateLossDisp = '0.0';
-                if (candidate.winRate !== undefined && candidate.winRate !== null) {
-                    const winRatePercent = candidate.winRate;
-                    // 黑棋损失 = 最高 - 当前; 白棋损失 = 当前 - 最低
-                    winRateLossDisp = isBlackTurn ?
-                        Math.max(0, baselineWinRate - winRatePercent).toFixed(1) :
-                        Math.max(0, winRatePercent - baselineWinRate).toFixed(1);
-                }
+            const label = candidate.label || String.fromCharCode(65 + index);
+            const optionId = `option${label}`;
+            const markerClass = markerClasses[index] || '';
 
-                // 🔥 答题前只显示选项标签，不泄露胜率和描述
-                optionTexts[index].innerHTML = `${candidate.label}`;
-                // 保存数据供答题后显示
-                const lossValue = parseFloat(winRateLossDisp);
-                optionTexts[index].dataset.lossText = lossValue === 0 ? `0.0%` : `-${winRateLossDisp}%`;
-                optionTexts[index].dataset.descText = candidate.description || '';
+            let winRateLossDisp = '0.0';
+            if (candidate.winRate !== undefined && candidate.winRate !== null) {
+                const wr = candidate.winRate;
+                winRateLossDisp = isBlackTurn ?
+                    Math.max(0, baselineWinRate - wr).toFixed(1) :
+                    Math.max(0, wr - baselineWinRate).toFixed(1);
             }
+            const lossValue = parseFloat(winRateLossDisp);
+            const lossText = lossValue === 0 ? '0.0%' : `-${winRateLossDisp}%`;
+            const descText = candidate.description || '';
+
+            optionsHtml += `
+                <div class="answer-option">
+                    <input type="radio" id="${optionId}" name="answer" value="${label}" />
+                    <label for="${optionId}" class="option-label">
+                        <span class="option-marker ${markerClass}">${label}</span>
+                        <span class="option-text" data-loss-text="${lossText}" data-desc-text="${descText}">${label}</span>
+                    </label>
+                </div>`;
         });
 
-        // 添加事件监听器，当选择答案时启用提交按钮
-        const radioButtons = this.answerOptions.querySelectorAll('input[type="radio"]');
-        radioButtons.forEach(radio => {
+        this.answerOptions.innerHTML = optionsHtml;
+
+        // 绑定事件
+        this.answerOptions.querySelectorAll('input[type="radio"]').forEach(radio => {
             radio.addEventListener('change', () => {
                 this.submitAnswerBtn.disabled = false;
             });
         });
     }
+
 
     submitAnswer() {
         const selectedAnswer = document.querySelector('input[name="answer"]:checked');
@@ -849,7 +921,7 @@ class QuizPage {
         // 如果是数组格式
         if (Array.isArray(candidatePoints)) {
             return candidatePoints.map((point, index) => {
-                const labels = ['A', 'B', 'C', 'D'];
+                const labels = ['A', 'B', 'C', 'D', 'E'];
                 return {
                     // 保留所有原始字段
                     ...point,
@@ -868,7 +940,7 @@ class QuizPage {
 
         // 如果是对象格式
         if (typeof candidatePoints === 'object') {
-            const labels = ['A', 'B', 'C', 'D'];
+            const labels = ['A', 'B', 'C', 'D', 'E'];
             return Object.keys(candidatePoints).map((key, index) => {
                 const point = candidatePoints[key];
                 return {

@@ -53,10 +53,10 @@
         <div class="upload-icon">
           <i class="fas fa-cloud-upload-alt"></i>
         </div>
-        <div class="upload-text">拖拽 SGF 文件到此处</div>
+        <div class="upload-text">拖拽 SGF/GIB 文件到此处</div>
         <div class="upload-hint">或点击选择文件</div>
       </div>
-      <input type="file" id="fileInput" class="file-input" accept=".sgf" />
+      <input type="file" id="fileInput" class="file-input" accept=".sgf,.gib" multiple />
 
       <div class="upload-buttons">
         <button class="upload-btn" id="selectFileBtn">
@@ -77,6 +77,25 @@
       <div class="file-info" id="fileInfo">
         <div class="file-name" id="fileName"></div>
         <div class="file-details" id="fileDetails"></div>
+      </div>
+
+      <!-- 🔥 新增：批量分析队列 -->
+      <div class="batch-queue-section" id="batchQueueSection" style="display: none; margin-top: 15px;">
+        <h3 class="queue-title" style="font-size: 13px; margin-bottom: 8px; color: #2c3e50;">
+          <i class="fas fa-list-ol"></i> 待分析队列 (<span id="queueCount">0</span>/10)
+        </h3>
+        <div class="batch-queue-list" id="batchQueueList">
+          <!-- 队列项将通过 JS 动态生成 -->
+        </div>
+        <div class="batch-controls" style="margin-top: 10px; display: flex; gap: 8px;">
+          <button class="batch-btn" id="startBatchBtn"
+            style="flex: 1; background: linear-gradient(135deg, #10b981, #059669);">
+            <i class="fas fa-play"></i> 开始批量分析
+          </button>
+          <button class="batch-btn" id="clearQueueBtn" style="background: #ef4444;">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
       </div>
     </div>
 
@@ -146,7 +165,7 @@
         </div>
 
         <!-- 🔥 修改：使用icon格式的控制按钮（参考Post11.html） -->
-        <div id="controls2">
+        <div id="controls2" style="display: flex; align-items: center; justify-content: center; gap: 5px;">
           <button id="logostartBtn" title="回到开始" class="control-btn">
             <i class="fas fa-fast-backward"></i>
           </button>
@@ -168,6 +187,22 @@
           <button id="logoshowMovesBtn" title="显示步数" class="control-btn">
             <i class="fas fa-list-ol"></i>
           </button>
+
+          <!-- 🔊 音量控制：紧跟在棋盘控制按钮后面 -->
+          <div style="position: relative; margin-left: 10px; display: flex; align-items: center;">
+            <i class="fas fa-volume-down" id="volumeIcon"
+              style="cursor:pointer; color:#6366f1; font-size:18px; padding:8px" title="调节音量"></i>
+            <div id="volumePopup" style="
+                  display:none; position:absolute; bottom:40px; right:0;
+                  background:white; border-radius:8px; box-shadow:0 4px 15px rgba(0,0,0,0.2);
+                  padding:10px 15px; white-space:nowrap; z-index:1001;
+                  align-items:center; gap:8px; font-size:13px; color:#333;
+                  border: 1px solid #eef;">
+              <input type="range" id="volumeSlider" min="0" max="100" value="30"
+                style="width:120px; accent-color:#6366f1; cursor:pointer" />
+              <span id="volumeValue" style="min-width:35px; font-weight:bold; color: #6366f1">30%</span>
+            </div>
+          </div>
         </div>
 
         <div class="analysis-controls">
@@ -462,70 +497,9 @@
     </div>
   </div>
 
-  <!-- 保留原有结构以兼容JS，但隐藏显示 -->
-  <div class="upload-board-container" style="display: none">
-    <div class="upload-section">
-      <h2 class="upload-title">
-        <i class="fas fa-upload"></i>
-        上传棋谱文件
-      </h2>
-      <div class="upload-area" id="uploadArea">
-        <div class="upload-icon">
-          <i class="fas fa-cloud-upload-alt"></i>
-        </div>
-        <div class="upload-text">拖拽 SGF 文件到此处</div>
-        <div class="upload-hint">或点击选择文件</div>
-      </div>
-      <input type="file" id="fileInput" class="file-input" accept=".sgf" />
+  <!-- JavaScript -->
 
-      <div class="upload-buttons">
-        <button class="upload-btn" id="selectFileBtn">
-          <i class="fas fa-folder-open"></i>
-          选择文件
-        </button>
-        <button class="analyze-file-btn" id="analyzeFileBtn" disabled>
-          <i class="fas fa-play-circle"></i>
-          开始分析
-        </button>
-      </div>
-
-      <div class="file-info" id="fileInfo">
-        <div class="file-name" id="fileName"></div>
-        <div class="file-details" id="fileDetails"></div>
-      </div>
-    </div>
-
-    <div class="board-container">
-      <div class="board-placeholder" id="boardPlaceholder">
-        <i class="fas fa-chess-board"></i>
-        <div>上传 SGF 文件后，棋盘将在此显示</div>
-      </div>
-      <div class="analysis-controls">
-        <button class="control-btn" id="startBtn" disabled>
-          <i class="fas fa-fast-backward"></i>
-          开始
-        </button>
-        <button class="control-btn" id="prevBtn" disabled>
-          <i class="fas fa-step-backward"></i>
-          上一步
-        </button>
-        <button class="control-btn" id="nextBtn" disabled>
-          <i class="fas fa-step-forward"></i>
-          下一步
-        </button>
-        <button class="control-btn" id="endBtn" disabled>
-          <i class="fas fa-fast-forward"></i>
-          结束
-        </button>
-        <button class="control-btn" id="autoPlayBtn" disabled>
-          <i class="fas fa-play"></i>
-          自动播放
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- 在现有的script标签之后添加 -->
+  <!-- JavaScript -->
   <script src="js/TestQuestionGenerator.js"></script>
   <script src="js/config.js"></script>
   <script src="js/SGFParser.js"></script>
@@ -539,6 +513,7 @@
   <script src="js/BoardController.js"></script>
   <script src="js/CandidatePointsDisplay.js"></script>
   <script src="js/AnalyzedGamesTable.js"></script>
+  <script src="js/GIBParser.js"></script>
   <script src="js/SGFAnalysis.js"></script>
 
   <!-- 🔥 新增：从Post11.html复制的棋盘创建代码 -->
@@ -583,7 +558,7 @@
         cellSizeFromHeight = 30;
       }
 
-      let cellSize = Math.min(cellSizeFromWidth, cellSizeFromHeight) * 0.8;
+      let cellSize = Math.min(cellSizeFromWidth, cellSizeFromHeight);
       const boardSize = 19;
       const stoneSize = Math.floor(cellSize * 0.95);
       let maxFrameWidth = cellSize * (boardSize + 3);
@@ -833,10 +808,12 @@
 
               if (stone.color === 'black') {
                 stoneElement.style.background = 'radial-gradient(circle at 30% 30%, #666, #000)';
-                stoneElement.style.border = '1px solid #333';
+                stoneElement.style.border = '1px solid #222';
+                stoneElement.style.boxShadow = 'inset -2px -2px 5px rgba(0,0,0,0.5), 1px 1px 3px rgba(0,0,0,0.3)';
               } else {
-                stoneElement.style.background = 'radial-gradient(circle at 30% 30%, #fff, #ddd)';
+                stoneElement.style.background = 'radial-gradient(circle at 30% 30%, #fff, #ccc)';
                 stoneElement.style.border = '1px solid #999';
+                stoneElement.style.boxShadow = 'inset -1px -1px 3px rgba(0,0,0,0.2), 1px 1px 3px rgba(0,0,0,0.2)';
               }
 
               // 如果需要显示步数
@@ -864,8 +841,16 @@
     });
   </script>
 
-  <!--  增加落子音效 -->
-  <audio id="stoneSound" src="Sounds/PlayStone2.mp3" preload="auto"></audio>
+  <!-- 音效元素 -->
+  <audio id="stoneSound" preload="auto">
+    <source src="Sounds/PlayStone2.mp3" type="audio/mpeg" />
+  </audio>
+  <audio id="correctSound" preload="auto">
+    <source src="Sounds/correct-choice.mp3" type="audio/mpeg" />
+  </audio>
+  <audio id="incorrectSound" preload="auto">
+    <source src="Sounds/incorrect.mp3" type="audio/mpeg" />
+  </audio>
 </body>
 
 </html>

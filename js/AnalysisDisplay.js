@@ -78,6 +78,14 @@ class AnalysisDisplay {
             return;
         }
 
+        // 🔥 增加：处理携带错误的分析结果
+        if (analysisData.isError) {
+            const errorMsg = `第${moveNumber}手: 分析失败 - ${analysisData.error || '未知错误'}`;
+            this.addLogEntry(errorMsg, 'error');
+            this.updateStatus(`第 ${moveNumber} 手分析失败，跳过...`);
+            return;
+        }
+
         // 详细的调试信息
         console.log('胜率数据详情:', {
             winRate: analysisData.winRate,

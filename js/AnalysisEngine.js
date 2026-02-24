@@ -2,9 +2,10 @@
  * 分析引擎类 - 专门处理 KataGo 分析逻辑
  */
 class AnalysisEngine {
-    constructor(katagoAPI, analysisStorage) {
+    constructor(katagoAPI, analysisStorage, analysisDisplay) {
         this.katagoAPI = katagoAPI;
         this.analysisStorage = analysisStorage;
+        this.analysisDisplay = analysisDisplay;
         this.isAnalyzing = false;
         this.isPaused = false; // 新增：暂停状态
         this.analysisResults = [];
@@ -57,20 +58,13 @@ class AnalysisEngine {
             console.log('🔍 连接测试结果:', connectionTest);
 
             if (!connectionTest.success) {
-                let errorMessage = `KataGo 连接失败: ${connectionTest.error}`;
-
-                if (connectionTest.error.includes('404')) {
-                    errorMessage += '\n\n可能的解决方案:\n1. 检查 KataGo 服务是否正在运行\n2. 确认服务地址是否正确\n3. 检查防火墙设置';
-                } else if (connectionTest.error.includes('CORS')) {
-                    errorMessage += '\n\n需要在 KataGo 启动时添加 CORS 支持:\n--cors-allowed-origins "*"';
-                } else if (connectionTest.error.includes('Failed to fetch')) {
-                    errorMessage += '\n\n网络连接失败，请检查:\n1. KataGo 服务是否启动\n2. 网络连接是否正常\n3. 服务地址是否可访问';
+                console.warn(`⚠️ KataGo 连接测试显示异常: ${connectionTest.error}。尝试继续分析...`);
+                if (this.analysisDisplay) {
+                    this.analysisDisplay.addLogEntry(`提示: KataGo 连接检查异常 (${connectionTest.error})，尝试继续分析...`, 'warning');
                 }
-
-                throw new Error(errorMessage);
+            } else {
+                console.log('✅ KataGo 连接成功，开始分析...');
             }
-
-            console.log('✅ KataGo 连接成功，开始分析...');
 
             // 开始分析循环
             await this.continueAnalysis();
@@ -120,6 +114,10 @@ class AnalysisEngine {
     async continueAnalysis() {
         try {
             const { gameData, analysisDepth, onProgress, onComplete, onMoveAnalyzed } = this.analysisState;
+
+            if (!gameData || !gameData.moves) {
+                throw new Error('分析数据失效或未加载 (gameData.moves is null)');
+            }
 
             // 从当前位置继续分析
             const startIndex = this.analysisState.currentMoveIndex + 1;
@@ -177,6 +175,21 @@ class AnalysisEngine {
 
                 } catch (error) {
                     console.error(`分析第${moveIndex}手时出错:`, error);
+
+                    // 🔥 改进：即便分析出错（如超时），也要反馈给 UI，避免看起来像卡住了
+                    if (onMoveAnalyzed) {
+                        const currentMove = gameData.moves[moveIndex - 1];
+                        // 传入一个特殊的错误标记数据
+                        onMoveAnalyzed(moveIndex, currentMove, {
+                            error: error.message,
+                            isError: true,
+                            time: 0,
+                            winRate: 0,
+                            score: 0,
+                            visits: 0
+                        });
+                    }
+
                     // 分析出错时也要检查是否应该停止
                     if (!this.isAnalyzing || this.isPaused) {
                         return;

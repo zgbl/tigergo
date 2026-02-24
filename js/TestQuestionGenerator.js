@@ -225,11 +225,25 @@ class TestQuestionGenerator {
             // 计算题目难度
             const difficulty = this.calculateDifficulty(criticalMove.winRateLoss);
 
+            // 获取上一步着法信息 (用于在棋盘上显示标记)
+            let lastMove = null;
+            if (criticalMove.moveNumber > 1) {
+                const prevMove = this.sgfAnalyzer.gameData.moves[criticalMove.moveNumber - 2];
+                if (prevMove && !prevMove.pass && prevMove.row !== undefined && prevMove.col !== undefined) {
+                    lastMove = {
+                        row: prevMove.row,
+                        col: prevMove.col,
+                        color: prevMove.color
+                    };
+                }
+            }
+
             const testQuestion = {
                 id: `${this.sgfAnalyzer.currentSGFHash}_${criticalMove.moveNumber}`,
                 sgfHash: this.sgfAnalyzer.currentSGFHash,
                 sgfFilename: this.sgfAnalyzer.gameData.filename,
                 moveNumber: criticalMove.moveNumber,
+                lastMove: lastMove, // 🔥 新增：上一步着法信息
                 boardState: boardState,
                 currentPlayer: criticalMove.actualMove.color,
                 candidates: candidatePoints,

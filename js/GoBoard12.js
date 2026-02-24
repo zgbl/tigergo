@@ -124,12 +124,20 @@ function placeStone3(row, col, color, stoneSize) {
     const stone = document.createElement("div");
     stone.className = `stone ${color}`;
     stone.style.width = `${stoneSize}px`;
-    console.log("stone.style.width is:", stone.style.width);
     stone.style.height = `${stoneSize}px`;
+
+    // 🔥 修复：添加棋子反光效果（径向渐变）
+    if (color === 'black') {
+        stone.style.background = 'radial-gradient(circle at 30% 30%, #666, #000)';
+        stone.style.border = '1px solid #222';
+        stone.style.boxShadow = 'inset -2px -2px 5px rgba(0,0,0,0.5), 1px 1px 3px rgba(0,0,0,0.3)';
+    } else {
+        stone.style.background = 'radial-gradient(circle at 30% 30%, #fff, #ccc)';
+        stone.style.border = '1px solid #999';
+        stone.style.boxShadow = 'inset -1px -1px 3px rgba(0,0,0,0.2), 1px 1px 3px rgba(0,0,0,0.2)';
+    }
+
     const intersection = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
-    console.log("placeStone3()中的intersection is:", intersection)
-    console.log("placeStone3()中的 stone =", stone)
-    console.log("placeStone3()中的 row = ", row, " col = ", col)
     intersection.appendChild(stone);
     boardState[row][col] = color;
     playStoneSound();
@@ -139,7 +147,8 @@ function placeStone3(row, col, color, stoneSize) {
 function playStoneSound() {
     const audio = document.getElementById("stoneSound");
     if (audio) {
-        audio.volume = 0.5;
+        // 🔥 修复：不再从 localStorage 读取或手动设置音量
+        // 让 UI 层的 setVolume 直接控制 audio 元素的 volume 属性即可
         audio.currentTime = 0;
         audio.play().catch(e => console.log("Audio play prevented:", e));
     } else {

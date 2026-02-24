@@ -262,8 +262,8 @@ class AnalysisStorage {
             const formattedGames = analyzedGames.map(game => ({
                 id: game.sgf.hash, // 使用 sgf.hash 作为 ID
                 filename: game.sgf.filename || '未知文件',
-                blackPlayer: game.sgf.gameInfo?.black || '未知',
-                whitePlayer: game.sgf.gameInfo?.white || '未知',
+                blackPlayer: game.sgf.gameInfo?.black || game.sgf.gameInfo?.blackPlayer || '未知',
+                whitePlayer: game.sgf.gameInfo?.white || game.sgf.gameInfo?.whitePlayer || '未知',
                 analysisTime: game.metadata?.updatedAt || game.metadata?.createdAt || new Date(),
                 analysisCount: game.analysisConfig?.totalMoves || 0,
                 sgfContent: game.sgf.content || '', // 列表可能没有 content，但如果有了就用

@@ -43,12 +43,16 @@ function detectEnvironment() {
 const KATAGO_ENGINES = {
     local: {
         name: "Local Server",
-        url: "http://192.168.0.249:8080",
+        url: "http://192.168.0.162:8080",
         description: "本地 KataGo 服务器"
+    },
+    tunnel: {
+        name: "Cloudflare Tunnel",
+        url: "https://katagoengine1.blackrice.top",
+        description: "通过 Cloudflare Tunnel 访问的家用 GPU 引擎"
     },
     cloud: {
         name: "BlackRice KataGo Cloud",
-        //url: "https://kataengine.blackrice.top",
         url: "https://katago-analysis-939624114433.us-central1.run.app",
         description: "Google Cloud Run 部署的 KataGo 服务 CPU 版本"
     },

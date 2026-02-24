@@ -99,26 +99,6 @@
 
     <!-- 中间主内容区域 -->
     <div class="main-content">
-      <div class="page-header">
-        <h1 class="page-title">
-          <i class="fas fa-brain"></i>
-          围棋答题
-        </h1>
-        <p class="page-subtitle">测试您的围棋技能</p>
-      </div>
-
-      <!-- 题目信息 -->
-      <div class="question-info" id="questionInfo" style="display: none">
-        <div class="question-title">
-          <h3 id="questionTitle">请选择最佳下法</h3>
-          <span class="question-number" id="questionNumber">题目 #1</span>
-        </div>
-        <div class="question-meta">
-          <span class="question-difficulty" id="questionDifficulty">难度: 中等</span>
-          <span class="question-source" id="questionSource">来源: 实战对局</span>
-        </div>
-      </div>
-
       <div class="board-container">
         <div class="board-placeholder" id="boardPlaceholder">
           <div id="board"></div>
@@ -145,6 +125,23 @@
               <span class="legend-text">选项D</span>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- 题目信息 (移至棋盘下方，减少抖动) -->
+      <div class="question-info" id="questionInfo" style="display: none; margin-top: 12px;">
+        <div class="question-title"
+          style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+          <h3 id="questionTitle" style="margin: 0; font-size: 15px; flex: 1;">请选择最佳下法</h3>
+          <span class="question-number" id="questionNumber" style="white-space: nowrap;">题目 #1</span>
+        </div>
+        <div
+          style="display: flex; align-items: center; gap: 8px; margin-top: 4px; font-size: 12px; color: #6b7280; flex-wrap: wrap;">
+          <span class="question-difficulty" id="questionDifficulty">中等</span>
+          <span>·</span>
+          <span class="question-source" id="questionSource">实战对局</span>
+          <span>·</span>
+          <span id="gameMetadata" style="color: #6b7280;"></span>
         </div>
       </div>
 

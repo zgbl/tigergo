@@ -65,14 +65,20 @@ class KataGoAPI {
             this.printStatus("测试 KataGo 服务器连接...", "INFO");
             console.log(`🔍 尝试连接: ${this.baseUrl}/health`);
 
+            const requestHeaders = {
+                'Accept': 'application/json'
+            };
+
+            if (this.isProxyMode && this.targetUrl) {
+                requestHeaders['x-target-server'] = this.targetUrl;
+            }
+
             // 先尝试简单的连接测试，避免CORS预检请求
             const response = await fetch(`${this.baseUrl}/health`, {
                 method: 'GET',
                 mode: 'cors', // 明确指定CORS模式
-                headers: {
-                    'Accept': 'application/json'
-                },
-                signal: AbortSignal.timeout(10000)
+                headers: requestHeaders,
+                signal: AbortSignal.timeout(20000)
             });
 
             console.log(`🔍 响应状态: ${response.status}`);
@@ -246,6 +252,16 @@ class KataGoAPI {
             const buffer = 15000;
             const timeoutMs = (maxTimeSeconds * 1000) + buffer;
 
+            // 🔥 增强：由于某些环境下 AbortSignal.timeout 可能不被支持，使用更兼容的方案
+            const createTimeoutSignal = (ms) => {
+                if (AbortSignal.timeout) {
+                    return AbortSignal.timeout(ms);
+                }
+                const controller = new AbortController();
+                setTimeout(() => controller.abort(), ms);
+                return controller.signal;
+            };
+
             if (signal && signal.aborted) {
                 // 🔥 信号已中断，直接返回失败，不要 throw
                 console.warn('⚠️ 外部信号已中断，跳过本次分析');
@@ -253,7 +269,11 @@ class KataGoAPI {
             } else if (signal) {
                 // 有外部信号且未中断：创建组合信号（超时 + 手动中断）
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+                const timeoutId = setTimeout(() => {
+                    console.warn(`🕒 分析超时 (${timeoutMs}ms) for move ${moveIndex + 1}`);
+                    controller.abort();
+                }, timeoutMs);
+
                 signal.addEventListener('abort', () => {
                     clearTimeout(timeoutId);
                     controller.abort();
@@ -261,12 +281,19 @@ class KataGoAPI {
                 finalSignal = controller.signal;
             } else {
                 // 无外部信号：只用超时
-                finalSignal = AbortSignal.timeout(timeoutMs);
+                finalSignal = createTimeoutSignal(timeoutMs);
+            }
+
+            const requestHeaders = { ...this.headers };
+
+            // 🔥 修复：如果是在代理模式且设置了目标地址，则发送 Header 告诉后端去哪里
+            if (this.isProxyMode && this.targetUrl) {
+                requestHeaders['x-target-server'] = this.targetUrl;
             }
 
             const requestOptions = {
                 method: 'POST',
-                headers: this.headers,
+                headers: requestHeaders,
                 body: JSON.stringify(payload),
                 signal: finalSignal
             };

@@ -78,6 +78,9 @@ class QuizBoard {
 
         this.clearBoard();
 
+        // 🔥 清除旧的三角标记
+        document.querySelectorAll('.last-move-triangle').forEach(el => el.remove());
+
         // 重置GoBoard12的全局boardState（const声明，直接访问，不在window上）
         if (typeof boardState !== 'undefined') {
             for (let i = 0; i < 19; i++) {
@@ -140,22 +143,24 @@ class QuizBoard {
         intersection.appendChild(stone);
     }
 
-    // 显示局面和候选点
-    displayPosition(boardState, candidates) {
+    // 显示局面 (静态)
+    displayPosition(boardState, candidates, lastMove) {
         this.loadBoardState(boardState);
+        this.showCandidatePoints(candidates);
 
-        if (candidates && Array.isArray(candidates)) {
-            this.showCandidatePoints(candidates);
+        // 如果有最后一步信息，显示彩色三角标记
+        if (lastMove) {
+            this.renderLastMoveMarker(lastMove);
         }
     }
 
     // 显示候选点 (ABCD)
     showCandidatePoints(candidates) {
-        const labels = ['A', 'B', 'C', 'D'];
-        const optionClasses = ['option-a', 'option-b', 'option-c', 'option-d'];
+        const labels = ['A', 'B', 'C', 'D', 'E'];
+        const optionClasses = ['option-a', 'option-b', 'option-c', 'option-d', 'option-e'];
 
         candidates.forEach((candidate, index) => {
-            if (index >= 4) return;
+            if (index >= 5) return;
 
             const intersection = this.container.querySelector(`[data-row="${candidate.row}"][data-col="${candidate.col}"]`);
             if (!intersection) return;
@@ -169,7 +174,6 @@ class QuizBoard {
             marker.style.top = "50%";
             marker.style.transform = "translate(-50%, -50%)";
 
-            intersection.appendChild(marker);
             intersection.appendChild(marker);
         });
     }
@@ -186,5 +190,62 @@ class QuizBoard {
                 m.classList.add('selected');
             }
         });
+    }
+
+    // 🔥 新增：在当前局面的最后一手添加小三角标志
+    renderLastMoveMarker(lastMove) {
+        if (!lastMove || lastMove.row === undefined || lastMove.col === undefined) {
+            console.log("QuizBoard: [Marker] No lastMove data.");
+            return;
+        }
+
+        const row = lastMove.row;
+        const col = lastMove.col;
+        const color = lastMove.color;
+        console.log(`QuizBoard: [Marker] Rendering triangle at [${row}, ${col}] color: ${color}`);
+
+        // 优先在当前棋盘容器内找交叉点
+        let intersection = this.container.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+
+        // 如果没找到，尝试全局找 (防御性)
+        if (!intersection) {
+            intersection = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+        }
+
+        if (intersection) {
+            const stone = intersection.querySelector('.stone');
+            if (stone) {
+                // 如果已经有三角形了，先删掉
+                const oldTri = intersection.querySelector('.last-move-triangle');
+                if (oldTri) oldTri.remove();
+
+                const triangle = document.createElement('div');
+                triangle.className = 'last-move-triangle';
+
+                const isBlack = (color && (color.toLowerCase() === 'black' || color === 'B' || color === 'b'));
+                const triColor = isBlack ? '#ffffff' : '#000000';
+
+                // 强制内联样式，确保可见性
+                triangle.style.cssText = `
+                    position: absolute;
+                    top: 50%; left: 50%;
+                    transform: translate(-50%, -50%);
+                    width: 0; height: 0;
+                    border-left: 8px solid transparent;
+                    border-right: 8px solid transparent;
+                    border-bottom: 14px solid ${triColor};
+                    z-index: 100 !important;
+                    pointer-events: none;
+                    filter: drop-shadow(0 0 1px rgba(0,0,0,0.5));
+                `;
+
+                intersection.appendChild(triangle);
+                console.log(`QuizBoard: [Marker] SUCCESS - Triangle attached at [${row}, ${col}]`);
+            } else {
+                console.warn(`QuizBoard: [Marker] FAILED - No stone found at [${row}, ${col}] to attach triangle.`);
+            }
+        } else {
+            console.error(`QuizBoard: [Marker] FAILED - Intersection [${row}, ${col}] not found.`);
+        }
     }
 }

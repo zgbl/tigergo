@@ -85,7 +85,7 @@ class BoardController {
             // 使用 createBoard3 函数创建棋盘
             if (typeof createBoard3 === 'function') {
                 window.cellSize = cellSize;
-                window.stoneSize = Math.floor(cellSize * 0.95);
+                window.stoneSize = Math.floor(cellSize * 0.98);
 
                 createBoard3({
                     domElement: boardElement,
