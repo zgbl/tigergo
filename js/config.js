@@ -110,6 +110,7 @@ const KATAGO_ANALYSIS_MODES = {
 // 根据环境设置配置
 function getConfig() {
     const env = detectEnvironment();
+    const hostname = window.location.hostname;
 
     // 获取用户偏好的引擎 ID，默认为 local
     const preferredEngine = localStorage.getItem('katago_preferred_engine') || 'local';
@@ -121,11 +122,9 @@ function getConfig() {
             API_VERCEL_NEXTJS_BASE_URL: "http://localhost:3000",
             GITHUB_PAGE_FORUM_URL: "http://localhost:8090/Forum11.html",
             FORUM_POST_ENDPOINT: "/forum/Posts",
-            // 🔥 修改：使用动态选择的引擎 URL
             KATAGO_BASE_URL: katagoUrl,
             KATAGO_BOT_NAME: "katago_gtp_bot",
             KATAGO_PROXY_URL: "http://localhost:3000/api/katago",
-            // 🔥 新增：引擎选项
             KATAGO_ENGINES: KATAGO_ENGINES,
             KATAGO_ANALYSIS_MODES: KATAGO_ANALYSIS_MODES,
             ENV: "local"
@@ -135,34 +134,32 @@ function getConfig() {
             API_VERCEL_NEXTJS_BASE_URL: "https://blackricegobackend2-nextjs.vercel.app",
             GITHUB_PAGE_FORUM_URL: "https://zgbl.github.io/tigergo/Forum11.html",
             FORUM_POST_ENDPOINT: "/forum/Posts",
-            // 🔥 修改：使用动态选择的引擎 URL
             KATAGO_BASE_URL: katagoUrl,
             KATAGO_BOT_NAME: "katago_gtp_bot",
             KATAGO_PROXY_URL: "https://blackricegobackend2-nextjs.vercel.app/api/katago",
-            // 🔥 新增：引擎选项
             KATAGO_ENGINES: KATAGO_ENGINES,
             KATAGO_ANALYSIS_MODES: KATAGO_ANALYSIS_MODES,
             ENV: "github"
         },
         production: {
-            API_BASE_URL: "https://blackricegobackend2-nextjs.vercel.app/api",
+            // 🔥 增加：优先使用当前域名的 API 如果在 blackrice.top 下
+            API_BASE_URL: hostname.includes('blackrice.top')
+                ? "https://blackricegobackend2-nextjs.vercel.app/api"
+                : "https://blackricegobackend2-nextjs.vercel.app/api",
             API_VERCEL_NEXTJS_BASE_URL: "https://blackricegobackend2-nextjs.vercel.app",
-            GITHUB_PAGE_FORUM_URL: "https://zgbl.github.io/tigergo/Forum11.html",
+            GITHUB_PAGE_FORUM_URL: "https://brweiqi.blackrice.top/Forum11.html",
             FORUM_POST_ENDPOINT: "/forum/Posts",
-            // 🔥 修改：使用动态选择的引擎 URL
             KATAGO_BASE_URL: katagoUrl,
             KATAGO_BOT_NAME: "katago_gtp_bot",
             KATAGO_PROXY_URL: "https://blackricegobackend2-nextjs.vercel.app/api/katago",
-            // 🔥 新增：引擎选项
             KATAGO_ENGINES: KATAGO_ENGINES,
             KATAGO_ANALYSIS_MODES: KATAGO_ANALYSIS_MODES,
             ENV: "production"
         }
     };
 
-    console.log(`📋 选择的环境配置: ${env}`);
-    console.log(`📋 配置详情:`, configs[env]);
-
+    console.log(`📋 环境配置: ${env.toUpperCase()}`);
+    console.log(`📋 代理地址: ${configs[env].KATAGO_PROXY_URL}`);
     return configs[env];
 }
 

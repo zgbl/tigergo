@@ -78,7 +78,7 @@ class KataGoAPI {
                 method: 'GET',
                 mode: 'cors', // 明确指定CORS模式
                 headers: requestHeaders,
-                signal: AbortSignal.timeout(20000)
+                signal: AbortSignal.timeout(12000)
             });
 
             console.log(`🔍 响应状态: ${response.status}`);
