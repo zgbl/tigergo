@@ -415,7 +415,7 @@ class SGFAnalyzer {
 
                     if (!currentEngineResult || !currentEngineResult.success) {
                         // 当前引擎不可用，切换到可用引擎
-                        const preferredOrder = ['custom', 'local', 'cloud'];
+                        const preferredOrder = ['custom', 'tunnel', 'local', 'cloud'];
                         let bestEngine = null;
                         for (const preferred of preferredOrder) {
                             bestEngine = successfulEngines.find(r => r.engine.name === preferred);
