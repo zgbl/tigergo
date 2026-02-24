@@ -78,10 +78,17 @@ class ProblemEditor {
             this.updateChartIndicator(moveNum);
         };
 
-        // 🔥 初始化 KataGo API（使用 Custom Server, 即 192.168.0.162:8080）
-        const engineUrl = CONFIG.KATAGO_ENGINES.custom.url || CONFIG.KATAGO_ENGINES.local.url;
-        console.log(`🤖 初始化 KataGoAPI, 引擎地址: ${engineUrl}`);
-        this.kataGoAPI = new KataGoAPI(engineUrl);
+        // 🔥 初始化 KataGo API (优先使用代理模式，通过 Vercel 访问您的 Tunnel)
+        const isProduction = window.location.hostname.includes('blackrice.top');
+        this.kataGoAPI = new KataGoAPI(null, 'katago_gtp_bot', true);
+
+        // 设置默认目标引擎地址
+        const defaultEngineUrl = isProduction
+            ? (CONFIG.KATAGO_ENGINES.tunnel?.url || CONFIG.KATAGO_ENGINES.local.url)
+            : (CONFIG.KATAGO_ENGINES.local.url);
+
+        this.kataGoAPI.targetUrl = defaultEngineUrl;
+        console.log(`🤖 初始化 KataGoAPI, 代理模式: true, 默认目标: ${defaultEngineUrl}`);
 
         // Setup controls
         // Note: boardController.setupEventListeners might look for specific IDs.
@@ -252,6 +259,13 @@ class ProblemEditor {
             // Store analysis results for search
             this.analysisResults = data.analysisResults || [];
             console.log(`Loaded ${this.analysisResults.length} analysis records`);
+
+            // 🔥 关键修复：将后端获取到的分析数据同步到本地 IndexedDB，
+            // 否则 CandidatePointsDisplay 会因为本地数据库为空而不显示任何胜率。
+            if (this.analysisResults.length > 0) {
+                console.log(`🔄 正在同步 ${this.analysisResults.length} 条云端分析数据到本地存储...`);
+                await this.analysisStorage.restoreAnalysisResults(this.gameId, this.analysisResults);
+            }
 
             // 🔥 初始化并构建胜率图表
             this.initChart();
