@@ -832,10 +832,10 @@ class ProblemEditor {
             let correctBadge = '';
 
             if (c.verifying) {
-                statsHtml = '<span style="color:#8e44ad"><i class="fas fa-spinner fa-spin"></i> 分析中...</span>';
+                statsHtml = '<span style="color:#6366f1"><i class="fas fa-spinner fa-spin"></i> 分析中...</span>';
             } else if (c.aiResult) {
                 const r = c.aiResult;
-                const wrColor = r.lossPercent > 5 ? '#e74c3c' : r.lossPercent > 2 ? '#e67e22' : '#27ae60';
+                const wrColor = r.lossPercent > 5 ? '#ef4444' : r.lossPercent > 2 ? '#b45309' : '#10b981';
 
                 // 将胜率转换为当前下棋方的视角
                 let displayWR = r.winRate;
@@ -854,7 +854,7 @@ class ProblemEditor {
                 `;
 
                 if (c.label === bestLabel) {
-                    correctBadge = '<span style="background:#27ae60; color:white; padding:1px 6px; border-radius:10px; font-size:10px; margin-left:8px;"><i class="fas fa-check"></i> 正确答案</span>';
+                    correctBadge = '<span style="background:#10b981; color:white; padding:1px 6px; border-radius:10px; font-size:10px; margin-left:8px;"><i class="fas fa-check"></i> 正确答案</span>';
                 }
             }
 

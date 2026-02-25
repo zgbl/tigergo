@@ -13,14 +13,14 @@
   <style>
     /* 题目制作页面专用样式 overrides */
     :root {
-      --primary-color: #3498db;
-      --success-color: #27ae60;
-      --warning-color: #e67e22;
-      --verify-color: #6c5ce7;
-      --danger-color: #e74c3c;
-      --text-main: #2c3e50;
-      --text-soft: #99acac;
-      --bg-soft: #f8f9fa;
+      --primary-color: var(--primary-btn);
+      --success-color: var(--success-btn);
+      --warning-color: var(--accent-btn);
+      --verify-color: var(--secondary-btn);
+      --danger-color: var(--danger-btn);
+      --text-main: var(--text-main);
+      --text-soft: var(--text-soft);
+      --bg-soft: var(--bg-soft, #f1f5f9);
       --sidebar-width: 280px;
     }
 
@@ -45,7 +45,7 @@
 
     .resize-handle:hover,
     .resize-handle.active {
-      background: #3498db;
+      background: var(--primary-color);
     }
 
     .editor-section {
@@ -78,7 +78,7 @@
     }
 
     .candidate-item:hover {
-      border-color: #3498db;
+      border-color: var(--primary-color);
       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
     }
 
@@ -87,7 +87,7 @@
       width: 24px;
       height: 24px;
       border-radius: 50%;
-      background: #3498db;
+      background: var(--primary-color);
       color: white;
       display: flex;
       align-items: center;
@@ -163,13 +163,13 @@
     }
 
     .loss-item:hover {
-      background: #eef6ff;
-      border-color: #3498db;
+      background: #f1f5f9;
+      border-color: var(--primary-color);
     }
 
     .loss-item.active {
-      background: #d6eaff;
-      border-color: #2980b9;
+      background: #e2e8f0;
+      border-color: #475569;
       font-weight: bold;
     }
 
@@ -266,11 +266,11 @@
     }
 
     .loss-rank.top3 {
-      background: #e74c3c;
+      background: #ef4444;
     }
 
     .loss-rank.top10 {
-      background: #e67e22;
+      background: #d97706;
     }
 
     .loss-rank.normal {
@@ -320,11 +320,11 @@
     }
 
     .loss-bar.severe {
-      background: linear-gradient(90deg, #e74c3c, #c0392b);
+      background: #ef4444;
     }
 
     .loss-bar.moderate {
-      background: linear-gradient(90deg, #e67e22, #d35400);
+      background: #d97706;
     }
 
     .loss-bar.minor {
@@ -477,7 +477,7 @@
     }
 
     .btn-verify {
-      background: #6c5ce7 !important;
+      background: var(--verify-color) !important;
     }
 
     .btn-verify:hover {
@@ -485,7 +485,7 @@
     }
 
     .btn-primary {
-      background: #3498db !important;
+      background: var(--primary-color) !important;
     }
 
     .btn-primary:hover {
@@ -493,7 +493,7 @@
     }
 
     .btn-success {
-      background: #27ae60 !important;
+      background: var(--success-color) !important;
     }
 
     .btn-success:hover {
@@ -501,7 +501,7 @@
     }
 
     .btn-warning {
-      background: #e67e22 !important;
+      background: var(--warning-color) !important;
     }
 
     .btn-warning:hover {
@@ -509,7 +509,7 @@
     }
 
     .btn-secondary {
-      background: #718096 !important;
+      background: var(--secondary-btn, #718096) !important;
     }
 
     .btn-secondary:hover {
@@ -707,7 +707,7 @@
     <!-- 中间：棋盘 -->
     <div class="main-content" style="padding: 0 !important">
       <div class="page-header" style="margin: 0 !important; padding: 2px 10px !important">
-        <h1 class="page-title" style="font-size: 16px; margin: 0 !important">
+        <h1 class="page-title" style="font-size: 16px; margin: 0 !important; color: white;">
           <i class="fas fa-pencil-alt"></i>
           题目制作
         </h1>

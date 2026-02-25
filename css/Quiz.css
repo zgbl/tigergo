@@ -8,7 +8,7 @@
 body {
     margin: 0;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: var(--bg-main);
     min-height: 100vh;
 }
 
@@ -130,7 +130,7 @@ body {
 }
 
 .quiz-btn.primary {
-    background: linear-gradient(135deg, #667eea, #764ba2);
+    background: var(--primary-btn);
     color: white;
     box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
 }
@@ -141,7 +141,7 @@ body {
 }
 
 .quiz-btn.secondary {
-    background: linear-gradient(135deg, #6c757d, #495057);
+    background: var(--secondary-btn);
     color: white;
     box-shadow: 0 4px 15px rgba(108, 117, 125, 0.3);
 }
@@ -233,7 +233,7 @@ body {
 }
 
 .score-value.incorrect {
-    color: #dc3545;
+    color: var(--danger-btn);
 }
 
 /* 中间主内容区域 */
@@ -276,7 +276,7 @@ body {
     border-radius: 8px;
     padding: 16px;
     margin-bottom: 20px;
-    border-left: 4px solid #667eea;
+    border-left: 4px solid var(--primary-btn);
 }
 
 .question-title h3 {
@@ -371,20 +371,20 @@ body {
 }
 
 .candidate-marker.a {
-    background: #dc3545;
+    background: var(--danger-btn);
 }
 
 .candidate-marker.b {
-    background: #007bff;
+    background: var(--primary-btn);
 }
 
 .candidate-marker.c {
-    background: #28a745;
+    background: var(--success-btn);
 }
 
 .candidate-marker.d {
-    background: #ffc107;
-    color: #212529;
+    background: var(--accent-btn);
+    color: white;
 }
 
 .legend-text {
@@ -493,20 +493,20 @@ body {
 }
 
 .answer-option:nth-child(1) .option-marker {
-    background: #dc3545;
+    background: var(--danger-btn);
 }
 
 .answer-option:nth-child(2) .option-marker {
-    background: #007bff;
+    background: var(--primary-btn);
 }
 
 .answer-option:nth-child(3) .option-marker {
-    background: #28a745;
+    background: var(--success-btn);
 }
 
 .answer-option:nth-child(4) .option-marker {
-    background: #ffc107;
-    color: #212529;
+    background: var(--accent-btn);
+    color: white;
 }
 
 .answer-option:nth-child(5) .option-marker {
@@ -704,24 +704,24 @@ body {
 
 
 .candidate-point.option-a {
-    background: #dc3545;
+    background: var(--danger-btn);
 }
 
 .candidate-point.option-b {
-    background: #007bff;
+    background: var(--primary-btn);
 }
 
 .candidate-point.option-c {
-    background: #28a745;
+    background: var(--success-btn);
 }
 
 .candidate-point.option-d {
-    background: #ffc107;
-    color: #212529;
+    background: var(--accent-btn);
+    color: white;
 }
 
 .candidate-point.option-e {
-    background: #6f42c1;
+    background: var(--secondary-btn);
 }
 
 /* 题目编号样式 */

@@ -285,8 +285,8 @@
   width: calc(var(--cell-size) * 1.05);
   /* 稍微大一点，包围住候选点 */
   height: calc(var(--cell-size) * 1.05);
-  border: 2px solid #d500f9;
-  /* 紫色实线 */
+  border: 2px solid #6366f1;
+  /* 靛蓝色实线 */
   background-color: transparent;
   /* 移除透明背景，避免干扰数字 */
   border-radius: 50%;
@@ -295,7 +295,7 @@
   justify-content: center;
   z-index: 15;
   pointer-events: none;
-  box-shadow: 0 0 5px rgba(213, 0, 249, 0.4);
+  box-shadow: 0 0 5px rgba(99, 102, 241, 0.4);
   animation: pulse-ring 2s infinite;
 }
 
