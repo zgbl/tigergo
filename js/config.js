@@ -42,9 +42,9 @@ function detectEnvironment() {
 // 🔥 新增：KataGo 引擎配置选项
 const KATAGO_ENGINES = {
     local: {
-        name: "Local Server",
-        url: "http://192.168.0.162:8080",
-        description: "本地 KataGo 服务器"
+        name: "Local Server (K8s)",
+        url: "http://192.168.0.162:8081",
+        description: "本地 Kubernetes 部署的 KataGo 服务器"
     },
     tunnel: {
         name: "Cloudflare Tunnel (K8s Pod 2)",
@@ -114,6 +114,7 @@ function getConfig() {
     const hostname = window.location.hostname;
 
     // 获取用户偏好的引擎 ID，默认为 local
+    const preferredEngine = localStorage.getItem('katago_preferred_engine') || 'local';
     const preferredEngineConfig = KATAGO_ENGINES[preferredEngine] || KATAGO_ENGINES.local;
     const katagoUrl = preferredEngineConfig.url;
     const fallbackUrls = preferredEngineConfig.fallbackUrls || [];

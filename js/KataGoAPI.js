@@ -73,34 +73,66 @@ class KataGoAPI {
     async _fetchWithFallback(endpoint, options = {}) {
         const urlsToTry = this.isProxyMode ? [this.targetUrl, ...this.fallbackUrls] : [null];
 
+        // 允许从 options 中提取超时时间，分析请求通常较慢，默认给 30s，其他 15s
+        const defaultTimeout = endpoint.includes('select-move') || endpoint.includes('analyze') ? 45000 : 15000;
+        const timeoutMs = options.timeout || defaultTimeout;
         let lastError = null;
 
         for (const targetUrl of urlsToTry) {
+            // 如果全局信号已经中断，直接退出
+            if (options.signal && options.signal.aborted) {
+                throw options.signal.reason || new Error('AbortError');
+            }
+
             try {
                 const requestHeaders = { ...this.headers, ...(options.headers || {}) };
                 if (this.isProxyMode && targetUrl) {
                     requestHeaders['x-target-server'] = targetUrl;
                 }
 
-                const response = await fetch(`${this.baseUrl}${endpoint}`, {
-                    ...options,
-                    headers: requestHeaders
-                });
+                // 创建包含超时的控制器（每个请求独立计时）
+                const controller = new AbortController();
+                const tid = setTimeout(() => controller.abort('timeout'), timeoutMs);
 
-                if (response.ok) {
-                    // 如果备用地址成功了，记录一下
-                    if (this.isProxyMode && targetUrl !== this.targetUrl) {
-                        this.printStatus(`⚠️ 主引擎连接失败，已成功切换到备用引擎: ${targetUrl}`, "WARNING");
-                    }
-                    return response;
+                // 如果有传入的 signal，监听它以同步中断
+                if (options.signal) {
+                    const abortHandler = () => controller.abort(options.signal.reason || 'manual');
+                    options.signal.addEventListener('abort', abortHandler, { once: true });
                 }
 
-                lastError = new Error(`HTTP ${response.status} ${response.statusText}`);
+                try {
+                    const response = await fetch(`${this.baseUrl}${endpoint}`, {
+                        ...options,
+                        headers: requestHeaders,
+                        signal: controller.signal
+                    });
+
+                    if (response.ok) {
+                        if (this.isProxyMode && targetUrl !== this.targetUrl) {
+                            this.printStatus(`⚠️ 主引擎连接失败，已成功切换到备用引擎: ${targetUrl}`, "WARNING");
+                        }
+                        return response;
+                    }
+
+                    lastError = new Error(`HTTP ${response.status} ${response.statusText}`);
+                } finally {
+                    clearTimeout(tid);
+                }
+
                 this.debugPrint(`请求失败 [${targetUrl || 'direct'}]: ${lastError.message}`);
 
             } catch (error) {
                 lastError = error;
-                this.debugPrint(`请求异常 [${targetUrl || 'direct'}]: ${error.message}`);
+                const reason = (error.name === 'AbortError') ? (error.reason || 'timeout') : error.message;
+                this.debugPrint(`请求异常 [${targetUrl || 'direct'}]: ${reason}`);
+
+                // 如果是手动中止（非超时），则不再尝试后续地址
+                if (error.name === 'AbortError' && (!options.signal || !options.signal.aborted)) {
+                    // 说明是内部 timeout 触发的，且外部没有中止，继续尝试下一个
+                    continue;
+                } else if (error.name === 'AbortError') {
+                    throw error; // 全局中断
+                }
             }
         }
 
@@ -268,8 +300,8 @@ class KataGoAPI {
 
                 signal.addEventListener('abort', () => {
                     clearTimeout(timeoutId);
-                    controller.abort();
-                });
+                    controller.abort(signal.reason || 'manual');
+                }, { once: true });
                 finalSignal = controller.signal;
             } else {
                 // 无外部信号：只用超时

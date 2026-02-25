@@ -9,7 +9,7 @@ class SGFAnalyzer {
         // 🔥 修复：恢复使用代理模式（云端引擎必须使用代理避开CORS）
         // 同时支持设置目标后端地址
         this.katagoAPI = new KataGoAPI(null, 'katago_gtp_bot', true);
-        this.katagoAPI.targetUrl = window.CONFIG?.KATAGO_BASE_URL || 'http://192.168.0.162:8080';
+        this.katagoAPI.targetUrl = window.CONFIG?.KATAGO_BASE_URL || 'http://192.168.0.162:8081';
 
         // 初始化新的模块
         this.analysisStorage = new AnalysisStorage();
