@@ -113,6 +113,18 @@ Each item in `allLosses`:
 - `getMoveInfo(record)` — extracts color ('B'/'W') and coordinate from a move record. Falls back to moveNumber parity if color is not in the data.
 - `extractScoreLoss(prev, curr, color)` — calculates score (目数) loss for the move.
 
+## Production Constraints & Stability
+
+### 1. AI Verification Guard
+In production (Vercel), a **8-second timeout** is enforced in `KataGoAPI.js` to prevent the platform's 10s execution limit.
+- If a candidate move analysis times out, it should be marked as an error.
+- Errored moves **MUST NOT** be used for winrate loss ranking or "Best Move" selection.
+
+### 2. Scoring Integrity
+When calculating the "Best Move" or marking a "Correct Answer":
+- Ensure the move has a valid `aiResult` without error.
+- If the best AI move failed due to timeout, fall back to the next best valid move or inform the user rather than showing a zeroed/placeholder score.
+
 ## Common Mistakes to Avoid
 
 > [!CAUTION]

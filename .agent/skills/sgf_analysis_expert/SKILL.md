@@ -30,6 +30,15 @@ To ensure architectural consistency, the AI must follow this mapping when modify
 - **Logic**: `js/i18n.js` (Translation engine).
 - **Switcher**: Located in headers of both `SGFAnalysis.html` and `SGFAnalysisMobile.html`.
 
+### 5. Centralized Theme System
+- **Configuration**: `:root` variables in `css/Styles5.css`.
+- **Usage**: All pages (`SGFAnalysis`, `Quiz`, `ProblemEditor`) must use CSS variables instead of hardcoded hex codes for primary colors, backgrounds, and button states.
+- **Palette**: Uses a "complex color" (复色) strategy—deep, muted, and sophisticated (e.g., Slate-700/800, Deep Navy, Muted Amber).
+- **Invariants**: 
+    - Always use `--bg-main` for page background.
+    - Always use `--primary-btn` for main actions.
+    - Navbar text must be dark (`#1e293b`) for contrast against the white bar.
+
 ### 1. KataGo Analysis Integration
 - **Backend**: Uses a Python KataGo server.
 - **Proxy**: Next.js backend provides an endpoint `/api/katago/select-move/[botName]` to proxy requests to the Python server.
