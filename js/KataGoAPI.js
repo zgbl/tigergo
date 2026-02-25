@@ -6,9 +6,13 @@ class KataGoAPI {
         if (useProxy) {
             this.baseUrl = (baseUrl || window.CONFIG?.KATAGO_PROXY_URL || 'http://localhost:3000/api/katago').replace(/\/$/, '');
             this.isProxyMode = true;
+            // 🔥 新增：从配置获取目标地址和备用地址
+            this.targetUrl = window.CONFIG?.KATAGO_BASE_URL || 'http://192.168.0.162:8080';
+            this.fallbackUrls = window.CONFIG?.KATAGO_FALLBACK_URLS || [];
         } else {
             this.baseUrl = (baseUrl || window.CONFIG?.KATAGO_BASE_URL || 'http://192.168.0.249:8080').replace(/\/$/, '');
             this.isProxyMode = false;
+            this.fallbackUrls = [];
         }
 
         this.botName = botName;
@@ -23,6 +27,12 @@ class KataGoAPI {
         console.log(`🔧 KataGoAPI 初始化:`);
         console.log(`  - 模式: ${this.isProxyMode ? '代理模式' : '直连模式'}`);
         console.log(`  - 地址: ${this.baseUrl}`);
+        if (this.isProxyMode) {
+            console.log(`  - 目标: ${this.targetUrl}`);
+            if (this.fallbackUrls.length > 0) {
+                console.log(`  - 备用: ${this.fallbackUrls.join(', ')}`);
+            }
+        }
         console.log(`  - 机器人名称: ${this.botName}`);
     }
 
@@ -59,104 +69,87 @@ class KataGoAPI {
         }
     }
 
+    // 内部通用请求方法，支持备用地址自动切换
+    async _fetchWithFallback(endpoint, options = {}) {
+        const urlsToTry = this.isProxyMode ? [this.targetUrl, ...this.fallbackUrls] : [null];
+
+        let lastError = null;
+
+        for (const targetUrl of urlsToTry) {
+            try {
+                const requestHeaders = { ...this.headers, ...(options.headers || {}) };
+                if (this.isProxyMode && targetUrl) {
+                    requestHeaders['x-target-server'] = targetUrl;
+                }
+
+                const response = await fetch(`${this.baseUrl}${endpoint}`, {
+                    ...options,
+                    headers: requestHeaders
+                });
+
+                if (response.ok) {
+                    // 如果备用地址成功了，记录一下
+                    if (this.isProxyMode && targetUrl !== this.targetUrl) {
+                        this.printStatus(`⚠️ 主引擎连接失败，已成功切换到备用引擎: ${targetUrl}`, "WARNING");
+                    }
+                    return response;
+                }
+
+                lastError = new Error(`HTTP ${response.status} ${response.statusText}`);
+                this.debugPrint(`请求失败 [${targetUrl || 'direct'}]: ${lastError.message}`);
+
+            } catch (error) {
+                lastError = error;
+                this.debugPrint(`请求异常 [${targetUrl || 'direct'}]: ${error.message}`);
+            }
+        }
+
+        throw lastError || new Error('All engines failed');
+    }
+
     // 测试服务器连接 - 修复CORS问题
     async testConnection() {
         try {
             this.printStatus("测试 KataGo 服务器连接...", "INFO");
-            console.log(`🔍 尝试连接: ${this.baseUrl}/health`);
 
-            const requestHeaders = {
-                'Accept': 'application/json'
-            };
-
-            if (this.isProxyMode && this.targetUrl) {
-                requestHeaders['x-target-server'] = this.targetUrl;
-            }
-
-            // 先尝试简单的连接测试，避免CORS预检请求
-            const response = await fetch(`${this.baseUrl}/health`, {
+            const response = await this._fetchWithFallback('/health', {
                 method: 'GET',
-                mode: 'cors', // 明确指定CORS模式
-                headers: requestHeaders,
+                mode: 'cors',
                 signal: AbortSignal.timeout(12000)
             });
 
-            console.log(`🔍 响应状态: ${response.status}`);
+            const data = await response.json();
+            this.printStatus(`服务器连接成功: ${data.status || 'OK'}`, "SUCCESS");
+            return { success: true, data };
 
-            if (response.ok) {
-                const data = await response.json();
-                this.printStatus(`服务器连接成功: ${data.status || 'OK'}`, "SUCCESS");
-                console.log('✅ KataGo 连接成功');
-                return { success: true, data };
-            } else {
-                const errorMsg = `HTTP ${response.status} - ${response.statusText}`;
-                this.printStatus(`服务器连接失败: ${errorMsg}`, "ERROR");
-                console.error('❌ KataGo 连接失败:', errorMsg);
-
-                if (response.status === 404) {
-                    return {
-                        success: false,
-                        error: `服务器返回 404 错误，请检查 KataGo 服务是否正在运行在 ${this.baseUrl}`
-                    };
-                } else {
-                    return { success: false, error: errorMsg };
-                }
-            }
         } catch (error) {
             console.error('❌ KataGo 连接异常:', error);
-
-            // 处理CORS错误
-            if (error.message.includes('CORS') || error.message.includes('Failed to fetch')) {
-                const corsError = `网络连接失败 - 可能是 CORS 配置问题或服务未启动`;
-                this.printStatus(corsError, "ERROR");
-                this.printStatus(`建议: 在KataGo启动时添加 --cors-allowed-origins "*"`, "WARNING");
-                return { success: false, error: corsError };
-            } else if (error.name === 'AbortError') {
-                const timeoutError = `连接超时 - KataGo 服务可能未响应`;
-                this.printStatus(timeoutError, "ERROR");
-                return { success: false, error: timeoutError };
-            } else {
-                const generalError = `连接异常: ${error.message}`;
-                this.printStatus(generalError, "ERROR");
-                return { success: false, error: generalError };
-            }
+            const errorMsg = error.message.includes('fetch')
+                ? '网络连接失败 - 核心和备用引擎均不可用'
+                : error.message;
+            this.printStatus(errorMsg, "ERROR");
+            return { success: false, error: errorMsg };
         }
     }
 
     // 获取服务器信息 - 修复CORS问题
     async getServerInfo() {
         try {
-            const response = await fetch(`${this.baseUrl}/info`, {
+            const response = await this._fetchWithFallback('/info', {
                 method: 'GET',
                 mode: 'cors',
-                headers: {
-                    'Accept': 'application/json'
-                },
                 signal: AbortSignal.timeout(10000)
             });
 
-            if (response.ok) {
-                const data = await response.json();
-                this.printStatus(`服务器: ${data.name || 'Unknown'} v${data.version || 'Unknown'}`, "INFO");
-                if (data.model_file) {
-                    this.printStatus(`模型: ${data.model_file}`, "INFO");
-                }
-                return { success: true, data };
-            } else if (response.status === 404) {
-                this.printStatus(`服务器不支持 /info API，跳过服务器信息获取`, "WARNING");
-                return { success: false, error: 'API not supported', skippable: true };
-            } else {
-                this.printStatus(`获取服务器信息失败: HTTP ${response.status}`, "ERROR");
-                return { success: false, error: `HTTP ${response.status}` };
+            const data = await response.json();
+            this.printStatus(`服务器: ${data.name || 'Unknown'} v${data.version || 'Unknown'}`, "INFO");
+            if (data.model_file) {
+                this.printStatus(`模型: ${data.model_file}`, "INFO");
             }
+            return { success: true, data };
         } catch (error) {
-            if (error.message.includes('CORS') || error.message.includes('Failed to fetch')) {
-                this.printStatus(`CORS错误: 无法获取服务器信息`, "ERROR");
-                return { success: false, error: 'CORS配置错误' };
-            } else {
-                this.printStatus(`获取服务器信息异常: ${error.message}`, "ERROR");
-                return { success: false, error: error.message };
-            }
+            this.printStatus(`获取服务器信息失败: ${error.message}`, "WARNING");
+            return { success: false, error: error.message, skippable: true };
         }
     }
 
@@ -172,9 +165,8 @@ class KataGoAPI {
         try {
             const startTime = Date.now();
 
-            const response = await fetch(`${this.baseUrl}/select-move/${this.botName}`, {
+            const response = await this._fetchWithFallback(`/select-move/${this.botName}`, {
                 method: 'POST',
-                headers: this.headers,
                 body: JSON.stringify(payload),
                 signal: AbortSignal.timeout(30000)
             });
@@ -304,8 +296,8 @@ class KataGoAPI {
 
             const startTime = Date.now();
 
-            // 发请求到 KataGo API
-            const response = await fetch(apiUrl, requestOptions);
+            // 发请求到 KataGo API (带备用重试)
+            const response = await this._fetchWithFallback(`/select-move/${this.botName}`, requestOptions);
 
             this.debugPrint(`API响应状态: ${response.status}`);
 

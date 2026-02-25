@@ -47,9 +47,10 @@ const KATAGO_ENGINES = {
         description: "本地 KataGo 服务器"
     },
     tunnel: {
-        name: "Cloudflare Tunnel",
-        url: "https://katagoengine1.blackrice.top",
-        description: "通过 Cloudflare Tunnel 访问的家用 GPU 引擎"
+        name: "Cloudflare Tunnel (K8s Pod 2)",
+        url: "https://katagoengine2.blackrice.top",
+        fallbackUrls: ["https://katagoengine1.blackrice.top"],
+        description: "通过 Cloudflare Tunnel 访问的家用 GPU 引擎 (优先选择 Pod 2)"
     },
     cloud: {
         name: "BlackRice KataGo Cloud",
@@ -113,8 +114,9 @@ function getConfig() {
     const hostname = window.location.hostname;
 
     // 获取用户偏好的引擎 ID，默认为 local
-    const preferredEngine = localStorage.getItem('katago_preferred_engine') || 'local';
-    const katagoUrl = KATAGO_ENGINES[preferredEngine] ? KATAGO_ENGINES[preferredEngine].url : KATAGO_ENGINES.local.url;
+    const preferredEngineConfig = KATAGO_ENGINES[preferredEngine] || KATAGO_ENGINES.local;
+    const katagoUrl = preferredEngineConfig.url;
+    const fallbackUrls = preferredEngineConfig.fallbackUrls || [];
 
     const configs = {
         local: {
@@ -123,6 +125,7 @@ function getConfig() {
             GITHUB_PAGE_FORUM_URL: "http://localhost:8090/Forum11.html",
             FORUM_POST_ENDPOINT: "/forum/Posts",
             KATAGO_BASE_URL: katagoUrl,
+            KATAGO_FALLBACK_URLS: fallbackUrls,
             KATAGO_BOT_NAME: "katago_gtp_bot",
             KATAGO_PROXY_URL: "http://localhost:3000/api/katago",
             KATAGO_ENGINES: KATAGO_ENGINES,
@@ -135,6 +138,7 @@ function getConfig() {
             GITHUB_PAGE_FORUM_URL: "https://zgbl.github.io/tigergo/Forum11.html",
             FORUM_POST_ENDPOINT: "/forum/Posts",
             KATAGO_BASE_URL: katagoUrl,
+            KATAGO_FALLBACK_URLS: fallbackUrls,
             KATAGO_BOT_NAME: "katago_gtp_bot",
             KATAGO_PROXY_URL: "https://blackricegobackend2-nextjs.vercel.app/api/katago",
             KATAGO_ENGINES: KATAGO_ENGINES,
@@ -150,6 +154,7 @@ function getConfig() {
             GITHUB_PAGE_FORUM_URL: "https://brweiqi.blackrice.top/Forum11.html",
             FORUM_POST_ENDPOINT: "/forum/Posts",
             KATAGO_BASE_URL: katagoUrl,
+            KATAGO_FALLBACK_URLS: fallbackUrls,
             KATAGO_BOT_NAME: "katago_gtp_bot",
             KATAGO_PROXY_URL: "https://blackricegobackend2-nextjs.vercel.app/api/katago",
             KATAGO_ENGINES: KATAGO_ENGINES,

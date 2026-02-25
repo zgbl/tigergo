@@ -78,17 +78,9 @@ class ProblemEditor {
             this.updateChartIndicator(moveNum);
         };
 
-        // 🔥 初始化 KataGo API (优先使用代理模式，通过 Vercel 访问您的 Tunnel)
-        const isProduction = window.location.hostname.includes('blackrice.top');
+        // 🔥 初始化 KataGo API (使用中央配置的直连/代理和备用引擎)
         this.kataGoAPI = new KataGoAPI(null, 'katago_gtp_bot', true);
-
-        // 设置默认目标引擎地址
-        const defaultEngineUrl = isProduction
-            ? (CONFIG.KATAGO_ENGINES.tunnel?.url || CONFIG.KATAGO_ENGINES.local.url)
-            : (CONFIG.KATAGO_ENGINES.local.url);
-
-        this.kataGoAPI.targetUrl = defaultEngineUrl;
-        console.log(`🤖 初始化 KataGoAPI, 代理模式: true, 默认目标: ${defaultEngineUrl}`);
+        console.log(`🤖 初始化 KataGoAPI, 模式: ${this.kataGoAPI.isProxyMode ? '代理' : '直连'}, 目标: ${this.kataGoAPI.targetUrl}`);
 
         // Setup controls
         // Note: boardController.setupEventListeners might look for specific IDs.
