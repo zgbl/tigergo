@@ -325,9 +325,9 @@ class AnalysisEngine {
                 throw new Error(result.error);
             }
         } catch (error) {
-            if (error.name === 'AbortError') {
-                console.log(`第${moveIndex}手分析被中断`);
-                throw new Error('分析被中断');
+            if (error.name === 'AbortError' || error.name === 'TimeoutError' || error.message.includes('aborted')) {
+                console.log(`第${moveIndex}手分析被中断或超时: ${error.message}`);
+                throw new Error('分析被中止');
             }
             console.error(`分析第${moveIndex}手失败:`, error);
             throw error;
