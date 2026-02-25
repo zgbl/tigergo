@@ -357,7 +357,17 @@ class KataGoAPI {
             extreme: { maxVisits: 50000, maxTime: 60, wideRootNoise: 0.10, reportInterval: 1000 }
         };
 
-        return defaultConfigs[analysisDepth] || defaultConfigs.normal;
+        const config = modes && modes[analysisDepth] ? { ...modes[analysisDepth] } : { ...defaultConfigs[analysisDepth] || defaultConfigs.normal };
+
+        // 🔥 生产环境特殊处理：Vercel 有 10s 的函数运行超时限制
+        // 如果在黑米围棋域名下，且 maxTime 超过了 8s，强制截断为 8s
+        const isProduction = window.location.hostname.includes('blackrice.top') || window.location.hostname.includes('github.io');
+        if (isProduction && config.maxTime > 8) {
+            console.warn(`⚠️ 生产环境限制：将分析时长从 ${config.maxTime}s 截断为 8s 以防止 Vercel 504 超时`);
+            config.maxTime = 8;
+        }
+
+        return config;
     }
 
     // 格式化分析结果

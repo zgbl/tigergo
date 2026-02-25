@@ -775,8 +775,8 @@ class ProblemEditor {
     recalculateScores() {
         console.log('📊 开始重新校准候选点评分...');
 
-        // 过滤掉没有分析结果的点
-        const analyzed = this.candidates.filter(c => c.aiResult && c.aiResult.lossPercent !== undefined);
+        // 🔥 修复：过滤掉没有分析结果或由于超时/API错误导致结果缺失的点
+        const analyzed = this.candidates.filter(c => c.aiResult && c.aiResult.winRate !== undefined && c.aiResult.lossPercent !== undefined);
         if (analyzed.length === 0) return;
 
         // 按胜率损失从小到大排序
@@ -811,7 +811,8 @@ class ProblemEditor {
         // 🔥 预先计算哪个是最佳点 (正确答案)
         let bestLabel = null;
         if (this.candidates.length > 0) {
-            const analyzed = this.candidates.filter(c => c.aiResult);
+            // 🔥 修复：必须确保有有效的胜率数据，排除 504 Timeout 等失败结果
+            const analyzed = this.candidates.filter(c => c.aiResult && c.aiResult.winRate !== undefined);
             if (analyzed.length > 0) {
                 const best = analyzed.reduce((prev, curr) => {
                     if (nextColor === 'B') {
@@ -1384,15 +1385,19 @@ class ProblemEditor {
 
                 console.log(`⏱️ [${candidate.label}] 开始深度验证 (目标 ${minDuration / 1000}s)...`);
 
+                // 🔥 生产环境特殊处理：Vercel 10s 超时限制
+                // 我们在 KatagoAPI 内部已有 getAnalysisConfig 逻辑，但这里如果是生产环境，
+                // 我们需要确保传递给 analyzePosition 的深度配置是可接受的，或者在内部被截断。
+
                 // 调用 KataGo 分析 (使用配置的深度)
                 // 🔥 修复：使用 testMoves.length 确保包含候选这一手
                 const result = await this.kataGoAPI.analyzePosition(
                     testMoves, testMoves.length, null, analysisDepth
                 );
 
-                // 🔥 计算已用时间并强制补足配置时长
+                // 🔥 计算已用时间并强制补足配置时长 (仅在成功时补足)
                 const elapsed = Date.now() - startTime;
-                if (elapsed < minDuration) {
+                if (result.success && elapsed < minDuration) {
                     const waitTime = minDuration - elapsed;
                     console.log(`⏳ [${candidate.label}] 分析过快 (${(elapsed / 1000).toFixed(1)}s), 补足等待 ${(waitTime / 1000).toFixed(1)}s...`);
                     await new Promise(resolve => setTimeout(resolve, waitTime));
