@@ -10,7 +10,7 @@ class KataGoAPI {
             this.targetUrl = window.CONFIG?.KATAGO_BASE_URL || 'http://192.168.0.162:8080';
             this.fallbackUrls = window.CONFIG?.KATAGO_FALLBACK_URLS || [];
         } else {
-            this.baseUrl = (baseUrl || window.CONFIG?.KATAGO_BASE_URL || 'http://192.168.0.249:8080').replace(/\/$/, '');
+            this.baseUrl = (baseUrl || window.CONFIG?.KATAGO_BASE_URL || 'http://192.168.0.162:8080').replace(/\/$/, '');
             this.isProxyMode = false;
             this.fallbackUrls = [];
         }
@@ -273,7 +273,7 @@ class KataGoAPI {
 
             let finalSignal;
             // 🔥 使用配置中的 maxTime 加上缓冲区作为网络超时
-            const buffer = 15000;
+            const buffer = 35000;
             const timeoutMs = (maxTimeSeconds * 1000) + buffer;
 
             // 🔥 增强：由于某些环境下 AbortSignal.timeout 可能不被支持，使用更兼容的方案
@@ -504,7 +504,7 @@ class KataGoAPI {
 
     // 切换到直连模式
     switchToDirectMode() {
-        this.baseUrl = window.CONFIG?.KATAGO_BASE_URL || 'http://192.168.0.249:8080';
+        this.baseUrl = window.CONFIG?.KATAGO_BASE_URL || 'http://192.168.0.162:8080';
         this.isProxyMode = false;
         console.log(`🔄 切换到直连模式: ${this.baseUrl}`);
     }

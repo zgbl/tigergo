@@ -123,6 +123,8 @@ function placeStone3(row, col, color, stoneSize) {
     console.log("调用了Gobard12.js, placeStone3(), Line 121")
     const stone = document.createElement("div");
     stone.className = `stone ${color}`;
+    stone.dataset.row = row;
+    stone.dataset.col = col;
     stone.style.width = `${stoneSize}px`;
     stone.style.height = `${stoneSize}px`;
 
@@ -138,11 +140,14 @@ function placeStone3(row, col, color, stoneSize) {
     }
 
     const intersection = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
-    intersection.appendChild(stone);
+    if (intersection) {
+        intersection.appendChild(stone);
+    }
     boardState[row][col] = color;
     playStoneSound();
     checkCaptures(row, col, color, boardState);
 }
+
 
 function playStoneSound() {
     const audio = document.getElementById("stoneSound");

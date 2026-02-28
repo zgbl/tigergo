@@ -69,9 +69,9 @@ class BoardController {
 
             // 🔥 关键修复：设置全局变量，确保 GoBoard12.js 中的函数能正常工作
             window.currentMoves = this.gameData.moves;
-            window.currentMoveIndex = -1;
-            window.displayMode = 0;
-            window.showingRecentMoves = false;
+            // window.currentMoveIndex = -1; // 移除这行，由调用方决定
+            window.displayMode = window.displayMode || 0;
+            window.showingRecentMoves = window.showingRecentMoves || false;
             window.globalParsedMoves = {
                 moves: this.gameData.moves,
                 gameInfo: this.gameData.gameInfo || {}
@@ -85,7 +85,8 @@ class BoardController {
             // 使用 createBoard3 函数创建棋盘
             if (typeof createBoard3 === 'function') {
                 window.cellSize = cellSize;
-                window.stoneSize = Math.floor(cellSize * 0.98);
+                // 标准化为 0.95
+                window.stoneSize = Math.floor(cellSize * 0.95);
 
                 createBoard3({
                     domElement: boardElement,
@@ -95,7 +96,9 @@ class BoardController {
                     backgroundColor: '#DEB887'
                 });
 
-                this.analysisDisplay.addLogEntry(`棋盘已创建，cellSize: ${cellSize}`, 'success');
+                if (this.analysisDisplay && typeof this.analysisDisplay.addLogEntry === 'function') {
+                    this.analysisDisplay.addLogEntry(`棋盘已创建，cellSize: ${cellSize}`, 'success');
+                }
 
                 // 启用控制按钮
                 setTimeout(() => {
@@ -104,10 +107,30 @@ class BoardController {
                 }, 100);
             } else {
                 console.error('createBoard3 函数未找到，请确保 GoBoard12.js 已加载');
-                this.analysisDisplay.addLogEntry('棋盘创建失败：缺少必要的函数', 'error');
+                if (this.analysisDisplay && typeof this.analysisDisplay.addLogEntry === 'function') {
+                    this.analysisDisplay.addLogEntry('棋盘创建失败：缺少必要的函数', 'error');
+                }
             }
         }
     }
+
+    // 刷新棋盘展示 (用于 resize 等场景，不重置进度)
+    refreshBoard() {
+        const boardElement = document.getElementById('board');
+        if (!boardElement || !this.gameData) return;
+
+        const currentIndex = window.currentMoveIndex !== undefined ? window.currentMoveIndex : this.currentMoveIndex;
+        console.log(`🔄 BoardController.refreshBoard(), 当前步数: ${currentIndex}`);
+
+        // 重新渲染基础棋盘
+        this.renderBoard();
+
+        // 恢复到当前步
+        if (currentIndex >= -1) {
+            this.goToMove(currentIndex);
+        }
+    }
+
 
     /* setupBoardControls() {   //listerner重复了
          const controls = {
@@ -153,8 +176,62 @@ class BoardController {
             } else {
                 console.error("  - candidatePointsDisplay 未初始化！");
             }
+
+            // 🔥 新增：显示最后一步的三角标记
+            this.renderLastMoveMarker();
         }
     }
+
+    /**
+     * 渲染最后一步的三角标记
+     */
+    renderLastMoveMarker() {
+        // 清除旧的三角标记
+        document.querySelectorAll('.last-move-triangle').forEach(el => el.remove());
+
+        // 🔥 使用更鲁棒的方式获取当前步数，确保与全局同步
+        let currentIndex = -1;
+        if (typeof window.currentMoveIndex !== 'undefined' && window.currentMoveIndex !== null) {
+            currentIndex = window.currentMoveIndex;
+        } else if (typeof currentMoveIndex !== 'undefined' && currentMoveIndex !== null) {
+            // 某些旧脚本可能直接定义了全局 currentMoveIndex 而不是在 window 上
+            currentIndex = currentMoveIndex;
+        } else {
+            currentIndex = this.currentMoveIndex;
+        }
+
+        console.log(`📐 renderLastMoveMarker: currentIndex=${currentIndex}`);
+
+        if (!this.gameData || !this.gameData.moves || currentIndex < 0) return;
+
+        const lastMove = this.gameData.moves[currentIndex];
+        if (lastMove && lastMove.row !== undefined && lastMove.col !== undefined && !lastMove.pass) {
+            const intersection = document.querySelector(`[data-row="${lastMove.row}"][data-col="${lastMove.col}"]`);
+            if (intersection && intersection.querySelector('.stone')) {
+                const triangle = document.createElement('div');
+                triangle.className = 'last-move-triangle';
+
+                // 判断颜色，选择合适的三角颜色
+                const isBlack = lastMove.color === 'black' || lastMove.color === 'B';
+                const triColor = isBlack ? '#ffffff' : '#000000';
+
+                triangle.style.cssText = `
+                    position: absolute;
+                    top: 50%; left: 50%;
+                    transform: translate(-50%, -50%);
+                    width: 0; height: 0;
+                    border-left: calc(var(--cell-size, 30px) * 0.22) solid transparent;
+                    border-right: calc(var(--cell-size, 30px) * 0.22) solid transparent;
+                    border-bottom: calc(var(--cell-size, 30px) * 0.38) solid ${triColor};
+                    z-index: 15;
+                    pointer-events: none;
+                    filter: drop-shadow(0 0 1px rgba(0,0,0,0.5));
+                `;
+                intersection.appendChild(triangle);
+            }
+        }
+    }
+
 
 
     goToMove(index) {

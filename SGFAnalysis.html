@@ -293,7 +293,7 @@
             </div>
             <select class="setting-select" id="engineSelect">
               <optgroup label="预定义引擎">
-                <option value="local">本地引擎 (192.168.0.249:8080)</option>
+                <option value="local">本地引擎 (192.168.0.162:8080)</option>
                 <option value="cloud">云端引擎 (Google Cloud Run)</option>
               </optgroup>
               <optgroup label="用户自定义">
@@ -745,100 +745,23 @@
       console.log('SGFAnalysis.html 初始化完成');
     });
 
-    // 🔥 修改：窗口大小改变时重新创建棋盘（添加防抖）
+    // 🔥 修改：窗口大小改变时重新创建棋盘（使用 BoardController 统一管理）
     let resizeTimeout;
     window.addEventListener('resize', function () {
-      // 清除之前的定时器
-      if (resizeTimeout) {
-        clearTimeout(resizeTimeout);
-      }
-
-      // 设置新的定时器，延迟200ms执行
+      if (resizeTimeout) clearTimeout(resizeTimeout);
       resizeTimeout = setTimeout(() => {
-        console.log('窗口大小改变，重新创建棋盘 (Debounced)');
-
-        // 重新计算棋盘大小
-        let { cellSize, stoneSize } = calculateBoardSize();
-        console.log("重新计算得到的 cellSize:", cellSize);
-
-        // 更新CSS变量
-        updateStoneSizeCSS(cellSize);
-
-        // 保存当前棋子状态
-        const mainBoard = document.getElementById("board");
-        if (mainBoard) {
-          // 保存当前的棋子信息
-          const stones = [];
-          const stoneElements = mainBoard.querySelectorAll('.stone');
-          stoneElements.forEach(stone => {
-            const row = parseInt(stone.dataset.row);
-            const col = parseInt(stone.dataset.col);
-            const color = stone.classList.contains('black') ? 'black' : 'white';
-            const moveNumber = stone.dataset.moveNumber;
-            stones.push({ row, col, color, moveNumber });
-          });
-
-          // 重新创建棋盘
-          createBoard3({
-            domElement: mainBoard,
-            boardSize: 19,
-            cellSize: cellSize,
-          });
-
-          // 🔥 修复：恢复棋子时使用统一的尺寸计算
-          stones.forEach(stone => {
-            const intersection = mainBoard.querySelector(`[data-row="${stone.row}"][data-col="${stone.col}"]`);
-            if (intersection) {
-              const stoneElement = document.createElement('div');
-              stoneElement.className = `stone ${stone.color}`;
-              stoneElement.dataset.row = stone.row;
-              stoneElement.dataset.col = stone.col;
-              stoneElement.dataset.moveNumber = stone.moveNumber;
-              stoneElement.style.position = 'absolute';
-              stoneElement.style.top = '50%';
-              stoneElement.style.left = '50%';
-              stoneElement.style.transform = 'translate(-50%, -50%)';
-
-              // 🔥 关键修复：使用统一的棋子大小计算
-              const actualStoneSize = cellSize * 0.9;
-              stoneElement.style.width = `${actualStoneSize}px`;
-              stoneElement.style.height = `${actualStoneSize}px`;
-              stoneElement.style.borderRadius = '50%';
-              stoneElement.style.zIndex = '4';
-
-              if (stone.color === 'black') {
-                stoneElement.style.background = 'radial-gradient(circle at 30% 30%, #666, #000)';
-                stoneElement.style.border = '1px solid #222';
-                stoneElement.style.boxShadow = 'inset -2px -2px 5px rgba(0,0,0,0.5), 1px 1px 3px rgba(0,0,0,0.3)';
-              } else {
-                stoneElement.style.background = 'radial-gradient(circle at 30% 30%, #fff, #ccc)';
-                stoneElement.style.border = '1px solid #999';
-                stoneElement.style.boxShadow = 'inset -1px -1px 3px rgba(0,0,0,0.2), 1px 1px 3px rgba(0,0,0,0.2)';
-              }
-
-              // 如果需要显示步数
-              if (window.displayMode === 1 && stone.moveNumber) {
-                const numberElement = document.createElement('div');
-                numberElement.textContent = stone.moveNumber;
-                numberElement.style.position = 'absolute';
-                numberElement.style.top = '50%';
-                numberElement.style.left = '50%';
-                numberElement.style.transform = 'translate(-50%, -50%)';
-                numberElement.style.fontSize = `${actualStoneSize * 0.4}px`; // 🔥 修复：使用实际棋子大小计算字体
-                numberElement.style.fontWeight = 'bold';
-                numberElement.style.color = stone.color === 'black' ? '#fff' : '#000';
-                numberElement.style.pointerEvents = 'none';
-                stoneElement.appendChild(numberElement);
-              }
-
-              intersection.appendChild(stoneElement);
-            }
-          });
-
-          console.log("棋盘重新创建完成，已恢复棋子");
+        console.log('🔄 窗口大小改变，触发 BoardController.refreshBoard()');
+        
+        if (window.sgfAnalyzer && window.sgfAnalyzer.boardController) {
+          window.sgfAnalyzer.boardController.refreshBoard();
+        } else {
+          // 如果 sgfAnalyzer 还没准备好，回退到基础初始化
+          initializeBoard();
         }
       }, 200);
     });
+  </script>
+
   </script>
 
   <!-- 音效元素 -->

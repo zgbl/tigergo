@@ -9,7 +9,7 @@ class SGFAnalyzer {
         // 🔥 修复：恢复使用代理模式（云端引擎必须使用代理避开CORS）
         // 同时支持设置目标后端地址
         this.katagoAPI = new KataGoAPI(null, 'katago_gtp_bot', true);
-        this.katagoAPI.targetUrl = window.CONFIG?.KATAGO_BASE_URL || 'http://192.168.0.162:8081';
+        this.katagoAPI.targetUrl = window.CONFIG?.KATAGO_BASE_URL || 'http://192.168.0.162:8080';
 
         // 初始化新的模块
         this.analysisStorage = new AnalysisStorage();
@@ -106,6 +106,19 @@ class SGFAnalyzer {
                 await window.analyzedGamesTable.init(this.analysisStorage);
                 console.log('已分析棋谱表格初始化完成');
             }
+
+            // 🔥 关键修复：同步全局 updateMoveInfo，确保导航也能触发三角标记更新
+            const originalGlobalUpdateMoveInfo = window.updateMoveInfo;
+            window.updateMoveInfo = function () {
+                // 如果原始全局函数存在且不是当前覆写的函数（防止死循环）
+                if (originalGlobalUpdateMoveInfo && originalGlobalUpdateMoveInfo !== window.updateMoveInfo) {
+                    originalGlobalUpdateMoveInfo();
+                }
+                if (self.boardController) {
+                    self.boardController.updateMoveInfo();
+                }
+            };
+            console.log('✅ 全局 updateMoveInfo 已与 BoardController 同步');
         } catch (error) {
             console.error('初始化失败:', error);
             this.analysisDisplay.addLogEntry('系统初始化失败', 'error');

@@ -21,6 +21,8 @@ class AnalysisEngine {
             onComplete: null,
             onMoveAnalyzed: null
         };
+        this.queueJobId = null;
+        this.pollingInterval = null;
     }
 
     // 开始分析
@@ -66,8 +68,17 @@ class AnalysisEngine {
                 console.log('✅ KataGo 连接成功，开始分析...');
             }
 
-            // 开始分析循环
-            await this.continueAnalysis();
+            // 检查是否应该使用队列模式 (如果后端是 Next.js 且配置启用)
+            const useQueue = true; // 默认启用队列解决并发问题
+
+            if (useQueue) {
+                console.log('📝 使用队列模式分析...');
+                await this.startQueueAnalysis(gameData, analysisDepth, onProgress, onComplete, onMoveAnalyzed);
+            } else {
+                console.log('📡 使用直连模式分析...');
+                // 开始原来的分析循环
+                await this.continueAnalysis();
+            }
 
         } catch (error) {
             console.error('分析过程中出错:', error);
@@ -240,6 +251,215 @@ class AnalysisEngine {
         }
         // 重置分析状态
         this.analysisState.currentMoveIndex = 0;
+
+        // 🔥 停止轮询
+        if (this.pollingInterval) {
+            clearInterval(this.pollingInterval);
+            this.pollingInterval = null;
+        }
+    }
+
+    async startQueueAnalysis(gameData, analysisDepth, onProgress, onComplete, onMoveAnalyzed) {
+        console.log(`[Queue] 准备启动队列分析... 深度: ${analysisDepth}`);
+        try {
+            // 检查连接是否可用
+            const apiBase = window.CONFIG?.API_BASE_URL || '/api';
+            console.log(`[Queue] 尝试连接后端 API: ${apiBase}`);
+
+            // 1. 提交任务到队列
+            const jobInfo = await this.submitToQueue(gameData, analysisDepth);
+            console.log(`[Queue] 任务提交成功! jobId: ${jobInfo.jobId}`);
+            this.queueJobId = jobInfo.jobId;
+
+            if (this.analysisDisplay) {
+                this.analysisDisplay.addLogEntry(`任务已提交到云端队列，ID: ${this.queueJobId}，正在排队...`, 'info');
+            }
+
+            // 2. 启动轮询
+            this.startQueuePolling(onProgress, onComplete, onMoveAnalyzed);
+
+        } catch (error) {
+            console.error('[Queue] 队列模式启动失败:', error);
+            if (this.analysisDisplay) {
+                this.analysisDisplay.addLogEntry(`⚠️ 队列服务异常: ${error.message}`, 'error');
+                this.analysisDisplay.addLogEntry(`正在尝试降级到本地直连模式...`, 'warning');
+            }
+            // 降级到直连模式
+            await this.continueAnalysis();
+        }
+    }
+
+    // 提交到后端 API
+    async submitToQueue(gameData, analysisDepth) {
+        const analysisConfig = this.katagoAPI.getAnalysisConfig(analysisDepth);
+
+        // 准备需要分析的手数 (目前分析全谱)
+        const analyzeTurns = [];
+        for (let i = 1; i <= gameData.moves.length; i++) {
+            analyzeTurns.push(i);
+        }
+
+        const payload = {
+            sgfContent: gameData.sgfContent,
+            sgfInfo: {
+                filename: gameData.filename || 'unknown.sgf',
+                originalName: gameData.filename || 'unknown.sgf',
+                fileSize: gameData.sgfContent.length
+            },
+            moves: gameData.rawMoves,
+            boardSize: 19,
+            maxVisits: analysisConfig.maxVisits,
+            maxTime: analysisConfig.maxTime,
+            analyzeTurns: analyzeTurns,
+            gameInfo: gameData.gameInfo || {}
+        };
+
+        const apiBase = window.CONFIG?.API_BASE_URL || '/api';
+        const submitUrl = `${apiBase}/analysis-queue/submit`;
+        console.log(`[Queue] 发送 POST 请求到: ${submitUrl}`);
+
+        try {
+            const response = await fetch(submitUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(`Submit failed (${response.status}): ${errorData.error || response.statusText}`);
+            }
+
+            const result = await response.json();
+            if (!result.success) throw new Error(result.error);
+
+            return result.data;
+        } catch (err) {
+            console.error('[Queue] submitToQueue 网络或服务错误:', err);
+            throw err;
+        }
+    }
+
+    // 轮询队列状态并同步 UI
+    startQueuePolling(onProgress, onComplete, onMoveAnalyzed) {
+        const { gameData } = this.analysisState;
+        const apiBase = window.CONFIG?.API_BASE_URL || '/api';
+
+        // 记录本地已知的分析手数，避免重复调用回调
+        const localAnalyzedIndices = new Set();
+
+        this.pollingInterval = setInterval(async () => {
+            if (!this.isAnalyzing || this.isPaused) return;
+
+            try {
+                const response = await fetch(`${apiBase}/analysis-queue/status/${this.queueJobId}`);
+                if (!response.ok) return;
+
+                const result = await response.json();
+                if (!result.success) return;
+
+                const { status, progress, queuePosition, result: analysisData } = result.data;
+
+                // 更新进度显示
+                if (onProgress) {
+                    // 如果正在分析，显示步数进度；如果排队中，显示排队位置
+                    if (status === 'analyzing' || status === 'completed') {
+                        onProgress(Math.floor((progress / 100) * gameData.moves.length), gameData.moves.length);
+                    } else if (status === 'pending' || status === 'waiting') {
+                        if (this.analysisDisplay && queuePosition) {
+                            this.analysisDisplay.updateProgress(0, gameData.moves.length, `排队中 (第${queuePosition}位)`);
+                        }
+                    }
+                }
+
+                // 同步已分析的手数
+                if (analysisData && analysisData.moveAnalyses) {
+                    for (const moveAnalysis of analysisData.moveAnalyses) {
+                        const idx = moveAnalysis.moveNumber;
+                        if (!localAnalyzedIndices.has(idx)) {
+                            console.log(`[Queue] 发现新手分析完成: ${idx}`);
+                            localAnalyzedIndices.add(idx);
+
+                            // 准备前端需要的数据格式 (稍微转换一下以匹配原有 UI 回调)
+                            const currentMove = gameData.moves[idx - 1];
+                            const uiAnalysisData = this.adaptBackendResultToUI(moveAnalysis);
+
+                            // 更新当前位置以让进度条前进
+                            this.analysisState.currentMoveIndex = idx;
+
+                            // 🔥 重要：同步到本地内存中，否则 onComplete 时结果为空
+                            this.analysisResults[idx - 1] = {
+                                moveNumber: idx,
+                                move: currentMove,
+                                analysis: uiAnalysisData
+                            };
+
+                            // 同步到 AnalysisStorage
+                            this.analysisStorage.addAnalysisResult(
+                                this.currentSGFHash,
+                                idx,
+                                currentMove,
+                                uiAnalysisData
+                            );
+
+                            // 同步 UI
+                            if (typeof renderMovesToIndex === 'function') {
+                                renderMovesToIndex(idx - 1);
+                            }
+
+                            if (onMoveAnalyzed) {
+                                onMoveAnalyzed(idx, currentMove, uiAnalysisData);
+                            }
+                        }
+                    }
+                }
+
+                if (status === 'completed') {
+                    console.log('[Queue] 分析任务已由 Worker 完成');
+                    clearInterval(this.pollingInterval);
+                    this.pollingInterval = null;
+
+                    if (onComplete) {
+                        onComplete(this.analysisResults);
+                    }
+                    this.isAnalyzing = false;
+                } else if (status === 'failed') {
+                    throw new Error(result.data.error || 'Worker 报告错误');
+                }
+
+            } catch (error) {
+                console.error('Polling error:', error);
+            }
+        }, 3000);
+    }
+
+    // 辅助：将后端解析的 moveAnalysis 转换为前端 UI 预期的 uiAnalysisData
+    adaptBackendResultToUI(backendData) {
+        const { analysis } = backendData;
+        const { evaluation, suggestions, analysisTime } = analysis;
+
+        return {
+            winRate: (evaluation.winrate * 100).toFixed(1),
+            score: evaluation.score.toFixed(2),
+            visits: evaluation.visits,
+            time: analysisTime,
+            recommendedMove: suggestions[0] ? this.coordToSGF(suggestions[0].move) : '',
+            variations: suggestions.slice(0, 10).map(s => ({
+                moves: [this.coordToSGF(s.move)],
+                winRate: (s.winrate * 100).toFixed(1),
+                score: s.score.toFixed(2),
+                visits: s.visits
+            })),
+            isFromQueue: true
+        };
+    }
+
+    // 辅助：坐标转换 {row, col} -> "Q16"
+    coordToSGF(pos) {
+        if (pos.row === -1) return 'PASS';
+        const colChar = String.fromCharCode(65 + pos.col + (pos.col >= 8 ? 1 : 0));
+        const rowNum = 19 - pos.row;
+        return `${colChar}${rowNum}`;
     }
 
     // 获取分析状态

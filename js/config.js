@@ -43,7 +43,7 @@ function detectEnvironment() {
 const KATAGO_ENGINES = {
     local: {
         name: "Local Server (K8s)",
-        url: "http://192.168.0.162:8081",
+        url: "http://192.168.0.162:8080",
         description: "本地 Kubernetes 部署的 KataGo 服务器"
     },
     tunnel: {
@@ -60,7 +60,7 @@ const KATAGO_ENGINES = {
     custom: {
         name: "Custom Server",
         url: localStorage.getItem('katago_custom_url') || "http://192.168.0.162:8080",
-        description: "用户自定义 KataGo 服务器"
+        description: "用户自定义 KataGo 服务器 (默认指向 K8s 8081)"
     }
 };
 

@@ -60,13 +60,11 @@ class ProblemEditor {
         const originalUpdateMoveInfo = this.boardController.updateMoveInfo.bind(this.boardController);
         this.boardController.updateMoveInfo = () => {
             // 1. 先调用原始逻辑更新文本和数据库候选点
+            // 1. 先调用原始逻辑更新文本、数据库候选点以及上一手三角
             originalUpdateMoveInfo();
 
             // 2. 清理编辑器特有的候选点标记 (ABCD)
             this.clearCandidates();
-
-            // 🔥 渲染上一手棋的小三角标志
-            this.renderLastMoveTriangle();
 
             // 3. 渲染实战下一手提示
             this.renderActualNextMoveHint();
@@ -125,10 +123,17 @@ class ProblemEditor {
         window.addEventListener('resize', () => {
             clearTimeout(timeout);
             timeout = setTimeout(() => {
-                if (this.gameId) this.initBoard();
+                if (this.gameId) {
+                    if (this.boardController) {
+                        this.boardController.refreshBoard();
+                    } else {
+                        this.initBoard();
+                    }
+                }
             }, 200);
         });
     }
+
 
     // 🔊 初始化音量控制
     initVolumeControl() {
@@ -910,38 +915,6 @@ class ProblemEditor {
     /**
      * 在当前局面的最后一手添加小三角标志
      */
-    renderLastMoveTriangle() {
-        // 🔥 清除旧的三角标记
-        document.querySelectorAll('.last-move-triangle').forEach(el => el.remove());
-
-        const currentIndex = window.currentMoveIndex !== undefined ? window.currentMoveIndex : (this.boardController ? this.boardController.currentMoveIndex : -1);
-
-        if (!this.gameData || !this.gameData.moves || currentIndex < 0) return;
-
-        const lastMove = this.gameData.moves[currentIndex];
-        if (lastMove && lastMove.row !== undefined && lastMove.col !== undefined && !lastMove.pass) {
-            const intersection = document.querySelector(`[data-row="${lastMove.row}"][data-col="${lastMove.col}"]`);
-            if (intersection && intersection.querySelector('.stone')) {
-                const triangle = document.createElement('div');
-                triangle.className = 'last-move-triangle';
-                const isBlack = lastMove.color === 'black' || lastMove.color === 'B';
-                const triColor = isBlack ? '#ffffff' : '#000000';
-                triangle.style.cssText = `
-                    position: absolute;
-                    top: 50%; left: 50%;
-                    transform: translate(-50%, -50%);
-                    width: 0; height: 0;
-                    border-left: 7px solid transparent;
-                    border-right: 7px solid transparent;
-                    border-bottom: 12px solid ${triColor};
-                    z-index: 15;
-                    pointer-events: none;
-                    filter: drop-shadow(0 0 1px rgba(0,0,0,0.3));
-                `;
-                intersection.appendChild(triangle);
-            }
-        }
-    }
 
     /**
      * 渲染实战下一手提示
@@ -1903,13 +1876,13 @@ class ProblemEditor {
     goToPendingQuestion(moveNumber) {
         if (this.boardController) {
             this.boardController.goToMove(moveNumber - 1);
-            // 触发UI更新
-            this.renderLastMoveTriangle();
+            // 触发UI更新 (会由 goToMove -> updateMoveInfo -> renderLastMoveMarker 自动完成，但这里确保编辑器特有逻辑也同步)
             this.renderActualNextMoveHint();
             this.updateWinrateChart();
             this.updateChartIndicator(moveNumber - 1);
         }
     }
+
 
     /**
      * 批量 AI 验证所有待验证题目

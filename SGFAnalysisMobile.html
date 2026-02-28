@@ -283,7 +283,7 @@
         <!-- We might want to mirror this if possible -->
         <div id="connectionStatus"></div>
         <select id="engineSelect">
-          <option value="local">Local</option>
+          <option value="local">本地服务器 (192.168.0.162:8080)</option>
         </select>
         <select id="analysisDepth">
           <option value="normal">Normal</option>
@@ -512,7 +512,20 @@
       // 5. Board Initialization
       // We reuse the createBoard3 logic but need to ensure dimensions are correct
       initializeMobileBoard();
-      window.addEventListener("resize", initializeMobileBoard);
+      
+      // 🔥 关键修复：窗口大小改变时使用 BoardController 统一刷新，防止棋子消失
+      let resizeTimeout;
+      window.addEventListener("resize", () => {
+        if (resizeTimeout) clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(() => {
+          console.log('🔄 [Mobile] 窗口大小改变，触发 BoardController.refreshBoard()');
+          if (window.sgfAnalyzer && window.sgfAnalyzer.boardController) {
+            window.sgfAnalyzer.boardController.refreshBoard();
+          } else {
+            initializeMobileBoard();
+          }
+        }, 200);
+      });
     });
 
     // 🔥 Expose calculateBoardSize globally for BoardController.js
@@ -522,9 +535,6 @@
 
       // Tailwind aspect-square handles the container size
       const rect = boardContainer.getBoundingClientRect();
-      // Use width or height, whichever is smaller (should be same for square)
-      // But we need to account for padding if we want the GRID size
-      // The container has p-1 now (approx 4px * 2 = 8px)
       const fullSize = Math.min(rect.width, rect.height);
       const size = fullSize - 4;
 
@@ -538,7 +548,7 @@
     window.updateStoneSizeCSS = function (cellSize) {
       document.documentElement.style.setProperty(
         "--stone-size",
-        `${cellSize * 0.98}px`,
+        `${cellSize * 0.95}px`, // 标准化为 0.95
       );
       document.documentElement.style.setProperty(
         "--cell-size",
@@ -577,10 +587,9 @@
           lineColor: "#2a1a0a", // Dark grid color from design
           backgroundColor: "transparent", // We use the container background
         });
-      } else {
-        console.log("createBoard3 not found yet, will define it.");
       }
     }
+
 
     // --- Copy of Board Creation Logic from SGFAnalysis.html ---
     function createBoard3(options) {
