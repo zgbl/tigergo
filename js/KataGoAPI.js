@@ -105,7 +105,10 @@ class KataGoAPI {
 
     // 内部通用请求方法，支持备用地址自动切换
     async _fetchWithFallback(endpoint, options = {}) {
-        const urlsToTry = this.isProxyMode ? [this.targetUrl, ...this.fallbackUrls] : [null];
+        // 如果禁用了 fallback (比如在测试连接时)，则只尝试目标地址
+        const urlsToTry = (this.isProxyMode && !options.disableFallback)
+            ? [this.targetUrl, ...this.fallbackUrls]
+            : [this.targetUrl || null];
 
         // 允许从 options 中提取超时时间，分析请求通常较慢，默认给 30s，其他 15s
         const defaultTimeout = endpoint.includes('select-move') || endpoint.includes('analyze') ? 45000 : 15000;
@@ -181,7 +184,8 @@ class KataGoAPI {
             const response = await this._fetchWithFallback('/health', {
                 method: 'GET',
                 mode: 'cors',
-                signal: AbortSignal.timeout(12000)
+                signal: AbortSignal.timeout(12000),
+                disableFallback: true // 测试连接时不使用内置 fallback，由外部控制
             });
 
             const data = await response.json();
