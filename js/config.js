@@ -41,10 +41,15 @@ function detectEnvironment() {
 
 // 🔥 新增：KataGo 引擎配置选项
 const KATAGO_ENGINES = {
+    devlb: {
+        name: "Dev Nginx LB (192.168.0.162:8060)",
+        url: "http://192.168.0.162:8060",
+        description: "Home GPU 机 — Nginx 负载均衡 (2-5 KataGo containers，开发环境首选)"
+    },
     local: {
-        name: "Local Server (K8s)",
-        url: "http://192.168.0.162:8080",
-        description: "本地 Kubernetes 部署的 KataGo 服务器"
+        name: "Local KataGo Node (192.168.0.162:8081)",
+        url: "http://192.168.0.162:8081",
+        description: "直连单一 KataGo 节点（Nginx LB 不可用时 fallback）"
     },
     tunnel: {
         name: "Cloudflare Tunnel (K8s Pod 2)",
@@ -59,8 +64,8 @@ const KATAGO_ENGINES = {
     },
     custom: {
         name: "Custom Server",
-        url: localStorage.getItem('katago_custom_url') || "http://192.168.0.162:8080",
-        description: "用户自定义 KataGo 服务器 (默认指向 K8s 8081)"
+        url: localStorage.getItem('katago_custom_url') || "http://192.168.0.162:8060",
+        description: "用户自定义 KataGo 服务器"
     }
 };
 
@@ -113,9 +118,9 @@ function getConfig() {
     const env = detectEnvironment();
     const hostname = window.location.hostname;
 
-    // 获取用户偏好的引擎 ID，默认为 local
-    const preferredEngine = localStorage.getItem('katago_preferred_engine') || 'local';
-    const preferredEngineConfig = KATAGO_ENGINES[preferredEngine] || KATAGO_ENGINES.local;
+    // 获取用户偏好的引擎 ID，dev 环境首选 devlb（Nginx LB）
+    const preferredEngine = localStorage.getItem('katago_preferred_engine') || 'devlb';
+    const preferredEngineConfig = KATAGO_ENGINES[preferredEngine] || KATAGO_ENGINES.devlb;
     const katagoUrl = preferredEngineConfig.url;
     const fallbackUrls = preferredEngineConfig.fallbackUrls || [];
 

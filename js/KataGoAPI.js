@@ -17,12 +17,14 @@ class KataGoAPI {
 
         this.botName = botName;
         this.debugMode = false;
+        this._currentSGFHash = '';  // 当前棋谱的 hash（由外部调用 setCurrentMoves 设置）
 
         // 创建专用的 fetch 会话
         this.headers = {
             'Content-Type': 'application/json',
             'User-Agent': 'SGF-Analysis-Frontend/1.0'
         };
+        this._fixedHash = null; // 🔥 新增：固定 Hash 用于 session sticky
 
         console.log(`🔧 KataGoAPI 初始化:`);
         console.log(`  - 模式: ${this.isProxyMode ? '代理模式' : '直连模式'}`);
@@ -57,6 +59,38 @@ class KataGoAPI {
         window.dispatchEvent(new CustomEvent('katagoStatus', {
             detail: { message, status, timestamp }
         }));
+    }
+
+    /**
+     * 根据棋谱的前 50 手计算 djb2 hash，用作 nginx LB session sticky key。
+     * 只取前 50 手保证同一棋谱（即使总手数不同）始终发往同一 KataGo container。
+     * @param {Array} moves  KataGo 格式的着法数组，每项为 [color, pos] 或 posString
+     * @returns {string}     8 位 base-36 字符串
+     */
+    computeSGFHash(moves) {
+        if (!moves || moves.length === 0) return '';
+        // 规范化：取前 50 手，拼成稳定字符串
+        const first50 = moves.slice(0, 50);
+        const key = first50.map(m =>
+            Array.isArray(m) ? m.join(':') : String(m)
+        ).join('|');
+
+        // djb2 hash（无符号 32 位）
+        let hash = 5381;
+        for (let i = 0; i < key.length; i++) {
+            hash = ((hash << 5) + hash) ^ key.charCodeAt(i);
+            hash = hash >>> 0; // 保持无符号 32 位
+        }
+        return hash.toString(36).padStart(7, '0');
+    }
+
+    /**
+     * 设置固定的 SGF Hash，用于后续所有请求的 session sticky。
+     * @param {string} hash 
+     */
+    setFixedHash(hash) {
+        console.log(`🔗 [KataGoAPI] 设置固定 Hash: ${hash}`);
+        this._fixedHash = hash;
     }
 
     // 调试打印
@@ -194,11 +228,19 @@ class KataGoAPI {
 
         this.debugPrint("API请求payload", payload);
 
+        // 🔗 Session sticky: 优先使用固定的 Hash，确保同一局棋始终发往同一 KataGo container
+        const sgfHash = this._fixedHash || this.computeSGFHash(moves);
+        const selectMoveHeaders = { ...this.headers };
+        if (sgfHash) {
+            selectMoveHeaders['X-Game-Hash'] = sgfHash;
+        }
+
         try {
             const startTime = Date.now();
 
             const response = await this._fetchWithFallback(`/select-move/${this.botName}`, {
                 method: 'POST',
+                headers: selectMoveHeaders,
                 body: JSON.stringify(payload),
                 signal: AbortSignal.timeout(30000)
             });
@@ -313,6 +355,13 @@ class KataGoAPI {
             // 🔥 修复：如果是在代理模式且设置了目标地址，则发送 Header 告诉后端去哪里
             if (this.isProxyMode && this.targetUrl) {
                 requestHeaders['x-target-server'] = this.targetUrl;
+            }
+
+            // 🔗 Session sticky: 优先使用固定的 Hash，确保同一局棋始终发往同一 KataGo container
+            const sgfHash = this._fixedHash || this.computeSGFHash(moves);
+            if (sgfHash) {
+                requestHeaders['X-Game-Hash'] = sgfHash;
+                this.debugPrint(`Game Hash (Session Sticky): ${sgfHash}`);
             }
 
             const requestOptions = {

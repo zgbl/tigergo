@@ -183,6 +183,12 @@ class SGFAnalyzer {
             if (rawMoves.length === 0) {
                 this.analysisDisplay.addLogEntry('警告: SGF解析结果为空', 'warning');
             }
+
+            // 🔥 新增：计算基于前50手移动的固定 Hash，用于 session sticky
+            const sessionHash = this.katagoAPI.computeSGFHash(rawMoves);
+            this.katagoAPI.setFixedHash(sessionHash);
+            console.log(`🔗 [SGFAnalysis] 加载棋谱设置 Session Hash: ${sessionHash}`);
+
             const convertedMoves = this.convertMovesToGoBoard12Format(rawMoves);
 
             this.gameData = {
@@ -497,6 +503,12 @@ class SGFAnalyzer {
 
             // 解析 SGF 内容
             const rawMoves = this.sgfParser.parseSGFMoves(sgfContent);
+
+            // 🔥 新增：计算基于前50手移动的固定 Hash，用于 session sticky
+            const sessionHash = this.katagoAPI.computeSGFHash(rawMoves);
+            this.katagoAPI.setFixedHash(sessionHash);
+            console.log(`🔗 [SGFAnalysis] 解析 SGF 设置 Session Hash: ${sessionHash}`);
+
             const convertedMoves = this.convertMovesToGoBoard12Format(rawMoves);
 
             this.gameData = {
