@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="css/Styles5.css" />
   <link rel="stylesheet" href="css/SGFAnalysis.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
-  <link rel="icon" href="https://zgbl.github.io/tigergo/favicon.ico" type="image/x-icon" />
+  <link rel="icon" href="favicon.ico" type="image/x-icon" />
   <style>
     /* 🔥 关键：强制修正棋盘偏移，解决 margin-left: 50px 的遗传问题 */
     #board {
@@ -752,7 +752,7 @@
       if (resizeTimeout) clearTimeout(resizeTimeout);
       resizeTimeout = setTimeout(() => {
         console.log('🔄 窗口大小改变，触发 BoardController.refreshBoard()');
-        
+
         if (window.sgfAnalyzer && window.sgfAnalyzer.boardController) {
           window.sgfAnalyzer.boardController.refreshBoard();
         } else {
