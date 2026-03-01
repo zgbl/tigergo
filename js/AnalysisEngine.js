@@ -69,7 +69,7 @@ class AnalysisEngine {
             }
 
             // 检查是否应该使用队列模式 (如果后端是 Next.js 且配置启用)
-            const useQueue = true; // 默认启用队列解决并发问题
+            const useQueue = false; // 🛑 暂时禁用队列，因为 Redis 后端已移除，强行使用直连模式避免 500 错误
 
             if (useQueue) {
                 console.log('📝 使用队列模式分析...');
