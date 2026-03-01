@@ -52,15 +52,15 @@ const KATAGO_ENGINES = {
         description: "直连单一 KataGo 节点（Nginx LB 不可用时 fallback）"
     },
     tunnel: {
-        name: "Cloudflare Tunnel (K8s Pod 2)",
-        url: "https://katagoengine2.blackrice.top",
-        fallbackUrls: ["https://katagoengine1.blackrice.top"],
-        description: "通过 Cloudflare Tunnel 访问的家用 GPU 引擎 (优先选择 Pod 2)"
+        name: "Cloudflare Tunnel (Production LB)",
+        url: "https://katagoengine-lb.blackrice.top",
+        fallbackUrls: [],
+        description: "通过 Cloudflare Tunnel 访问的生产环境 KataGo 负载均衡器"
     },
     cloud: {
-        name: "BlackRice KataGo Cloud",
+        name: "BlackRice KataGo Cloud (CPU Fallback)",
         url: "https://katago-analysis-939624114433.us-central1.run.app",
-        description: "Google Cloud Run 部署的 KataGo 服务 CPU 版本"
+        description: "Google Cloud Run 部署的 KataGo 服务 CPU 版本 (仅做最后备选)"
     },
     custom: {
         name: "Custom Server",
@@ -118,9 +118,10 @@ function getConfig() {
     const env = detectEnvironment();
     const hostname = window.location.hostname;
 
-    // 获取用户偏好的引擎 ID，dev 环境首选 devlb（Nginx LB）
-    const preferredEngine = localStorage.getItem('katago_preferred_engine') || 'devlb';
-    const preferredEngineConfig = KATAGO_ENGINES[preferredEngine] || KATAGO_ENGINES.devlb;
+    // 获取用户偏好的引擎 ID
+    const defaultEngine = (env === 'production' || env === 'github') ? 'tunnel' : 'devlb';
+    const preferredEngine = localStorage.getItem('katago_preferred_engine') || defaultEngine;
+    const preferredEngineConfig = KATAGO_ENGINES[preferredEngine] || KATAGO_ENGINES[defaultEngine];
     const katagoUrl = preferredEngineConfig.url;
     const fallbackUrls = preferredEngineConfig.fallbackUrls || [];
 
