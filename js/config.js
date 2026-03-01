@@ -46,11 +46,6 @@ const KATAGO_ENGINES = {
         url: "http://192.168.0.162:8060",
         description: "Home GPU 机 — Nginx 负载均衡 (2-5 KataGo containers，开发环境首选)"
     },
-    local: {
-        name: "Local KataGo Node (192.168.0.162:8081)",
-        url: "http://192.168.0.162:8081",
-        description: "直连单一 KataGo 节点（Nginx LB 不可用时 fallback）"
-    },
     tunnel: {
         name: "Cloudflare Tunnel (Production LB)",
         url: "https://katagoengine-lb.blackrice.top",

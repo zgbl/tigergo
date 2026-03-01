@@ -283,7 +283,9 @@
         <!-- We might want to mirror this if possible -->
         <div id="connectionStatus"></div>
         <select id="engineSelect">
-          <option value="local">本地服务器 (192.168.0.162:8080)</option>
+          <option value="tunnel">云端 LB 引擎 (Production)</option>
+          <option value="cloud">云端备用引擎 (Google Cloud Run)</option>
+          <option value="devlb">本地 LB 引擎 (192.168.0.162:8060)</option>
         </select>
         <select id="analysisDepth">
           <option value="normal">Normal</option>
@@ -512,7 +514,7 @@
       // 5. Board Initialization
       // We reuse the createBoard3 logic but need to ensure dimensions are correct
       initializeMobileBoard();
-      
+
       // 🔥 关键修复：窗口大小改变时使用 BoardController 统一刷新，防止棋子消失
       let resizeTimeout;
       window.addEventListener("resize", () => {

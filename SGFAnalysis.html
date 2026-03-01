@@ -293,8 +293,9 @@
             </div>
             <select class="setting-select" id="engineSelect">
               <optgroup label="预定义引擎">
-                <option value="local">本地引擎 (192.168.0.162:8080)</option>
-                <option value="cloud">云端引擎 (Google Cloud Run)</option>
+                <option value="tunnel">云端 LB 引擎 (Production)</option>
+                <option value="cloud">云端备用引擎 (Google Cloud Run)</option>
+                <option value="devlb">本地 LB 引擎 (192.168.0.162:8060)</option>
               </optgroup>
               <optgroup label="用户自定义">
                 <option value="custom">自定义服务器</option>

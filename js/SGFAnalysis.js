@@ -126,7 +126,7 @@ class SGFAnalyzer {
 
         // 延迟测试连接
         setTimeout(() => {
-            this.testKataGoConnection();
+            this.testKataGoConnection(false); // 不是手动切换，按优先级走
         }, 1000);
     }
 
@@ -360,7 +360,7 @@ class SGFAnalyzer {
         }
     }
 
-    testKataGoConnection = async () => {
+    testKataGoConnection = async (isManualSwitch = false) => {
         console.log('开始测试所有 KataGo 引擎连接');
 
         this.updateConnectionStatus('connecting');
@@ -384,11 +384,12 @@ class SGFAnalyzer {
         const currentEngineSelect = document.getElementById('engineSelect');
         const currentEngineName = currentEngineSelect ? currentEngineSelect.value : null;
 
-        // 确定测试顺序：优先当前选中，然后按优先级 (cloud优先保证prod体验)
-        const preferredOrder = ['cloud', 'tunnel', 'local', 'custom'];
+        // 确定测试顺序：优先当前选中，然后按优先级 (tunnel优先保证prod体验)
+        const preferredOrder = ['tunnel', 'cloud', 'devlb', 'custom'];
         let orderedEngines = [];
 
-        if (currentEngineName) {
+        // 只有当用户手动在下拉框切换时，才优先测试其选中项
+        if (isManualSwitch && currentEngineName) {
             const currentObj = engines.find(e => e.name === currentEngineName);
             if (currentObj) orderedEngines.push(currentObj);
         }
@@ -1067,7 +1068,7 @@ class SGFAnalyzer {
             this.katagoAPI.setBaseUrl(engineConfig.url);
             this.katagoAPI.targetUrl = engineConfig.url; // 🔥 修复：同步更新代理目标地址
             this.analysisDisplay.addLogEntry(`已切换到引擎: ${engineConfig.name} (${engineConfig.url})`, 'info');
-            this.testKataGoConnection();
+            this.testKataGoConnection(true); // 传入 true 表示手动切换
         }
     }
 
