@@ -821,22 +821,36 @@
             </div>
           </div>
         </div>
-        <button id="openAlbumPanelBtn"
-          onclick="document.getElementById('albumGroup').scrollIntoView({behavior:'smooth'})" style="
-              background: rgba(255,255,255,0.15);
-              border: 1px solid rgba(255,255,255,0.3);
-              color: white;
-              border-radius: 6px;
-              padding: 4px 10px;
-              font-size: 11px;
-              cursor: pointer;
-              white-space: nowrap;
-              flex-shrink: 0;
-              transition: background 0.2s;
-            " onmouseover="this.style.background='rgba(255,255,255,0.25)'"
-          onmouseout="this.style.background='rgba(255,255,255,0.15)'">
-          <i class="fas fa-chevron-down"></i> 切换
-        </button>
+        <div style="display: flex; gap: 6px; flex-shrink: 0;">
+          <button id="bannerCreateAlbumBtn" onclick="document.getElementById('showCreateAlbumModalBtn').click()" style="
+                background: var(--success-color);
+                border: 1px solid rgba(255,255,255,0.3);
+                color: white;
+                border-radius: 6px;
+                padding: 4px 10px;
+                font-size: 11px;
+                cursor: pointer;
+                white-space: nowrap;
+                transition: background 0.2s;
+              ">
+            <i class="fas fa-plus"></i> 新建
+          </button>
+          <button id="openAlbumPanelBtn"
+            onclick="document.getElementById('albumGroup').scrollIntoView({behavior:'smooth'})" style="
+                background: rgba(255,255,255,0.15);
+                border: 1px solid rgba(255,255,255,0.3);
+                color: white;
+                border-radius: 6px;
+                padding: 4px 10px;
+                font-size: 11px;
+                cursor: pointer;
+                white-space: nowrap;
+                transition: background 0.2s;
+              " onmouseover="this.style.background='rgba(255,255,255,0.25)'"
+            onmouseout="this.style.background='rgba(255,255,255,0.15)'">
+            <i class="fas fa-chevron-down"></i> 切换
+          </button>
+        </div>
       </div>
 
       <!-- 待验证题目列表 -->
@@ -908,7 +922,7 @@
         </div>
       </div>
 
-      <div class="setting-group" id="albumGroup" style="display: none;">
+      <div class="setting-group" id="albumGroup">
         <label class="setting-label">所属专辑 (Album)</label>
         <select id="albumSelect" class="setting-select" style="margin-bottom: 8px;"></select>
         <button id="showCreateAlbumModalBtn" class="control-btn btn-primary"

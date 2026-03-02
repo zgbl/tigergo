@@ -430,7 +430,6 @@ class ProblemEditor {
             if (result.success) {
                 this.currentAlbums = result.data || [];
                 this.renderAlbumSelect();
-                document.getElementById('albumGroup').style.display = 'block';
             }
 
         } catch (error) {
