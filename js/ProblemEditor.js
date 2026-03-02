@@ -373,6 +373,10 @@ class ProblemEditor {
                 if (prodNameInput.value.trim() !== '') {
                     this.loadProducerAlbums();
                 }
+                this.updateActiveAlbumBanner();
+            });
+            prodNameInput.addEventListener('input', () => {
+                this.updateActiveAlbumBanner();
             });
             // 默认尝试加载之前保存的名字
             const savedProducer = localStorage.getItem('tigergo_producer');
@@ -467,7 +471,35 @@ class ProblemEditor {
             if (e.target.value) {
                 localStorage.setItem('tigergo_last_album', e.target.value);
             }
+            this.updateActiveAlbumBanner();
         });
+
+        // Update banner after rendering
+        this.updateActiveAlbumBanner();
+    }
+
+    /**
+     * 更新顶部「当前专辑」横条显示的专辑名
+     */
+    updateActiveAlbumBanner() {
+        const bannerName = document.getElementById('activeAlbumName');
+        if (!bannerName) return;
+
+        const select = document.getElementById('albumSelect');
+        const selectedId = select?.value;
+        const selectedAlbum = this.currentAlbums.find(a => a._id === selectedId);
+        const producer = document.getElementById('producerName')?.value?.trim();
+
+        if (selectedAlbum) {
+            bannerName.textContent = selectedAlbum.name;
+            bannerName.style.color = 'white';
+        } else if (producer) {
+            bannerName.textContent = '请选择或新建专辑';
+            bannerName.style.color = 'rgba(255,200,100,0.9)';
+        } else {
+            bannerName.textContent = '请先输入制作人名称';
+            bannerName.style.color = 'rgba(255,200,100,0.9)';
+        }
     }
 
     async createAlbum() {
@@ -501,6 +533,7 @@ class ProblemEditor {
                 await this.loadProducerAlbums();
                 // Select newly created album
                 document.getElementById('albumSelect').value = result.data._id;
+                this.updateActiveAlbumBanner();
                 localStorage.setItem('tigergo_last_album', result.data._id);
                 alert('专辑创建成功！');
             } else {
@@ -1978,6 +2011,9 @@ class ProblemEditor {
                     whiteRank: this.gameData?.gameInfo?.whiteRank || '',
                     gameDate: this.gameData?.gameInfo?.date || '',
                     result: this.gameData?.gameInfo?.result || '',
+
+                    producer: document.getElementById('producerName')?.value?.trim() || '匿名制作人',
+                    albumId: document.getElementById('albumSelect')?.value || null,
 
                     verificationStatus: 'pending'
                 }],

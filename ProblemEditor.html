@@ -796,6 +796,49 @@
         </div>
       </div>
 
+      <!-- 🔥 当前专辑横条 -->
+      <div id="activeAlbumBanner" style="
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #1a237e 0%, #283593 100%);
+            color: white;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            border: 1px solid rgba(255,255,255,0.15);
+            box-shadow: 0 2px 8px rgba(26,35,126,0.3);
+          ">
+        <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
+          <i class="fas fa-folder-open" style="opacity: 0.8; flex-shrink: 0;"></i>
+          <div style="min-width: 0;">
+            <div style="font-size: 10px; opacity: 0.7; letter-spacing: 0.5px; text-transform: uppercase;">当前专辑</div>
+            <div id="activeAlbumName"
+              style="font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+              未选择专辑
+            </div>
+          </div>
+        </div>
+        <button id="openAlbumPanelBtn"
+          onclick="document.getElementById('albumGroup').scrollIntoView({behavior:'smooth'})" style="
+              background: rgba(255,255,255,0.15);
+              border: 1px solid rgba(255,255,255,0.3);
+              color: white;
+              border-radius: 6px;
+              padding: 4px 10px;
+              font-size: 11px;
+              cursor: pointer;
+              white-space: nowrap;
+              flex-shrink: 0;
+              transition: background 0.2s;
+            " onmouseover="this.style.background='rgba(255,255,255,0.25)'"
+          onmouseout="this.style.background='rgba(255,255,255,0.15)'">
+          <i class="fas fa-chevron-down"></i> 切换
+        </button>
+      </div>
+
       <!-- 待验证题目列表 -->
       <div id="pendingQuestionsPanel" style="display: none; margin-bottom: 15px">
         <h3 class="panel-title" style="display: flex; justify-content: space-between; align-items: center">
