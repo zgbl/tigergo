@@ -127,3 +127,16 @@ A specialized tool for manually creating and refining Go problems from analyzed 
     - Near-optimal moves: 8-9 points.
     - Other moves: 0-7 points based on loss magnitude.
 3.  **UI**: Provide input fields or select boxes for manual score adjustment during the "Grading & Saving" phase.
+
+### 7. Album Management
+Albums are dedicated collections of Go problems curated by specific producers for specific communities.
+
+1.  **Database Entity**: Album must be a separate entity in the database (not just a string field). It requires its own endpoint and management lifecycle.
+2.  **Continuous Editing**: Problems can be added to an album iteratively. An album can be saved, closed, and reopened later to add, remove, or modify problems.
+3.  **Deletion Logic**:
+    - Albums can be deleted.
+    - When deleting an album, deleting the associated problems is optional (user decides).
+4.  **Permission Control**:
+    - A user can only delete problems they created themselves.
+    - A user cannot delete problems created by others.
+    - Admins have the authority to delete any problem across the platform.

@@ -20,6 +20,9 @@ class ProblemEditor {
         this.pendingQuestions = []; // 待验证题目列表
         this.winrateChart = null; // Chart.js instance
 
+        this.currentAlbums = []; // Cache of fetched albums
+        this.selectedAlbumId = null;
+
         this.init();
     }
 
@@ -359,6 +362,207 @@ class ProblemEditor {
         if (fAll) fAll.addEventListener('click', () => this.setLossFilter('all'));
         if (fB) fB.addEventListener('click', () => this.setLossFilter('black'));
         if (fW) fW.addEventListener('click', () => this.setLossFilter('white'));
+
+        // 🔥 专辑管理相关事件绑定
+        const prodNameInput = document.getElementById('producerName');
+        if (prodNameInput) {
+            prodNameInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') this.loadProducerAlbums();
+            });
+            // 默认尝试加载之前保存的名字
+            const savedProducer = localStorage.getItem('tigergo_producer');
+            if (savedProducer) {
+                prodNameInput.value = savedProducer;
+                this.loadProducerAlbums();
+            }
+        }
+        const loadAlbumsBtn = document.getElementById('loadAlbumsBtn');
+        if (loadAlbumsBtn) loadAlbumsBtn.addEventListener('click', () => this.loadProducerAlbums());
+
+        // 创建专辑
+        document.getElementById('showCreateAlbumModalBtn')?.addEventListener('click', () => {
+            document.getElementById('createAlbumModal').style.display = 'flex';
+        });
+        document.getElementById('cancelCreateAlbumBtn')?.addEventListener('click', () => {
+            document.getElementById('createAlbumModal').style.display = 'none';
+        });
+        document.getElementById('confirmCreateAlbumBtn')?.addEventListener('click', () => this.createAlbum());
+
+        // 管理专辑
+        document.getElementById('manageAlbumsBtn')?.addEventListener('click', () => this.showManageAlbumsModal());
+        document.getElementById('closeManageAlbumsBtn')?.addEventListener('click', () => {
+            document.getElementById('manageAlbumsModal').style.display = 'none';
+        });
+    }
+
+    // ========== 专辑管理相关逻辑 ==========
+
+    async loadProducerAlbums() {
+        const producer = document.getElementById('producerName').value.trim();
+        if (!producer) {
+            alert('请输入制作人名称');
+            return;
+        }
+
+        // 缓存制作人名字
+        localStorage.setItem('tigergo_producer', producer);
+
+        try {
+            const btn = document.getElementById('loadAlbumsBtn');
+            const icon = btn.querySelector('i');
+            icon.className = 'fas fa-spinner fa-spin';
+
+            const apiUrl = `${CONFIG.API_VERCEL_NEXTJS_BASE_URL}/api/albums?producer=${encodeURIComponent(producer)}`;
+            const response = await fetch(apiUrl);
+
+            if (!response.ok) throw new Error('API Error');
+
+            const result = await response.json();
+            if (result.success) {
+                this.currentAlbums = result.data || [];
+                this.renderAlbumSelect();
+                document.getElementById('albumGroup').style.display = 'block';
+            }
+
+        } catch (error) {
+            console.error('加载专辑失败:', error);
+            alert('加载专辑失败');
+        } finally {
+            const icon = document.getElementById('loadAlbumsBtn').querySelector('i');
+            icon.className = 'fas fa-sync-alt';
+        }
+    }
+
+    renderAlbumSelect() {
+        const select = document.getElementById('albumSelect');
+        if (!select) return;
+
+        select.innerHTML = '';
+        if (this.currentAlbums.length === 0) {
+            const opt = document.createElement('option');
+            opt.value = '';
+            opt.textContent = '-- 该制作人还没有专辑 --';
+            select.appendChild(opt);
+        } else {
+            this.currentAlbums.forEach(album => {
+                const opt = document.createElement('option');
+                opt.value = album._id;
+                opt.textContent = album.name;
+                select.appendChild(opt);
+            });
+            // Try to restore previous selection
+            const lastSelected = localStorage.getItem('tigergo_last_album');
+            if (lastSelected && this.currentAlbums.find(a => a._id === lastSelected)) {
+                select.value = lastSelected;
+            }
+        }
+
+        // Listen for changes to save preference
+        select.addEventListener('change', (e) => {
+            if (e.target.value) {
+                localStorage.setItem('tigergo_last_album', e.target.value);
+            }
+        });
+    }
+
+    async createAlbum() {
+        const producer = document.getElementById('producerName').value.trim();
+        const name = document.getElementById('newAlbumName').value.trim();
+        const desc = document.getElementById('newAlbumDesc').value.trim();
+
+        if (!producer || !name) {
+            alert('制作人与专辑名称不能为空');
+            return;
+        }
+
+        try {
+            const btn = document.getElementById('confirmCreateAlbumBtn');
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 创建中...';
+            btn.disabled = true;
+
+            const apiUrl = `${CONFIG.API_VERCEL_NEXTJS_BASE_URL}/api/albums`;
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, producer, description: desc })
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                document.getElementById('createAlbumModal').style.display = 'none';
+                document.getElementById('newAlbumName').value = '';
+                document.getElementById('newAlbumDesc').value = '';
+                // Reload albums
+                await this.loadProducerAlbums();
+                // Select newly created album
+                document.getElementById('albumSelect').value = result.data._id;
+                localStorage.setItem('tigergo_last_album', result.data._id);
+                alert('专辑创建成功！');
+            } else {
+                alert(result.message || '创建失败');
+            }
+        } catch (error) {
+            console.error('创建专辑异常:', error);
+            alert('创建专辑异常');
+        } finally {
+            const btn = document.getElementById('confirmCreateAlbumBtn');
+            btn.innerHTML = '创建';
+            btn.disabled = false;
+        }
+    }
+
+    showManageAlbumsModal() {
+        if (this.currentAlbums.length === 0) {
+            alert('当前没有可以管理的专辑，请先创建。');
+            return;
+        }
+
+        const listDiv = document.getElementById('manageAlbumsList');
+        listDiv.innerHTML = this.currentAlbums.map(a => `
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #eee;">
+                <div>
+                    <div style="font-weight: bold;">${a.name}</div>
+                    <div style="font-size: 11px; color: #666;">${new Date(a.createdAt).toLocaleDateString()}</div>
+                </div>
+                <button class="control-btn btn-danger" style="padding: 4px 10px; font-size: 12px;" onclick="editor.deleteAlbum('${a._id}', '${a.name}')">
+                    <i class="fas fa-trash"></i> 删除
+                </button>
+            </div>
+        `).join('');
+
+        document.getElementById('manageAlbumsModal').style.display = 'flex';
+    }
+
+    async deleteAlbum(albumId, albumName) {
+        const producer = document.getElementById('producerName').value.trim();
+
+        // 第一次确认
+        if (!confirm(`确定要删除专辑 "${albumName}" 吗？此操作不可逆。`)) return;
+
+        // 第二次确认，询问是否删除关联题目
+        const deleteQuestions = confirm(`警告：是否同时删除该专辑下的【所有连带题目】？\n\n点击【确定(OK)】删除所有连带题目。\n点击【取消(Cancel)】仅删除专辑，题目将被解绑并保留在库中。`);
+
+        try {
+            const apiUrl = `${CONFIG.API_VERCEL_NEXTJS_BASE_URL}/api/albums`;
+            const response = await fetch(apiUrl, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: albumId, producer, deleteQuestions })
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                alert(`删除成功！\n连带删除了 ${result.data.deletedQuestionsCount} 道题目，解绑了 ${result.data.unlinkedQuestionsCount} 道题目。`);
+                // reload current producer's albums
+                await this.loadProducerAlbums();
+                this.showManageAlbumsModal(); // Refresh modal list
+            } else {
+                alert('删除失败: ' + result.message);
+            }
+        } catch (error) {
+            console.error('删除专辑异常:', error);
+            alert('删除异常');
+        }
     }
 
     /**
@@ -1102,6 +1306,9 @@ class ProblemEditor {
             const description = document.getElementById('questionText')?.value || `第${moveNumber}手，${nextColor === 'B' ? '黑' : '白'}方下一步最佳选择是？`;
             const difficulty = document.getElementById('difficultySelect')?.value || '3';
 
+            const producer = document.getElementById('producerName')?.value?.trim() || '匿名制作人';
+            const albumId = document.getElementById('albumSelect')?.value || null;
+
             // 构建 Payload
             const payload = {
                 questions: [{
@@ -1123,6 +1330,8 @@ class ProblemEditor {
                     questionText: description,
                     title: description,
                     source: this.gameData?.filename || '棋谱编辑器',
+                    producer: producer,
+                    albumId: albumId,
 
                     // 比赛信息
                     blackPlayer: this.gameData?.gameInfo?.blackPlayer || this.gameData?.gameInfo?.black || '',

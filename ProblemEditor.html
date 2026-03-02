@@ -856,6 +856,29 @@
       </h3>
 
       <div class="setting-group">
+        <label class="setting-label">制作人 (Producer)</label>
+        <div style="display: flex; gap: 8px;">
+          <input type="text" id="producerName" class="setting-input" placeholder="输入制作人名称 (回车加载专辑)">
+          <button id="loadAlbumsBtn" class="control-btn btn-secondary" style="padding: 8px; min-width: unset;">
+            <i class="fas fa-sync-alt"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="setting-group" id="albumGroup" style="display: none;">
+        <label class="setting-label">所属专辑 (Album)</label>
+        <select id="albumSelect" class="setting-select" style="margin-bottom: 8px;"></select>
+        <button id="showCreateAlbumModalBtn" class="control-btn btn-primary"
+          style="width: 100%; font-size: 13px; padding: 6px;">
+          <i class="fas fa-plus"></i> 新建专辑
+        </button>
+        <button id="manageAlbumsBtn" class="control-btn btn-warning"
+          style="width: 100%; font-size: 13px; padding: 6px; margin-top: 4px;">
+          <i class="fas fa-tasks"></i> 管理专辑
+        </button>
+      </div>
+
+      <div class="setting-group">
         <label class="setting-label">题目描述</label>
         <textarea id="questionText" class="setting-input" rows="3" placeholder="例如：黑先，如何做活？"></textarea>
       </div>
@@ -943,6 +966,41 @@
           <a href="SGFAnalysis.html" class="control-btn" style="display: inline-block; text-decoration: none">
             <i class="fas fa-arrow-left"></i> 返回分析页上传新棋谱
           </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- 创建专辑模态框 -->
+    <div id="createAlbumModal"
+      style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.8); z-index: 9999; justify-content: center; align-items: center;">
+      <div style="background: white; padding: 20px; border-radius: 12px; width: 90%; max-width: 400px;">
+        <h2 style="margin-top: 0; color: #333"><i class="fas fa-folder-plus"></i> 创建新专辑</h2>
+        <div class="setting-group">
+          <label class="setting-label">专辑名称</label>
+          <input type="text" id="newAlbumName" class="setting-input" placeholder="输入新专辑名称">
+        </div>
+        <div class="setting-group">
+          <label class="setting-label">描述 (可选)</label>
+          <textarea id="newAlbumDesc" class="setting-input" rows="3" placeholder="专辑简介..."></textarea>
+        </div>
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+          <button id="cancelCreateAlbumBtn" class="control-btn btn-secondary" style="flex: 1;">取消</button>
+          <button id="confirmCreateAlbumBtn" class="control-btn btn-success" style="flex: 1;">创建</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 管理专辑模态框 -->
+    <div id="manageAlbumsModal"
+      style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.8); z-index: 9999; justify-content: center; align-items: center;">
+      <div
+        style="background: white; padding: 20px; border-radius: 12px; width: 90%; max-width: 600px; max-height: 80vh; overflow-y: auto;">
+        <h2 style="margin-top: 0; color: #333"><i class="fas fa-tasks"></i> 管理专辑</h2>
+        <div id="manageAlbumsList" style="margin-top: 15px;">
+          <!-- JS填充内容 -->
+        </div>
+        <div style="margin-top: 20px; text-align: center;">
+          <button id="closeManageAlbumsBtn" class="control-btn btn-secondary">关闭</button>
         </div>
       </div>
     </div>
