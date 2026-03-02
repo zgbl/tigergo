@@ -369,6 +369,11 @@ class ProblemEditor {
             prodNameInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') this.loadProducerAlbums();
             });
+            prodNameInput.addEventListener('blur', () => {
+                if (prodNameInput.value.trim() !== '') {
+                    this.loadProducerAlbums();
+                }
+            });
             // 默认尝试加载之前保存的名字
             const savedProducer = localStorage.getItem('tigergo_producer');
             if (savedProducer) {
@@ -512,8 +517,13 @@ class ProblemEditor {
     }
 
     showManageAlbumsModal() {
+        const producer = document.getElementById('producerName').value.trim();
+        if (!producer) {
+            alert('请先输入制作人。');
+            return;
+        }
         if (this.currentAlbums.length === 0) {
-            alert('当前没有可以管理的专辑，请先创建。');
+            alert('该制作人当前没有可以管理的专辑，请先创建。');
             return;
         }
 
