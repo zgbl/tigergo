@@ -378,11 +378,26 @@ class ProblemEditor {
             prodNameInput.addEventListener('input', () => {
                 this.updateActiveAlbumBanner();
             });
-            // 默认尝试加载之前保存的名字
+            // 默认尝试加载之前保存的名字，如果没有则尝试从登录信息获取
             const savedProducer = localStorage.getItem('tigergo_producer');
             if (savedProducer) {
                 prodNameInput.value = savedProducer;
                 this.loadProducerAlbums();
+            } else {
+                // 尝试从登录信息获取
+                try {
+                    const userStr = localStorage.getItem('user');
+                    if (userStr) {
+                        const user = JSON.parse(userStr);
+                        if (user && user.username) {
+                            prodNameInput.value = user.username;
+                            localStorage.setItem('tigergo_producer', user.username);
+                            this.loadProducerAlbums();
+                        }
+                    }
+                } catch (e) {
+                    console.warn('解析用户信息失败:', e);
+                }
             }
         }
         const loadAlbumsBtn = document.getElementById('loadAlbumsBtn');
@@ -502,12 +517,31 @@ class ProblemEditor {
     }
 
     async createAlbum() {
-        const producer = document.getElementById('producerName').value.trim();
-        const name = document.getElementById('newAlbumName').value.trim();
-        const desc = document.getElementById('newAlbumDesc').value.trim();
+        let producer = document.getElementById('producerName')?.value?.trim();
+        const name = document.getElementById('newAlbumName')?.value?.trim();
+        const desc = document.getElementById('newAlbumDesc')?.value?.trim();
 
-        if (!producer || !name) {
-            alert('制作人与专辑名称不能为空');
+        // 如果输入框为空，尝试从登录信息获取
+        if (!producer) {
+            try {
+                const userStr = localStorage.getItem('user');
+                if (userStr) {
+                    const user = JSON.parse(userStr);
+                    if (user && user.username) {
+                        producer = user.username;
+                        // 同步更新到输入框，避免用户困惑
+                        const input = document.getElementById('producerName');
+                        if (input) input.value = producer;
+                    }
+                }
+            } catch (e) { }
+        }
+
+        // 最后兜底选用“匿名制作人”
+        if (!producer) producer = '匿名制作人';
+
+        if (!name) {
+            alert('专辑名称不能为空');
             return;
         }
 
